@@ -493,7 +493,7 @@ export const generateDailyTasksForGoal = async (
       Include at least one Streak Task (habit) in your response.
       
       IMPORTANT: Return ONLY the JSON array without any markdown formatting, explanation, or code block syntax.
-      DO NOT include ```json or ``` in your response. Return only the raw JSON array.`
+      DO NOT include \`\`\`json or \`\`\` in your response. Return only the raw JSON array.`
     },
     {
       role: 'user',
