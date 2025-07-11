@@ -1,0 +1,159 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import 'react-native-url-polyfill/auto';
+
+// Supabase credentials
+const supabaseUrl = 'https://ovvihfhkhqigzahlttyf.supabase.co';
+const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im92dmloZmhraHFpZ3phaGx0dHlmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDcxNDQ2MDIsImV4cCI6MjA2MjcyMDYwMn0.S1GkUtQR3d7YvmuJObDwZlYRMa4hBFc3NWBid9FHn2I';
+
+// Create the Supabase client
+let supabase: SupabaseClient;
+
+try {
+  // Validate URL format
+  new URL(supabaseUrl);
+  
+  // Create the Supabase client
+  supabase = createClient(supabaseUrl, supabaseAnonKey, {
+    auth: {
+      storage: AsyncStorage,
+      autoRefreshToken: true,
+      persistSession: true,
+      detectSessionInUrl: false,
+    },
+  });
+  
+  console.log('Supabase client initialized successfully');
+} catch (error) {
+  // Handle invalid URL error
+  console.error('Invalid Supabase URL:', error);
+  
+  // Create a mock client that shows an error for all operations
+  const mockErrorHandler = () => ({
+    error: {
+      message: 'Supabase configuration error. Please check your credentials.',
+    },
+  });
+  
+  supabase = {
+    auth: {
+      signInWithPassword: mockErrorHandler,
+      signUp: mockErrorHandler,
+      signOut: mockErrorHandler,
+      getSession: () => ({ data: null }),
+      onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }),
+      resetPasswordForEmail: mockErrorHandler,
+      resend: mockErrorHandler,
+    },
+    from: () => ({
+      select: () => ({
+        eq: mockErrorHandler,
+        single: mockErrorHandler,
+      }),
+      insert: mockErrorHandler,
+      update: mockErrorHandler,
+    }),
+    storage: {
+      from: () => ({
+        upload: mockErrorHandler,
+        getPublicUrl: mockErrorHandler,
+      }),
+      listBuckets: mockErrorHandler,
+      createBucket: mockErrorHandler,
+    },
+    rpc: mockErrorHandler,
+  } as unknown as SupabaseClient;
+  
+  // Log error in console only
+  console.error('Supabase Configuration Error: Please check your URL and API key.');
+}
+
+// Helper function to setup database tables
+export const setupDatabase = async (): Promise<boolean> => {
+  try {
+    // Check if profiles table exists by trying to select from it
+    const { error: testError } = await supabase
+      .from('profiles')
+      .select('id')
+      .limit(1);
+    
+    if (!testError) {
+      // Table exists and is accessible
+      return true;
+    }
+    
+    // If table doesn't exist, we can't create it via client
+    // User needs to run the SQL setup manually
+    console.error('Database tables not found. Please run the database-setup.sql in your Supabase SQL editor.');
+    return false;
+  } catch (error) {
+    console.error('Error checking database setup:', error);
+    return false;
+  }
+};
+
+// Helper function to create user profile after signup
+export const createUserProfile = async (userId: string, userData: { name?: string; avatar_url?: string } = {}) => {
+  try {
+    const { data, error } = await supabase
+      .from('profiles')
+      .insert({
+        id: userId,
+        name: userData.name || null,
+        avatar_url: userData.avatar_url || null,
+        level: 1,
+        xp: 0,
+        streak_days: 0,
+        longest_streak: 0,
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error creating user profile:', error.message);
+      return { data: null, error };
+    }
+
+    console.log('User profile created successfully:', data);
+    return { data, error: null };
+  } catch (error) {
+    console.error('Error in createUserProfile:', error);
+    return { data: null, error };
+  }
+};
+
+// Helper function to serialize errors properly
+export const serializeError = (error: any): string => {
+  if (typeof error === 'string') {
+    return error;
+  }
+  
+  if (error instanceof Error) {
+    return error.message;
+  }
+  
+  if (error && typeof error === 'object') {
+    if (error.message) {
+      return error.message;
+    }
+    
+    if (error.error_description) {
+      return error.error_description;
+    }
+    
+    if (error.details) {
+      return error.details;
+    }
+    
+    // Try to stringify the error object
+    try {
+      return JSON.stringify(error);
+    } catch {
+      return 'An unknown error occurred';
+    }
+  }
+  
+  return 'An unknown error occurred';
+};
+
+export { supabase };
