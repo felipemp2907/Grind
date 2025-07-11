@@ -5,11 +5,12 @@ import { useAuthStore } from '@/store/authStore';
 import { useUserStore } from '@/store/userStore';
 import { View, ActivityIndicator, Text, StyleSheet } from 'react-native';
 import Colors from '@/constants/colors';
+import DatabaseSetupPrompt from '@/components/DatabaseSetupPrompt';
 
 export default function Index() {
   const { isOnboarded } = useGoalStore();
   const { isAuthenticated, isLoading: authLoading } = useAuthStore();
-  const { fetchProfile, isLoading: profileLoading } = useUserStore();
+  const { fetchProfile, isLoading: profileLoading, needsDatabaseSetup, checkDatabaseSetup } = useUserStore();
   
   // Fetch user profile if authenticated
   useEffect(() => {
@@ -33,6 +34,17 @@ export default function Index() {
   // First check if user is authenticated
   if (!isAuthenticated) {
     return <Redirect href="/login" />;
+  }
+  
+  // Check if database setup is needed
+  if (needsDatabaseSetup) {
+    return (
+      <DatabaseSetupPrompt 
+        onSetupComplete={() => {
+          checkDatabaseSetup();
+        }}
+      />
+    );
   }
   
   // Then check if user has completed onboarding

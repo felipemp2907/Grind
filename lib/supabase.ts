@@ -68,8 +68,8 @@ try {
   console.error('Supabase Configuration Error: Please check your URL and API key.');
 }
 
-// Helper function to setup database tables
-export const setupDatabase = async (): Promise<boolean> => {
+// Helper function to check if database tables exist
+export const checkDatabaseSetup = async (): Promise<{ isSetup: boolean; error?: string }> => {
   try {
     // Check if profiles table exists by trying to select from it
     const { error: testError } = await supabase
@@ -79,17 +79,38 @@ export const setupDatabase = async (): Promise<boolean> => {
     
     if (!testError) {
       // Table exists and is accessible
-      return true;
+      return { isSetup: true };
     }
     
-    // If table doesn't exist, we can't create it via client
-    // User needs to run the SQL setup manually
-    console.error('Database tables not found. Please run the database-setup.sql in your Supabase SQL editor.');
-    return false;
+    // Check if it's a table not found error
+    if (testError.code === '42P01' || testError.message.includes('relation') || testError.message.includes('does not exist')) {
+      return { 
+        isSetup: false, 
+        error: 'Database tables not found. Please run the database-setup.sql in your Supabase SQL editor.' 
+      };
+    }
+    
+    // Other error
+    return { 
+      isSetup: false, 
+      error: `Database error: ${testError.message}` 
+    };
   } catch (error) {
     console.error('Error checking database setup:', error);
-    return false;
+    return { 
+      isSetup: false, 
+      error: `Failed to check database: ${error}` 
+    };
   }
+};
+
+// Legacy function for backward compatibility
+export const setupDatabase = async (): Promise<boolean> => {
+  const result = await checkDatabaseSetup();
+  if (!result.isSetup && result.error) {
+    console.error(result.error);
+  }
+  return result.isSetup;
 };
 
 // Helper function to create user profile after signup

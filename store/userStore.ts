@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { UserProfile } from '@/types';
-import { supabase, setupDatabase, serializeError } from '@/lib/supabase';
+import { supabase, checkDatabaseSetup, serializeError } from '@/lib/supabase';
 import { useAuthStore } from './authStore';
 
 export type MotivationTone = 'cheerful' | 'data-driven' | 'tough-love';
@@ -29,6 +29,7 @@ interface UserState {
   coachSettings: CoachSettings;
   isLoading: boolean;
   error: string | null;
+  needsDatabaseSetup: boolean;
   addXP: (amount: number) => Promise<void>;
   updateStreak: (increment: boolean) => Promise<void>;
   resetStreak: () => Promise<void>;
@@ -41,6 +42,7 @@ interface UserState {
   resetFocusStats: () => void;
   startFocusSession: () => void;
   fetchProfile: () => Promise<void>;
+  checkDatabaseSetup: () => Promise<void>;
 }
 
 // XP required for each level
@@ -77,6 +79,7 @@ export const useUserStore = create<UserState>()(
       coachSettings: defaultCoachSettings,
       isLoading: false,
       error: null,
+      needsDatabaseSetup: false,
       
       fetchProfile: async () => {
         set({ isLoading: true, error: null });
@@ -88,11 +91,12 @@ export const useUserStore = create<UserState>()(
             throw new Error("User not authenticated");
           }
           
-          // Ensure database is set up
-          const dbSetupSuccess = await setupDatabase();
+          // Check database setup
+          const dbResult = await checkDatabaseSetup();
           
-          if (!dbSetupSuccess) {
-            throw new Error("Database not set up. Please run the database-setup.sql in your Supabase SQL editor.");
+          if (!dbResult.isSetup) {
+            set({ needsDatabaseSetup: true, isLoading: false });
+            return;
           }
           
           const { data, error } = await supabase
@@ -165,7 +169,8 @@ export const useUserStore = create<UserState>()(
           console.error("Error fetching profile:", errorMessage);
           set({ 
             error: errorMessage,
-            isLoading: false
+            isLoading: false,
+            needsDatabaseSetup: false
           });
         }
       },
@@ -411,6 +416,19 @@ export const useUserStore = create<UserState>()(
             }
           }
         }));
+      },
+      
+      checkDatabaseSetup: async () => {
+        try {
+          const result = await checkDatabaseSetup();
+          set({ needsDatabaseSetup: !result.isSetup });
+          if (result.isSetup) {
+            // If database is now set up, try to fetch profile
+            get().fetchProfile();
+          }
+        } catch (error) {
+          console.error('Error checking database setup:', error);
+        }
       }
     }),
     {
