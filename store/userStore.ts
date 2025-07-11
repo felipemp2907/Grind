@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { UserProfile } from '@/types';
-import { supabase, checkDatabaseSetup, serializeError } from '@/lib/supabase';
+import { supabase, checkDatabaseSetup, setupDatabase, serializeError } from '@/lib/supabase';
 import { useAuthStore } from './authStore';
 
 export type MotivationTone = 'cheerful' | 'data-driven' | 'tough-love';

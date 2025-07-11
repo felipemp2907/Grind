@@ -20,7 +20,7 @@ import { useUserStore } from '@/store/userStore';
 import { useAuthStore } from '@/store/authStore';
 import Button from '@/components/Button';
 import Colors from '@/constants/colors';
-import { supabase, checkDatabaseSetup, serializeError } from '@/lib/supabase';
+import { supabase, checkDatabaseSetup, setupDatabase, serializeError } from '@/lib/supabase';
 
 export default function EditProfileScreen() {
   const router = useRouter();
