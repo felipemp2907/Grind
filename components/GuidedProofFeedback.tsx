@@ -16,7 +16,8 @@ import {
   Eye,
   RefreshCw,
   ThumbsUp,
-  X
+  X,
+  ImageIcon
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import Button from './Button';
@@ -279,7 +280,7 @@ export default function GuidedProofFeedback({
                 style={styles.captureButton}
                 onPress={handlePickImage}
               >
-                <Image size={32} color={Colors.dark.primary} />
+                <ImageIcon size={32} color={Colors.dark.primary} />
                 <Text style={styles.captureButtonText}>Choose Photo</Text>
               </TouchableOpacity>
             )}

@@ -13,6 +13,7 @@ export default {
     inactive: '#4F4F4F',
     separator: '#2A2A2A',
     overlay: 'rgba(0, 0, 0, 0.7)',
+    border: '#2A2A2A',
   },
   light: {
     background: '#F8F9FA',
@@ -27,6 +28,7 @@ export default {
     inactive: '#DEDEDE',
     separator: '#EEEEEE',
     overlay: 'rgba(0, 0, 0, 0.4)',
+    border: '#EEEEEE',
   },
   common: {
     shadow: {
