@@ -144,7 +144,7 @@ function RootLayoutNav() {
           <Stack.Screen 
             name="ai-coach" 
             options={{ 
-              title: "DeckAI Coach",
+              title: "Alvo Coach",
               presentation: "modal",
             }} 
           />

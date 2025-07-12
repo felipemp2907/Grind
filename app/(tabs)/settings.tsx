@@ -148,18 +148,18 @@ export default function SettingsScreen() {
           </View>
         </View>
         
-        {/* DeckAI Coach Settings */}
+        {/* Alvo Coach Settings */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Brain size={20} color={Colors.dark.secondary} />
-            <Text style={styles.sectionTitle}>DeckAI Coach</Text>
+            <Text style={styles.sectionTitle}>Alvo Coach</Text>
           </View>
           
           <View style={styles.settingItem}>
             <View style={styles.settingLeft}>
               <Text style={styles.settingLabel}>Motivation Tone</Text>
               <Text style={styles.settingDescription}>
-                How DeckAI communicates with you
+                How Alvo communicates with you
               </Text>
             </View>
           </View>
@@ -316,7 +316,7 @@ export default function SettingsScreen() {
         {/* App Info */}
         <View style={styles.section}>
           <Text style={styles.appInfo}>
-            DailyDeck v2.0 - Enhanced with DeckAI Coach
+            Grind v2.0 - Enhanced with Alvo Coach
           </Text>
           <Text style={styles.appDescription}>
             Your intelligent companion for achieving goals through daily accountability and smart task management.

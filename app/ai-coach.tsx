@@ -61,7 +61,7 @@ export default function AICoachScreen() {
       setFeedback(response);
     } catch (error) {
       console.error('Error generating feedback:', error);
-      setError("Couldn't connect to DeckAI. Please try again.");
+      setError("Couldn't connect to Alvo. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -71,7 +71,7 @@ export default function AICoachScreen() {
     <>
       <Stack.Screen 
         options={{
-          title: "DeckAI Coach",
+          title: "Alvo Coach",
         }}
       />
       
@@ -92,7 +92,7 @@ export default function AICoachScreen() {
             {loading ? (
               <View style={styles.loadingContainer}>
                 <ActivityIndicator size="large" color={Colors.dark.primary} />
-                <Text style={styles.loadingText}>DeckAI is analyzing your progress...</Text>
+                <Text style={styles.loadingText}>Alvo is analyzing your progress...</Text>
               </View>
             ) : error ? (
               <View style={styles.errorContainer}>
