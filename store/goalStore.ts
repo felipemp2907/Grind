@@ -125,7 +125,7 @@ export const useGoalStore = create<GoalState>()(
       setOnboarded: (value) => set({ isOnboarded: value }),
     }),
     {
-      name: 'dailydeck-goal-storage',
+      name: 'grind-goal-storage',
       storage: createJSONStorage(() => AsyncStorage),
     }
   )

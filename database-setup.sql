@@ -1,4 +1,4 @@
--- Database Setup for DailyDeck App
+-- Database Setup for Grind App
 -- Run this SQL in your Supabase SQL Editor
 
 -- 1. Create profiles table

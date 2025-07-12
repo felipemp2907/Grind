@@ -1,4 +1,4 @@
-// Color palette for DailyDeck
+// Color palette for Grind
 export default {
   dark: {
     background: '#121212',

@@ -75,7 +75,7 @@ export const parseTaskCommand = async (userInput: string, currentDate: string): 
   const messages: AIMessage[] = [
     {
       role: 'system',
-      content: `You are a task command parser for DeckAI. Analyze user input and determine if they want to create, update, or reschedule a task.
+      content: `You are a task command parser for GrindAI. Analyze user input and determine if they want to create, update, or reschedule a task.
 
 Current date: ${currentDate}
 
@@ -180,7 +180,7 @@ export const generateDailyAgenda = async (
   const messages: AIMessage[] = [
     {
       role: 'system',
-      content: `You are DeckAI, creating a focused daily agenda. Generate exactly 3 high-impact tasks for today that will meaningfully advance the user's goal.
+      content: `You are GrindAI, creating a focused daily agenda. Generate exactly 3 high-impact tasks for today that will meaningfully advance the user's goal.
 
 Goal: ${goalTitle}
 Description: ${goalDescription}
@@ -264,7 +264,7 @@ export const generateMotivationMessage = async (
   const messages: AIMessage[] = [
     {
       role: 'system',
-      content: `You are DeckAI, sending a motivation message to help the user get back on track.
+      content: `You are GrindAI, sending a motivation message to help the user get back on track.
 
 Context:
 - Goal: ${goalTitle}
@@ -315,7 +315,7 @@ export const validateTaskImageWithFeedback = async (
   const messages: AIMessage[] = [
     {
       role: 'system',
-      content: `You are DeckAI's vision validator. Analyze the image to determine if it shows valid proof of task completion.
+      content: `You are GrindAI's vision validator. Analyze the image to determine if it shows valid proof of task completion.
 
 Provide detailed, constructive feedback with confidence levels:
 - HIGH: Clear, obvious proof of task completion
@@ -398,7 +398,7 @@ export const generateNightlyRecap = async (
   const messages: AIMessage[] = [
     {
       role: 'system',
-      content: `You are DeckAI providing a nightly recap. Analyze the day's performance and provide actionable insights.
+      content: `You are GrindAI providing a nightly recap. Analyze the day's performance and provide actionable insights.
 
 Goal: ${goalTitle}
 Completed: ${completedTasks.length} tasks (${completedTasks.reduce((sum, t) => sum + t.xpValue, 0)} XP)
@@ -466,7 +466,7 @@ export const generateDailyTasksForGoal = async (
   const messages: AIMessage[] = [
     {
       role: 'system',
-      content: `You are DeckAI, an AI assistant for the DailyDeck app that helps users achieve their long-term goals. 
+      content: `You are GrindAI, an AI assistant for the Grind app that helps users achieve their long-term goals. 
       Your job is to generate 4-6 specific, actionable daily tasks that will help the user make progress toward their goal.
       
       Create two types of tasks:
@@ -552,7 +552,7 @@ export const processConversationalCommand = async (
   const messages: AIMessage[] = [
     {
       role: 'system',
-      content: `You are DeckAI's conversational command processor. Analyze user messages and determine the appropriate action.
+      content: `You are GrindAI's conversational command processor. Analyze user messages and determine the appropriate action.
 
 Current date: ${currentDate}
 Goal context: ${goalContext ? `${goalContext.title} - ${goalContext.description}` : 'No active goal'}
@@ -645,7 +645,7 @@ export const generateProactiveDailyAgenda = async (
   const messages: AIMessage[] = [
     {
       role: 'system',
-      content: `You are DeckAI creating a proactive morning agenda. Generate exactly 3 high-impact tasks for today.
+      content: `You are GrindAI creating a proactive morning agenda. Generate exactly 3 high-impact tasks for today.
 
 Goal: ${goalTitle}
 Description: ${goalDescription}
@@ -750,7 +750,7 @@ export const generatePersonalizedMotivation = async (
   const messages: AIMessage[] = [
     {
       role: 'system',
-      content: `You are DeckAI's personalized motivation engine. Create tone-aware, escalating nudges.
+      content: `You are GrindAI's personalized motivation engine. Create tone-aware, escalating nudges.
 
 Context:
 - Goal: ${goalTitle}
@@ -816,7 +816,7 @@ export const generateCoachingFeedback = async (
   const messages: AIMessage[] = [
     {
       role: 'system',
-      content: `You are DeckAI, an AI coach for the DailyDeck app. Provide motivational, insightful coaching to help the user stay on track with their goals.
+      content: `You are GrindAI, an AI coach for the Grind app. Provide motivational, insightful coaching to help the user stay on track with their goals.
       Keep your response concise (2-3 paragraphs max), encouraging, and action-oriented.
       
       DO NOT format your response as JSON or use any markdown formatting.`

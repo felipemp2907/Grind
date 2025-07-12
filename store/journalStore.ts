@@ -45,7 +45,7 @@ export const useJournalStore = create<JournalState>()(
       })),
     }),
     {
-      name: 'dailydeck-journal-storage',
+      name: 'grind-journal-storage',
       storage: createJSONStorage(() => AsyncStorage),
     }
   )

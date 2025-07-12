@@ -477,7 +477,7 @@ export const useTaskStore = create<TaskState>()(
       }
     }),
     {
-      name: 'dailydeck-task-storage',
+      name: 'grind-task-storage',
       storage: createJSONStorage(() => AsyncStorage),
     }
   )

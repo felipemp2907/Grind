@@ -7,7 +7,7 @@ interface DatabaseSetupPromptProps {
   onSetupComplete: () => void;
 }
 
-const DATABASE_SETUP_SQL = `-- Database Setup for DailyDeck App
+const DATABASE_SETUP_SQL = `-- Database Setup for Grind App
 -- Run this SQL in your Supabase SQL Editor
 
 -- 1. Create profiles table
@@ -353,7 +353,7 @@ export default function DatabaseSetupPrompt({ onSetupComplete }: DatabaseSetupPr
           <Database size={48} color="#6366f1" />
           <Text style={styles.title}>Database Setup Required</Text>
           <Text style={styles.subtitle}>
-            To use DailyDeck, you need to set up the database tables in your Supabase project.
+            To use Grind, you need to set up the database tables in your Supabase project.
           </Text>
         </View>
 

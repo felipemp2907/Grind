@@ -477,7 +477,7 @@ export const useUserStore = create<UserState>()(
       }
     }),
     {
-      name: 'dailydeck-user-storage',
+      name: 'grind-user-storage',
       storage: createJSONStorage(() => AsyncStorage),
     }
   )
