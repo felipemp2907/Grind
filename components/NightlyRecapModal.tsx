@@ -178,7 +178,7 @@ export default function NightlyRecapModal({
     <Modal
       visible={visible}
       transparent
-      animationType=\"slide\"
+      animationType="slide"
       onRequestClose={onDismiss}
     >
       <View style={styles.overlay}>
@@ -196,7 +196,7 @@ export default function NightlyRecapModal({
           <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
             {isGenerating ? (
               <View style={styles.loadingContainer}>
-                <ActivityIndicator size=\"large\" color={Colors.dark.primary} />
+                <ActivityIndicator size="large" color={Colors.dark.primary} />
                 <Text style={styles.loadingText}>
                   Analyzing your day...
                 </Text>
@@ -312,7 +312,7 @@ export default function NightlyRecapModal({
                 />
               ) : (
                 <Button
-                  title=\"Good Night! 🌙\"
+                  title="Good Night! 🌙"
                   onPress={onDismiss}
                   style={styles.goodNightButton}
                 />

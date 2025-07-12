@@ -55,7 +55,7 @@ export default function GuidedProofFeedback({
     if (Platform.OS !== 'web') {
       const permissionResult = await ImagePicker.requestCameraPermissionsAsync();
       if (permissionResult.granted === false) {
-        Alert.alert(\"Permission Required\", \"Camera access is required to validate your task completion.\");
+        Alert.alert("Permission Required", "Camera access is required to validate your task completion.");
         return;
       }
     }
@@ -86,16 +86,16 @@ export default function GuidedProofFeedback({
   const handlePickImage = async () => {
     if (requiresRealtime) {
       Alert.alert(
-        \"Camera Required\",
-        \"This task requires real-time proof. Please use the camera to take a photo.\",
-        [{ text: \"OK\" }]
+        "Camera Required",
+        "This task requires real-time proof. Please use the camera to take a photo.",
+        [{ text: "OK" }]
       );
       return;
     }
 
     const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (permissionResult.granted === false) {
-      Alert.alert(\"Permission Required\", \"Photo library access is required.\");
+      Alert.alert("Permission Required", "Photo library access is required.");
       return;
     }
 
@@ -149,8 +149,8 @@ export default function GuidedProofFeedback({
       setValidationResult({
         isValid: true,
         confidence: 'medium',
-        feedback: \"I couldn't analyze the image properly, but I'll trust that you completed the task!\",
-        suggestions: [\"Try taking a clearer photo next time\"]
+        feedback: "I couldn't analyze the image properly, but I'll trust that you completed the task!",
+        suggestions: ["Try taking a clearer photo next time"]
       });
     } finally {
       setIsValidating(false);
@@ -292,7 +292,7 @@ export default function GuidedProofFeedback({
             
             {isValidating && (
               <View style={styles.validatingOverlay}>
-                <ActivityIndicator size=\"large\" color={Colors.dark.primary} />
+                <ActivityIndicator size="large" color={Colors.dark.primary} />
                 <Text style={styles.validatingText}>Analyzing...</Text>
               </View>
             )}
@@ -334,14 +334,14 @@ export default function GuidedProofFeedback({
           <View style={styles.actionButtons}>
             {validationResult?.isValid ? (
               <Button
-                title=\"Accept & Complete Task\"
+                title="Accept & Complete Task"
                 onPress={handleAcceptProof}
                 icon={<CheckCircle size={16} color={Colors.dark.text} />}
                 style={styles.acceptButton}
               />
             ) : (
               <Button
-                title=\"Retake Photo\"
+                title="Retake Photo"
                 onPress={handleRetakePhoto}
                 icon={<RefreshCw size={16} color={Colors.dark.text} />}
                 style={styles.retakeButton}
@@ -349,9 +349,9 @@ export default function GuidedProofFeedback({
             )}
             
             <Button
-              title=\"Cancel\"
+              title="Cancel"
               onPress={onCancel}
-              variant=\"outline\"
+              variant="outline"
               style={styles.cancelButton}
             />
           </View>
