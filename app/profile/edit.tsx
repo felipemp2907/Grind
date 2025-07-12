@@ -21,6 +21,7 @@ import { useAuthStore } from '@/store/authStore';
 import Button from '@/components/Button';
 import Colors from '@/constants/colors';
 import { supabase, checkDatabaseSetup, setupDatabase, serializeError } from '@/lib/supabase';
+import DatabaseSetupPrompt from '@/components/DatabaseSetupPrompt';
 
 export default function EditProfileScreen() {
   const router = useRouter();
@@ -33,6 +34,7 @@ export default function EditProfileScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [needsDbSetup, setNeedsDbSetup] = useState(false);
   
   // Fetch current avatar
   useEffect(() => {
@@ -46,7 +48,7 @@ export default function EditProfileScreen() {
           const dbResult = await setupDatabase();
           
           if (!dbResult.success) {
-            setError(dbResult.error || "Database not set up. Please run the database-setup.sql in your Supabase SQL editor.");
+            setNeedsDbSetup(true);
             setIsLoading(false);
             return;
           }
@@ -155,7 +157,8 @@ export default function EditProfileScreen() {
       // Check database setup
       const dbResult = await setupDatabase();
       if (!dbResult.success) {
-        throw new Error(dbResult.error || "Database not set up");
+        setNeedsDbSetup(true);
+        return null;
       }
       
       // Check if the storage bucket exists
@@ -233,7 +236,8 @@ export default function EditProfileScreen() {
       // Check database setup
       const dbResult = await setupDatabase();
       if (!dbResult.success) {
-        throw new Error(dbResult.error || "Database not set up");
+        setNeedsDbSetup(true);
+        return;
       }
       
       let avatarUrlToSave = avatarUrl;
@@ -246,19 +250,25 @@ export default function EditProfileScreen() {
         }
       }
       
-      // Update profile in Supabase
+      // Update or create profile in Supabase using upsert
       if (user?.id) {
         const { error } = await supabase
           .from('profiles')
-          .update({
+          .upsert({
+            id: user.id,
             name: name.trim(),
-            avatar_url: avatarUrlToSave
-          })
-          .eq('id', user.id);
+            avatar_url: avatarUrlToSave,
+            level: profile?.level || 1,
+            xp: profile?.xp || 0,
+            streak_days: profile?.streakDays || 0,
+            longest_streak: profile?.longestStreak || 0
+          }, {
+            onConflict: 'id'
+          });
           
         if (error) {
-          console.error("Error updating profile:", serializeError(error));
-          throw new Error(`Failed to update profile: ${serializeError(error)}`);
+          console.error("Error saving profile:", serializeError(error));
+          throw new Error(`Failed to save profile: ${serializeError(error)}`);
         }
       }
       
@@ -300,13 +310,23 @@ export default function EditProfileScreen() {
                 // Check database setup
                 const dbResult = await setupDatabase();
                 if (!dbResult.success) {
-                  throw new Error(dbResult.error || "Database not set up");
+                  setNeedsDbSetup(true);
+                  return;
                 }
                 
                 const { error } = await supabase
                   .from('profiles')
-                  .update({ avatar_url: null })
-                  .eq('id', user.id);
+                  .upsert({
+                    id: user.id,
+                    name: profile?.name || 'User',
+                    avatar_url: null,
+                    level: profile?.level || 1,
+                    xp: profile?.xp || 0,
+                    streak_days: profile?.streakDays || 0,
+                    longest_streak: profile?.longestStreak || 0
+                  }, {
+                    onConflict: 'id'
+                  });
                   
                 if (error) {
                   console.error("Error removing avatar:", serializeError(error));

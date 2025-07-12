@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Linking, Platform } from 'react-native';
 import { Copy, ExternalLink, RefreshCw, Database } from 'lucide-react-native';
 import { checkDatabaseSetup } from '@/lib/supabase';
-import * as Clipboard from 'expo-clipboard';
 
 interface DatabaseSetupPromptProps {
   onSetupComplete: () => void;
@@ -298,13 +297,20 @@ export default function DatabaseSetupPrompt({ onSetupComplete }: DatabaseSetupPr
           document.body.removeChild(textArea);
         }
       } else {
-        // For mobile, use dynamic import
-        const { setStringAsync } = await import('expo-clipboard');
-        await setStringAsync(DATABASE_SETUP_SQL);
+        // For mobile, use dynamic import to avoid bundling issues
+        try {
+          const Clipboard = await import('expo-clipboard');
+          await Clipboard.setStringAsync(DATABASE_SETUP_SQL);
+        } catch (clipboardError) {
+          console.warn('Expo Clipboard not available, using fallback');
+          // Fallback - just show the SQL in an alert
+          Alert.alert('Copy SQL', 'Please copy the SQL from the database-setup.sql file in your project.');
+          return;
+        }
       }
       Alert.alert('Copied!', 'Database setup SQL has been copied to your clipboard.');
     } catch (error) {
-      Alert.alert('Error', 'Failed to copy to clipboard.');
+      Alert.alert('Error', 'Failed to copy to clipboard. Please copy the SQL from the database-setup.sql file in your project.');
     }
   };
 

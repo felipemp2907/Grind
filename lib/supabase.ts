@@ -112,16 +112,85 @@ export const setupDatabase = async (): Promise<{ success: boolean; error?: strin
       return { success: true };
     }
     
-    // If database is not set up, return error message
-    return { 
-      success: false, 
-      error: result.error || 'Database not set up. Please run the database-setup.sql in your Supabase SQL editor.' 
-    };
+    console.log('Setting up database tables...');
+    
+    // Create profiles table
+    const { error: profilesError } = await supabase.rpc('exec_sql', {
+      sql: `
+        CREATE TABLE IF NOT EXISTS public.profiles (
+          id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+          name TEXT,
+          avatar_url TEXT,
+          level INTEGER DEFAULT 1,
+          xp INTEGER DEFAULT 0,
+          streak_days INTEGER DEFAULT 0,
+          longest_streak INTEGER DEFAULT 0,
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+        );
+        
+        ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+        
+        DROP POLICY IF EXISTS "Users can view their own profile" ON public.profiles;
+        CREATE POLICY "Users can view their own profile"
+          ON public.profiles
+          FOR SELECT
+          USING (auth.uid() = id);
+        
+        DROP POLICY IF EXISTS "Users can update their own profile" ON public.profiles;
+        CREATE POLICY "Users can update their own profile"
+          ON public.profiles
+          FOR UPDATE
+          USING (auth.uid() = id);
+        
+        DROP POLICY IF EXISTS "Users can insert their own profile" ON public.profiles;
+        CREATE POLICY "Users can insert their own profile"
+          ON public.profiles
+          FOR INSERT
+          WITH CHECK (auth.uid() = id);
+      `
+    });
+    
+    if (profilesError) {
+      console.error('Error creating profiles table:', profilesError);
+      // Try alternative approach - just create the table without RPC
+      try {
+        // Check if we can at least insert into profiles table
+        const { error: insertTestError } = await supabase
+          .from('profiles')
+          .select('id')
+          .limit(1);
+          
+        if (insertTestError && insertTestError.code === '42P01') {
+          return { 
+            success: false, 
+            error: 'Database tables not found. Please run the database-setup.sql in your Supabase SQL editor.' 
+          };
+        }
+      } catch (e) {
+        return { 
+          success: false, 
+          error: 'Database tables not found. Please run the database-setup.sql in your Supabase SQL editor.' 
+        };
+      }
+    }
+    
+    // Verify setup worked
+    const verifyResult = await checkDatabaseSetup();
+    if (verifyResult.isSetup) {
+      console.log('Database setup completed successfully');
+      return { success: true };
+    } else {
+      return { 
+        success: false, 
+        error: 'Database tables not found. Please run the database-setup.sql in your Supabase SQL editor.' 
+      };
+    }
   } catch (error) {
     console.error('Error in setupDatabase:', error);
     return { 
       success: false, 
-      error: `Database setup failed: ${serializeError(error)}` 
+      error: 'Database tables not found. Please run the database-setup.sql in your Supabase SQL editor.' 
     };
   }
 };

@@ -106,9 +106,9 @@ export const useUserStore = create<UserState>()(
             .single();
             
           if (error) {
-            // If profile doesn't exist, create one
+            // If profile doesn't exist, create one using upsert
             if (error.code === 'PGRST116') {
-              // Create default profile
+              // Create default profile using upsert
               const defaultProfile = {
                 id: user.id,
                 name: user.name || 'User',
@@ -118,13 +118,15 @@ export const useUserStore = create<UserState>()(
                 longest_streak: 0
               };
               
-              const { error: insertError } = await supabase
+              const { error: upsertError } = await supabase
                 .from('profiles')
-                .insert([defaultProfile]);
+                .upsert([defaultProfile], {
+                  onConflict: 'id'
+                });
                 
-              if (insertError) {
-                console.error("Error creating profile:", insertError.message);
-                throw new Error(`Failed to create profile: ${serializeError(insertError)}`);
+              if (upsertError) {
+                console.error("Error creating profile:", upsertError.message);
+                throw new Error(`Failed to create profile: ${serializeError(upsertError)}`);
               }
               
               set({
@@ -211,14 +213,19 @@ export const useUserStore = create<UserState>()(
             return;
           }
           
-          // Update in Supabase
+          // Update in Supabase using upsert
           const { error } = await supabase
             .from('profiles')
-            .update({
+            .upsert({
+              id: user.id,
+              name: profile.name || 'User',
               xp: newXP,
-              level: newLevel
-            })
-            .eq('id', user.id);
+              level: newLevel,
+              streak_days: profile.streakDays,
+              longest_streak: profile.longestStreak
+            }, {
+              onConflict: 'id'
+            });
             
           if (error) {
             console.error("Error updating XP:", serializeError(error));
@@ -254,14 +261,19 @@ export const useUserStore = create<UserState>()(
             return;
           }
           
-          // Update in Supabase
+          // Update in Supabase using upsert
           const { error } = await supabase
             .from('profiles')
-            .update({
+            .upsert({
+              id: user.id,
+              name: profile.name || 'User',
+              level: profile.level,
+              xp: profile.xp,
               streak_days: newStreakDays,
               longest_streak: newLongestStreak
-            })
-            .eq('id', user.id);
+            }, {
+              onConflict: 'id'
+            });
             
           if (error) {
             console.error("Error updating streak:", serializeError(error));
@@ -293,13 +305,19 @@ export const useUserStore = create<UserState>()(
             return;
           }
           
-          // Update in Supabase
+          // Update in Supabase using upsert
           const { error } = await supabase
             .from('profiles')
-            .update({
-              streak_days: 0
-            })
-            .eq('id', user.id);
+            .upsert({
+              id: user.id,
+              name: profile.name || 'User',
+              level: profile.level,
+              xp: profile.xp,
+              streak_days: 0,
+              longest_streak: profile.longestStreak
+            }, {
+              onConflict: 'id'
+            });
             
           if (error) {
             console.error("Error resetting streak:", serializeError(error));
@@ -340,11 +358,22 @@ export const useUserStore = create<UserState>()(
           if (updates.longestStreak !== undefined) supabaseUpdates.longest_streak = updates.longestStreak;
           if (updates.avatarUrl !== undefined) supabaseUpdates.avatar_url = updates.avatarUrl;
           
-          // Update in Supabase
+          // Update in Supabase using upsert
+          const profileData = {
+            id: user.id,
+            name: updates.name !== undefined ? updates.name : profile.name || 'User',
+            level: updates.level !== undefined ? updates.level : profile.level,
+            xp: updates.xp !== undefined ? updates.xp : profile.xp,
+            streak_days: updates.streakDays !== undefined ? updates.streakDays : profile.streakDays,
+            longest_streak: updates.longestStreak !== undefined ? updates.longestStreak : profile.longestStreak,
+            avatar_url: updates.avatarUrl !== undefined ? updates.avatarUrl : profile.avatarUrl
+          };
+          
           const { error } = await supabase
             .from('profiles')
-            .update(supabaseUpdates)
-            .eq('id', user.id);
+            .upsert(profileData, {
+              onConflict: 'id'
+            });
             
           if (error) {
             console.error("Error updating profile:", serializeError(error));
