@@ -1,4 +1,4 @@
-import { AIMessage } from '@/types';
+import { AIMessage, GoalBreakdown } from '@/types';
 import { MotivationTone } from '@/store/userStore';
 
 // Function to clean AI response to ensure valid JSON
@@ -51,6 +51,153 @@ export const callAI = async (messages: AIMessage[]): Promise<string> => {
   } catch (error) {
     console.error('Error calling AI:', error);
     throw error;
+  }
+};
+
+// AI Goal Breakdown - Core feature for Grind
+export const generateGoalBreakdown = async (
+  goalTitle: string,
+  goalDescription: string,
+  deadline: string,
+  targetValue: number,
+  unit: string = '',
+  currentProgress: number = 0
+): Promise<GoalBreakdown> => {
+  const messages: AIMessage[] = [
+    {
+      role: 'system',
+      content: `You are Alvo, the AI coach for Grind. Your job is to break down ambitious goals into actionable daily tasks and streak habits.
+
+Goal Analysis:
+- Title: ${goalTitle}
+- Description: ${goalDescription}
+- Deadline: ${deadline}
+- Target: ${targetValue} ${unit}
+- Current Progress: ${currentProgress} ${unit}
+
+Create a comprehensive breakdown with:
+1. TODAY TASKS: 3-5 specific, actionable one-time tasks for today
+2. STREAK HABITS: 2-3 daily habits that build toward the goal
+3. MILESTONES: 4-5 progress checkpoints (25%, 50%, 75%, 100%)
+4. MOTIVATION: Inspiring message about achieving this goal
+5. TIME ESTIMATE: Realistic timeline for completion
+
+Make tasks:
+- Specific and measurable
+- Appropriate difficulty (not overwhelming)
+- Varied in approach (research, practice, planning, execution)
+- Photo/proof-friendly when possible
+
+Respond with JSON:
+{
+  "todayTasks": [
+    {
+      "title": "Clear, actionable task name",
+      "description": "Detailed instructions",
+      "xpValue": 30-60,
+      "estimatedTime": "30 min",
+      "priority": "high|medium|low"
+    }
+  ],
+  "streakHabits": [
+    {
+      "title": "Daily habit name",
+      "description": "What to do daily",
+      "xpValue": 20-40,
+      "frequency": "daily"
+    }
+  ],
+  "milestones": [
+    {
+      "title": "Milestone name",
+      "description": "What this achievement means",
+      "progressThreshold": 25,
+      "dueDate": "YYYY-MM-DD (optional)"
+    }
+  ],
+  "motivation": "Inspiring message about this goal",
+  "estimatedTimeToComplete": "X weeks/months"
+}
+
+IMPORTANT: Return ONLY the JSON object without markdown formatting.`
+    },
+    {
+      role: 'user',
+      content: `Please break down my goal: "${goalTitle}" into actionable tasks and habits. I want to ${goalDescription} by ${deadline}.`
+    }
+  ];
+
+  try {
+    const response = await callAI(messages);
+    const cleanedResponse = cleanJsonResponse(response);
+    return JSON.parse(cleanedResponse);
+  } catch (error) {
+    console.error('Error generating goal breakdown:', error);
+    
+    // Fallback breakdown
+    return {
+      todayTasks: [
+        {
+          title: `Research strategies for ${goalTitle}`,
+          description: `Spend 30 minutes researching proven methods and strategies for achieving: ${goalDescription}`,
+          xpValue: 40,
+          estimatedTime: '30 min',
+          priority: 'high' as const
+        },
+        {
+          title: `Create action plan for ${goalTitle}`,
+          description: 'Write down specific steps and timeline for your goal',
+          xpValue: 50,
+          estimatedTime: '45 min',
+          priority: 'high' as const
+        },
+        {
+          title: `Take first concrete step toward ${goalTitle}`,
+          description: 'Complete one small but meaningful action today',
+          xpValue: 60,
+          estimatedTime: '60 min',
+          priority: 'medium' as const
+        }
+      ],
+      streakHabits: [
+        {
+          title: `Daily progress on ${goalTitle}`,
+          description: 'Spend at least 15 minutes working toward your goal',
+          xpValue: 30,
+          frequency: 'daily' as const
+        },
+        {
+          title: 'Goal reflection',
+          description: 'Review progress and plan next steps',
+          xpValue: 20,
+          frequency: 'daily' as const
+        }
+      ],
+      milestones: [
+        {
+          title: '25% Progress',
+          description: 'First quarter of your goal completed',
+          progressThreshold: 25
+        },
+        {
+          title: '50% Progress',
+          description: 'Halfway to your goal!',
+          progressThreshold: 50
+        },
+        {
+          title: '75% Progress',
+          description: 'Three quarters complete - almost there!',
+          progressThreshold: 75
+        },
+        {
+          title: 'Goal Achieved!',
+          description: 'You did it! Goal 100% complete!',
+          progressThreshold: 100
+        }
+      ],
+      motivation: `You have everything it takes to achieve ${goalTitle}. Every small step counts, and consistency will get you there!`,
+      estimatedTimeToComplete: 'Based on your deadline and current progress'
+    };
   }
 };
 
@@ -514,299 +661,6 @@ export const generateDailyTasksForGoal = async (
   return await callAI(messages);
 };
 
-// Enhanced conversational command center for task/event creation
-export const processConversationalCommand = async (
-  userMessage: string,
-  currentTasks: Array<{ title: string; date: string; isHabit: boolean }>,
-  currentDate: string,
-  goalContext?: { title: string; description: string }
-): Promise<{
-  action: 'create_task' | 'create_event' | 'update_task' | 'reschedule' | 'query' | 'none';
-  taskData?: {
-    title: string;
-    description: string;
-    date: string;
-    time?: string;
-    isHabit: boolean;
-    xpValue: number;
-    type: 'today' | 'streak';
-    loadScore: number;
-    proofMode: 'flex' | 'realtime';
-  };
-  eventData?: {
-    title: string;
-    description: string;
-    date: string;
-    time: string;
-    duration?: number;
-  };
-  updateData?: {
-    taskId: string;
-    changes: Record<string, any>;
-  };
-  queryResponse?: string;
-  confirmation: string;
-  needsClarification?: boolean;
-  clarificationQuestion?: string;
-}> => {
-  const messages: AIMessage[] = [
-    {
-      role: 'system',
-      content: `You are Alvo's conversational command processor. Analyze user messages and determine the appropriate action.
-
-Current date: ${currentDate}
-Goal context: ${goalContext ? `${goalContext.title} - ${goalContext.description}` : 'No active goal'}
-
-Existing tasks today: ${currentTasks.filter(t => t.date === currentDate).map(t => t.title).join(', ') || 'None'}
-Existing habits: ${currentTasks.filter(t => t.isHabit).map(t => t.title).join(', ') || 'None'}
-
-Task Intelligence Rules:
-1. Today Tasks: Max 3 per day, total load_score ≤ 5
-2. Streak Tasks: Daily habits that build consistency
-3. Proof modes: 'realtime' for camera-only validation, 'flex' for any proof
-4. Load scores: 1-5 based on complexity/time
-5. Avoid duplicates with existing tasks
-
-Respond with JSON:
-{
-  "action": "create_task|create_event|update_task|reschedule|query|none",
-  "taskData": {
-    "title": "specific task name",
-    "description": "detailed instructions",
-    "date": "YYYY-MM-DD",
-    "time": "HH:MM (optional)",
-    "isHabit": boolean,
-    "xpValue": 20-60,
-    "type": "today|streak",
-    "loadScore": 1-5,
-    "proofMode": "flex|realtime"
-  },
-  "eventData": {
-    "title": "event name",
-    "description": "event details",
-    "date": "YYYY-MM-DD",
-    "time": "HH:MM",
-    "duration": minutes
-  },
-  "confirmation": "natural language confirmation",
-  "needsClarification": boolean,
-  "clarificationQuestion": "question if unclear"
-}
-
-IMPORTANT: Return ONLY the JSON object without markdown formatting.`
-    },
-    {
-      role: 'user',
-      content: userMessage
-    }
-  ];
-
-  try {
-    const response = await callAI(messages);
-    const cleanedResponse = cleanJsonResponse(response);
-    return JSON.parse(cleanedResponse);
-  } catch (error) {
-    console.error('Error processing conversational command:', error);
-    return {
-      action: 'none',
-      confirmation: "I couldn't understand that command. Try something like 'Add workout tomorrow at 8 AM' or 'Schedule meeting with John on Friday'."
-    };
-  }
-};
-
-// Generate proactive daily agenda (7 AM feature)
-export const generateProactiveDailyAgenda = async (
-  goalTitle: string,
-  goalDescription: string,
-  recentTasks: string[],
-  currentDate: string,
-  preferredTone: MotivationTone,
-  existingTasks: Array<{ title: string; type: string }>
-): Promise<{
-  agenda: Array<{
-    title: string;
-    description: string;
-    xpValue: number;
-    priority: 'high' | 'medium' | 'low';
-    estimatedTime: string;
-    type: 'today' | 'streak';
-    loadScore: number;
-    proofMode: 'flex' | 'realtime';
-  }>;
-  motivation: string;
-  focusArea: string;
-}> => {
-  const toneInstructions = {
-    'cheerful': 'Be enthusiastic and encouraging with positive energy',
-    'data-driven': 'Focus on metrics, progress tracking, and logical reasoning',
-    'tough-love': 'Be direct, challenging, and push for accountability'
-  };
-
-  const messages: AIMessage[] = [
-    {
-      role: 'system',
-      content: `You are Alvo creating a proactive morning agenda. Generate exactly 3 high-impact tasks for today.
-
-Goal: ${goalTitle}
-Description: ${goalDescription}
-Date: ${currentDate}
-Recent tasks: ${recentTasks.join(', ')}
-Existing tasks: ${existingTasks.map(t => `${t.title} (${t.type})`).join(', ')}
-
-Tone: ${toneInstructions[preferredTone]}
-
-Task Requirements:
-- Max 3 tasks total
-- Total load_score ≤ 5
-- Mix of 'today' and 'streak' types
-- Avoid duplicates with existing tasks
-- Specific and actionable
-- Realistic for one day
-
-Respond with JSON:
-{
-  "agenda": [
-    {
-      "title": "Clear, specific task name",
-      "description": "Detailed instructions",
-      "xpValue": 30-60,
-      "priority": "high|medium|low",
-      "estimatedTime": "30 min",
-      "type": "today|streak",
-      "loadScore": 1-5,
-      "proofMode": "flex|realtime"
-    }
-  ],
-  "motivation": "Brief motivational message",
-  "focusArea": "Key focus for today"
-}
-
-IMPORTANT: Return ONLY the JSON object without markdown formatting.`
-    },
-    {
-      role: 'user',
-      content: `Generate my proactive daily agenda for ${currentDate}. Focus on high-impact activities for: ${goalTitle}`
-    }
-  ];
-
-  try {
-    const response = await callAI(messages);
-    const cleanedResponse = cleanJsonResponse(response);
-    return JSON.parse(cleanedResponse);
-  } catch (error) {
-    console.error('Error generating proactive agenda:', error);
-    return {
-      agenda: [
-        {
-          title: `Work on ${goalTitle}`,
-          description: 'Make meaningful progress on your goal',
-          xpValue: 40,
-          priority: 'high' as const,
-          estimatedTime: '45 min',
-          type: 'today' as const,
-          loadScore: 3,
-          proofMode: 'flex' as const
-        }
-      ],
-      motivation: "Let's make today count! Every small step brings you closer to your goal.",
-      focusArea: "Focus on your highest-impact tasks first thing in the morning."
-    };
-  }
-};
-
-// Enhanced motivation engine with escalating nudges
-export const generatePersonalizedMotivation = async (
-  missedTaskCount: number,
-  missedStreakCount: number,
-  preferredTone: MotivationTone,
-  goalTitle: string,
-  streakDays: number,
-  recentPerformance: Array<{ date: string; completed: number; total: number }>
-): Promise<{
-  message: string;
-  escalationLevel: number;
-  actionSuggestion?: string;
-  urgency: 'low' | 'medium' | 'high';
-}> => {
-  const escalationLevel = Math.min(Math.floor((missedTaskCount + missedStreakCount * 2) / 3), 4);
-  const recentCompletionRate = recentPerformance.length > 0 
-    ? recentPerformance.reduce((sum, day) => sum + (day.completed / day.total), 0) / recentPerformance.length
-    : 0.5;
-
-  const tonePrompts = {
-    'cheerful': 'Be encouraging, supportive, and optimistic. Use positive language and emojis.',
-    'data-driven': 'Focus on statistics, progress metrics, and logical consequences. Be analytical.',
-    'tough-love': 'Be direct, challenging, and hold them accountable. Push for action.'
-  };
-
-  const escalationPrompts: { [key: number]: string } = {
-    0: 'Gentle reminder and encouragement',
-    1: 'More direct encouragement to get back on track',
-    2: 'Firm but supportive push to recommit',
-    3: 'Strong accountability message about consistency',
-    4: 'Urgent intervention - risk of losing progress'
-  };
-
-  const messages: AIMessage[] = [
-    {
-      role: 'system',
-      content: `You are Alvo's personalized motivation engine. Create tone-aware, escalating nudges.
-
-Context:
-- Goal: ${goalTitle}
-- Current streak: ${streakDays} days
-- Missed tasks: ${missedTaskCount}
-- Missed streak tasks: ${missedStreakCount}
-- Escalation level: ${escalationLevel}/4
-- Recent completion rate: ${(recentCompletionRate * 100).toFixed(1)}%
-
-Tone: ${tonePrompts[preferredTone]}
-Escalation: ${escalationPrompts[escalationLevel]}
-
-Respond with JSON:
-{
-  "message": "Motivational message (1-2 sentences)",
-  "escalationLevel": ${escalationLevel},
-  "actionSuggestion": "Specific next step",
-  "urgency": "low|medium|high"
-}
-
-IMPORTANT: Return ONLY the JSON object without markdown formatting.`
-    },
-    {
-      role: 'user',
-      content: `Generate a ${preferredTone} motivation message. Recent performance: ${recentCompletionRate * 100}% completion rate.`
-    }
-  ];
-
-  try {
-    const response = await callAI(messages);
-    const cleanedResponse = cleanJsonResponse(response);
-    const result = JSON.parse(cleanedResponse);
-    return {
-      message: result.message,
-      escalationLevel,
-      actionSuggestion: result.actionSuggestion,
-      urgency: result.urgency || (escalationLevel >= 3 ? 'high' : escalationLevel >= 2 ? 'medium' : 'low')
-    };
-  } catch (error) {
-    console.error('Error generating personalized motivation:', error);
-    
-    const fallbacks = {
-      'cheerful': "Hey there! 🌟 Every champion has setbacks - what matters is getting back up! Your goal is waiting for you! 💪",
-      'data-driven': `You're ${streakDays} days into your journey. Consistency compounds - one task today can restart your momentum.`,
-      'tough-love': "Excuses don't build dreams. Your goal won't achieve itself. Time to step up and take action."
-    };
-    
-    return {
-      message: fallbacks[preferredTone],
-      escalationLevel,
-      actionSuggestion: "Complete one small task right now to rebuild momentum",
-      urgency: escalationLevel >= 3 ? 'high' : 'medium'
-    };
-  }
-};
-
 // Generate AI coaching feedback
 export const generateCoachingFeedback = async (
   goalTitle: string,
@@ -847,4 +701,64 @@ export const validateTaskImage = async (
     isValid: result.isValid,
     feedback: result.feedback
   };
+};
+
+// Generate smart reschedule suggestions
+export const generateRescheduleSuggestions = async (
+  incompleteTasks: Array<{ title: string; description: string; priority?: string }>,
+  currentDate: string,
+  goalTitle: string
+): Promise<Array<{
+  taskTitle: string;
+  suggestedDate: string;
+  suggestedTime?: string;
+  reason: string;
+  priority: 'high' | 'medium' | 'low';
+}>> => {
+  const messages: AIMessage[] = [
+    {
+      role: 'system',
+      content: `You are Alvo's smart scheduler. Analyze incomplete tasks and suggest optimal rescheduling.
+
+Current date: ${currentDate}
+Goal context: ${goalTitle}
+
+Consider:
+- Task priority and complexity
+- Optimal timing for different task types
+- Workload distribution
+- Goal momentum
+
+Respond with JSON array:
+[
+  {
+    "taskTitle": "task name",
+    "suggestedDate": "YYYY-MM-DD",
+    "suggestedTime": "HH:MM (optional)",
+    "reason": "why this timing is optimal",
+    "priority": "high|medium|low"
+  }
+]
+
+IMPORTANT: Return ONLY the JSON array without markdown formatting.`
+    },
+    {
+      role: 'user',
+      content: `Reschedule these incomplete tasks: ${incompleteTasks.map(t => `${t.title} - ${t.description}`).join('; ')}`
+    }
+  ];
+
+  try {
+    const response = await callAI(messages);
+    const cleanedResponse = cleanJsonResponse(response);
+    return JSON.parse(cleanedResponse);
+  } catch (error) {
+    console.error('Error generating reschedule suggestions:', error);
+    return incompleteTasks.map(task => ({
+      taskTitle: task.title,
+      suggestedDate: currentDate,
+      reason: 'Continue working on this task',
+      priority: (task.priority as 'high' | 'medium' | 'low') || 'medium'
+    }));
+  }
 };

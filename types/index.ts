@@ -3,10 +3,24 @@ export interface Goal {
   title: string;
   description: string;
   deadline: string;
-  category: string;
+  category?: string;
   milestones: Milestone[];
   createdAt: string;
   updatedAt: string;
+  
+  // Enhanced fields for Grind
+  progressValue: number;
+  targetValue: number;
+  unit?: string; // 'kg', 'chapters', 'dollars', etc.
+  xpEarned: number;
+  streakCount: number;
+  todayTasksIds: string[];
+  streakTaskIds: string[];
+  status: 'active' | 'completed' | 'abandoned';
+  coverImage?: string;
+  color?: string;
+  priority?: 'high' | 'medium' | 'low';
+  archivedAt?: string;
 }
 
 export interface Milestone {
@@ -16,6 +30,7 @@ export interface Milestone {
   completed: boolean;
   completedAt?: string;
   dueDate?: string;
+  progressThreshold?: number; // 25, 50, 75, 100 for milestone alerts
 }
 
 export interface Task {
@@ -35,6 +50,10 @@ export interface Task {
   requiresValidation?: boolean;
   priority?: 'high' | 'medium' | 'low';
   estimatedTime?: string;
+  proofRequired?: boolean;
+  proofSubmitted?: boolean;
+  proofValidated?: boolean;
+  taskType?: 'today' | 'streak';
 }
 
 export interface JournalEntry {
@@ -59,6 +78,8 @@ export interface UserProfile {
   streakDays: number;
   longestStreak: number;
   avatarUrl?: string;
+  totalGoalsCompleted?: number;
+  totalTasksCompleted?: number;
 }
 
 export interface AIMessage {
@@ -70,7 +91,7 @@ export interface AIMessage {
   }>;
 }
 
-// New types for enhanced features
+// Enhanced types for Grind features
 export interface DailyAgenda {
   date: string;
   tasks: AgendaTask[];
@@ -144,4 +165,58 @@ export interface NightlyRecap {
   }>;
   tomorrowFocus: string;
   createdAt: string;
+}
+
+// New types for enhanced Grind features
+export interface GoalBreakdown {
+  todayTasks: Array<{
+    title: string;
+    description: string;
+    xpValue: number;
+    estimatedTime: string;
+    priority: 'high' | 'medium' | 'low';
+  }>;
+  streakHabits: Array<{
+    title: string;
+    description: string;
+    xpValue: number;
+    frequency: 'daily' | 'weekly';
+  }>;
+  milestones: Array<{
+    title: string;
+    description: string;
+    progressThreshold: number;
+    dueDate?: string;
+  }>;
+  motivation: string;
+  estimatedTimeToComplete: string;
+}
+
+export interface ProgressUpdate {
+  goalId: string;
+  newProgressValue: number;
+  xpEarned: number;
+  milestoneReached?: boolean;
+  milestoneTitle?: string;
+}
+
+export interface GoalShareCard {
+  goalTitle: string;
+  progressPercentage: number;
+  daysRemaining: number;
+  streakCount: number;
+  xpEarned: number;
+  motivationalQuote: string;
+  imageUrl: string;
+}
+
+export interface MilestoneAlert {
+  id: string;
+  goalId: string;
+  milestoneTitle: string;
+  progressPercentage: number;
+  message: string;
+  celebrationLevel: 'small' | 'medium' | 'large';
+  createdAt: string;
+  dismissed: boolean;
 }
