@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Linking, Platform } from 'react-native';
 import { Copy, ExternalLink, RefreshCw, Database } from 'lucide-react-native';
 import { checkDatabaseSetup } from '@/lib/supabase';
+import * as Clipboard from 'expo-clipboard';
 
 interface DatabaseSetupPromptProps {
   onSetupComplete: () => void;

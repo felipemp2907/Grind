@@ -17,6 +17,9 @@ interface MotivationToastProps {
   visible: boolean;
   onDismiss: () => void;
   escalationLevel?: number;
+  urgency?: 'low' | 'medium' | 'high';
+  actionSuggestion?: string;
+  onActionTap?: () => void;
 }
 
 export default function MotivationToast({ 
@@ -24,7 +27,10 @@ export default function MotivationToast({
   tone, 
   visible, 
   onDismiss,
-  escalationLevel = 0
+  escalationLevel = 0,
+  urgency = 'low',
+  actionSuggestion,
+  onActionTap
 }: MotivationToastProps) {
   const [slideAnim] = useState(new Animated.Value(-100));
   const [opacityAnim] = useState(new Animated.Value(0));
@@ -180,9 +186,18 @@ export default function MotivationToast({
       {escalationLevel > 0 && (
         <View style={styles.escalationIndicator}>
           <Text style={styles.escalationText}>
-            Escalation Level {escalationLevel}/3
+            Escalation Level {escalationLevel}/4
           </Text>
         </View>
+      )}
+      
+      {actionSuggestion && onActionTap && (
+        <TouchableOpacity 
+          style={styles.actionButton}
+          onPress={onActionTap}
+        >
+          <Text style={styles.actionButtonText}>{actionSuggestion}</Text>
+        </TouchableOpacity>
       )}
     </Animated.View>
   );
@@ -240,5 +255,19 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: Colors.dark.text,
     textAlign: 'center',
+  },
+  actionButton: {
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    marginHorizontal: 16,
+    marginBottom: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  actionButtonText: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: Colors.dark.text,
   },
 });

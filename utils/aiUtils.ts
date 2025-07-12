@@ -254,7 +254,7 @@ export const generateMotivationMessage = async (
     'tough-love': 'Be direct, challenging, and hold them accountable. Push for action.'
   };
 
-  const escalationPrompts: Record<number, string> = {
+  const escalationPrompts: { [key: number]: string } = {
     0: 'Gentle reminder about staying on track',
     1: 'More direct encouragement to get back on track', 
     2: 'Firm but supportive push to recommit',
@@ -512,6 +512,299 @@ export const generateDailyTasksForGoal = async (
   ];
 
   return await callAI(messages);
+};
+
+// Enhanced conversational command center for task/event creation
+export const processConversationalCommand = async (
+  userMessage: string,
+  currentTasks: Array<{ title: string; date: string; isHabit: boolean }>,
+  currentDate: string,
+  goalContext?: { title: string; description: string }
+): Promise<{
+  action: 'create_task' | 'create_event' | 'update_task' | 'reschedule' | 'query' | 'none';
+  taskData?: {
+    title: string;
+    description: string;
+    date: string;
+    time?: string;
+    isHabit: boolean;
+    xpValue: number;
+    type: 'today' | 'streak';
+    loadScore: number;
+    proofMode: 'flex' | 'realtime';
+  };
+  eventData?: {
+    title: string;
+    description: string;
+    date: string;
+    time: string;
+    duration?: number;
+  };
+  updateData?: {
+    taskId: string;
+    changes: Record<string, any>;
+  };
+  queryResponse?: string;
+  confirmation: string;
+  needsClarification?: boolean;
+  clarificationQuestion?: string;
+}> => {
+  const messages: AIMessage[] = [
+    {
+      role: 'system',
+      content: `You are DeckAI's conversational command processor. Analyze user messages and determine the appropriate action.
+
+Current date: ${currentDate}
+Goal context: ${goalContext ? `${goalContext.title} - ${goalContext.description}` : 'No active goal'}
+
+Existing tasks today: ${currentTasks.filter(t => t.date === currentDate).map(t => t.title).join(', ') || 'None'}
+Existing habits: ${currentTasks.filter(t => t.isHabit).map(t => t.title).join(', ') || 'None'}
+
+Task Intelligence Rules:
+1. Today Tasks: Max 3 per day, total load_score ≤ 5
+2. Streak Tasks: Daily habits that build consistency
+3. Proof modes: 'realtime' for camera-only validation, 'flex' for any proof
+4. Load scores: 1-5 based on complexity/time
+5. Avoid duplicates with existing tasks
+
+Respond with JSON:
+{
+  "action": "create_task|create_event|update_task|reschedule|query|none",
+  "taskData": {
+    "title": "specific task name",
+    "description": "detailed instructions",
+    "date": "YYYY-MM-DD",
+    "time": "HH:MM (optional)",
+    "isHabit": boolean,
+    "xpValue": 20-60,
+    "type": "today|streak",
+    "loadScore": 1-5,
+    "proofMode": "flex|realtime"
+  },
+  "eventData": {
+    "title": "event name",
+    "description": "event details",
+    "date": "YYYY-MM-DD",
+    "time": "HH:MM",
+    "duration": minutes
+  },
+  "confirmation": "natural language confirmation",
+  "needsClarification": boolean,
+  "clarificationQuestion": "question if unclear"
+}
+
+IMPORTANT: Return ONLY the JSON object without markdown formatting.`
+    },
+    {
+      role: 'user',
+      content: userMessage
+    }
+  ];
+
+  try {
+    const response = await callAI(messages);
+    const cleanedResponse = cleanJsonResponse(response);
+    return JSON.parse(cleanedResponse);
+  } catch (error) {
+    console.error('Error processing conversational command:', error);
+    return {
+      action: 'none',
+      confirmation: "I couldn't understand that command. Try something like 'Add workout tomorrow at 8 AM' or 'Schedule meeting with John on Friday'."
+    };
+  }
+};
+
+// Generate proactive daily agenda (7 AM feature)
+export const generateProactiveDailyAgenda = async (
+  goalTitle: string,
+  goalDescription: string,
+  recentTasks: string[],
+  currentDate: string,
+  preferredTone: MotivationTone,
+  existingTasks: Array<{ title: string; type: string }>
+): Promise<{
+  agenda: Array<{
+    title: string;
+    description: string;
+    xpValue: number;
+    priority: 'high' | 'medium' | 'low';
+    estimatedTime: string;
+    type: 'today' | 'streak';
+    loadScore: number;
+    proofMode: 'flex' | 'realtime';
+  }>;
+  motivation: string;
+  focusArea: string;
+}> => {
+  const toneInstructions = {
+    'cheerful': 'Be enthusiastic and encouraging with positive energy',
+    'data-driven': 'Focus on metrics, progress tracking, and logical reasoning',
+    'tough-love': 'Be direct, challenging, and push for accountability'
+  };
+
+  const messages: AIMessage[] = [
+    {
+      role: 'system',
+      content: `You are DeckAI creating a proactive morning agenda. Generate exactly 3 high-impact tasks for today.
+
+Goal: ${goalTitle}
+Description: ${goalDescription}
+Date: ${currentDate}
+Recent tasks: ${recentTasks.join(', ')}
+Existing tasks: ${existingTasks.map(t => `${t.title} (${t.type})`).join(', ')}
+
+Tone: ${toneInstructions[preferredTone]}
+
+Task Requirements:
+- Max 3 tasks total
+- Total load_score ≤ 5
+- Mix of 'today' and 'streak' types
+- Avoid duplicates with existing tasks
+- Specific and actionable
+- Realistic for one day
+
+Respond with JSON:
+{
+  "agenda": [
+    {
+      "title": "Clear, specific task name",
+      "description": "Detailed instructions",
+      "xpValue": 30-60,
+      "priority": "high|medium|low",
+      "estimatedTime": "30 min",
+      "type": "today|streak",
+      "loadScore": 1-5,
+      "proofMode": "flex|realtime"
+    }
+  ],
+  "motivation": "Brief motivational message",
+  "focusArea": "Key focus for today"
+}
+
+IMPORTANT: Return ONLY the JSON object without markdown formatting.`
+    },
+    {
+      role: 'user',
+      content: `Generate my proactive daily agenda for ${currentDate}. Focus on high-impact activities for: ${goalTitle}`
+    }
+  ];
+
+  try {
+    const response = await callAI(messages);
+    const cleanedResponse = cleanJsonResponse(response);
+    return JSON.parse(cleanedResponse);
+  } catch (error) {
+    console.error('Error generating proactive agenda:', error);
+    return {
+      agenda: [
+        {
+          title: `Work on ${goalTitle}`,
+          description: 'Make meaningful progress on your goal',
+          xpValue: 40,
+          priority: 'high' as const,
+          estimatedTime: '45 min',
+          type: 'today' as const,
+          loadScore: 3,
+          proofMode: 'flex' as const
+        }
+      ],
+      motivation: "Let's make today count! Every small step brings you closer to your goal.",
+      focusArea: "Focus on your highest-impact tasks first thing in the morning."
+    };
+  }
+};
+
+// Enhanced motivation engine with escalating nudges
+export const generatePersonalizedMotivation = async (
+  missedTaskCount: number,
+  missedStreakCount: number,
+  preferredTone: MotivationTone,
+  goalTitle: string,
+  streakDays: number,
+  recentPerformance: Array<{ date: string; completed: number; total: number }>
+): Promise<{
+  message: string;
+  escalationLevel: number;
+  actionSuggestion?: string;
+  urgency: 'low' | 'medium' | 'high';
+}> => {
+  const escalationLevel = Math.min(Math.floor((missedTaskCount + missedStreakCount * 2) / 3), 4);
+  const recentCompletionRate = recentPerformance.length > 0 
+    ? recentPerformance.reduce((sum, day) => sum + (day.completed / day.total), 0) / recentPerformance.length
+    : 0.5;
+
+  const tonePrompts = {
+    'cheerful': 'Be encouraging, supportive, and optimistic. Use positive language and emojis.',
+    'data-driven': 'Focus on statistics, progress metrics, and logical consequences. Be analytical.',
+    'tough-love': 'Be direct, challenging, and hold them accountable. Push for action.'
+  };
+
+  const escalationPrompts: { [key: number]: string } = {
+    0: 'Gentle reminder and encouragement',
+    1: 'More direct encouragement to get back on track',
+    2: 'Firm but supportive push to recommit',
+    3: 'Strong accountability message about consistency',
+    4: 'Urgent intervention - risk of losing progress'
+  };
+
+  const messages: AIMessage[] = [
+    {
+      role: 'system',
+      content: `You are DeckAI's personalized motivation engine. Create tone-aware, escalating nudges.
+
+Context:
+- Goal: ${goalTitle}
+- Current streak: ${streakDays} days
+- Missed tasks: ${missedTaskCount}
+- Missed streak tasks: ${missedStreakCount}
+- Escalation level: ${escalationLevel}/4
+- Recent completion rate: ${(recentCompletionRate * 100).toFixed(1)}%
+
+Tone: ${tonePrompts[preferredTone]}
+Escalation: ${escalationPrompts[escalationLevel]}
+
+Respond with JSON:
+{
+  "message": "Motivational message (1-2 sentences)",
+  "escalationLevel": ${escalationLevel},
+  "actionSuggestion": "Specific next step",
+  "urgency": "low|medium|high"
+}
+
+IMPORTANT: Return ONLY the JSON object without markdown formatting.`
+    },
+    {
+      role: 'user',
+      content: `Generate a ${preferredTone} motivation message. Recent performance: ${recentCompletionRate * 100}% completion rate.`
+    }
+  ];
+
+  try {
+    const response = await callAI(messages);
+    const cleanedResponse = cleanJsonResponse(response);
+    const result = JSON.parse(cleanedResponse);
+    return {
+      message: result.message,
+      escalationLevel,
+      actionSuggestion: result.actionSuggestion,
+      urgency: result.urgency || (escalationLevel >= 3 ? 'high' : escalationLevel >= 2 ? 'medium' : 'low')
+    };
+  } catch (error) {
+    console.error('Error generating personalized motivation:', error);
+    
+    const fallbacks = {
+      'cheerful': "Hey there! 🌟 Every champion has setbacks - what matters is getting back up! Your goal is waiting for you! 💪",
+      'data-driven': `You're ${streakDays} days into your journey. Consistency compounds - one task today can restart your momentum.`,
+      'tough-love': "Excuses don't build dreams. Your goal won't achieve itself. Time to step up and take action."
+    };
+    
+    return {
+      message: fallbacks[preferredTone],
+      escalationLevel,
+      actionSuggestion: "Complete one small task right now to rebuild momentum",
+      urgency: escalationLevel >= 3 ? 'high' : 'medium'
+    };
+  }
 };
 
 // Generate AI coaching feedback

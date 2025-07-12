@@ -27,7 +27,7 @@ export default function FocusModePrompt({
 }: FocusModePromptProps) {
   const [focusActive, setFocusActive] = useState(false);
   const [timeRemaining, setTimeRemaining] = useState(20 * 60); // 20 minutes in seconds
-  const [timer, setTimer] = useState<ReturnType<typeof setInterval> | null>(null);
+  const [timer, setTimer] = useState<NodeJS.Timeout | null>(null);
   
   const startFocusSession = () => {
     setFocusActive(true);
@@ -50,7 +50,7 @@ export default function FocusModePrompt({
       });
     }, 1000);
     
-    setTimer(interval as ReturnType<typeof setInterval>);
+    setTimer(interval);
   };
   
   const pauseFocusSession = () => {
@@ -75,7 +75,7 @@ export default function FocusModePrompt({
       });
     }, 1000);
     
-    setTimer(interval as ReturnType<typeof setInterval>);
+    setTimer(interval);
   };
   
   const completeFocusSession = () => {
