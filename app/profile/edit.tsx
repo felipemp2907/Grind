@@ -42,11 +42,11 @@ export default function EditProfileScreen() {
         setError(null);
         
         try {
-          // Ensure database is set up
-          const dbSetupSuccess = await setupDatabase();
+          // Check database setup
+          const dbResult = await setupDatabase();
           
-          if (!dbSetupSuccess) {
-            setError("Database not set up. Please run the database-setup.sql in your Supabase SQL editor.");
+          if (!dbResult.success) {
+            setError(dbResult.error || "Database not set up. Please run the database-setup.sql in your Supabase SQL editor.");
             setIsLoading(false);
             return;
           }
@@ -152,8 +152,11 @@ export default function EditProfileScreen() {
     try {
       if (!user?.id) throw new Error("User not authenticated");
       
-      // Ensure database is set up
-      await setupDatabase();
+      // Check database setup
+      const dbResult = await setupDatabase();
+      if (!dbResult.success) {
+        throw new Error(dbResult.error || "Database not set up");
+      }
       
       // Check if the storage bucket exists
       const { data: buckets, error: bucketsError } = await supabase.storage.listBuckets();
@@ -227,8 +230,11 @@ export default function EditProfileScreen() {
     setError(null);
     
     try {
-      // Ensure database is set up
-      await setupDatabase();
+      // Check database setup
+      const dbResult = await setupDatabase();
+      if (!dbResult.success) {
+        throw new Error(dbResult.error || "Database not set up");
+      }
       
       let avatarUrlToSave = avatarUrl;
       
@@ -291,8 +297,11 @@ export default function EditProfileScreen() {
             
             if (user?.id) {
               try {
-                // Ensure database is set up
-                await setupDatabase();
+                // Check database setup
+                const dbResult = await setupDatabase();
+                if (!dbResult.success) {
+                  throw new Error(dbResult.error || "Database not set up");
+                }
                 
                 const { error } = await supabase
                   .from('profiles')

@@ -104,13 +104,43 @@ export const checkDatabaseSetup = async (): Promise<{ isSetup: boolean; error?: 
   }
 };
 
+// Function to set up database programmatically
+export const setupDatabase = async (): Promise<{ success: boolean; error?: string }> => {
+  try {
+    const result = await checkDatabaseSetup();
+    if (result.isSetup) {
+      return { success: true };
+    }
+    
+    // If database is not set up, return error message
+    return { 
+      success: false, 
+      error: result.error || 'Database not set up. Please run the database-setup.sql in your Supabase SQL editor.' 
+    };
+  } catch (error) {
+    console.error('Error in setupDatabase:', error);
+    return { 
+      success: false, 
+      error: `Database setup failed: ${serializeError(error)}` 
+    };
+  }
+};
+
+// Helper function to ensure database is ready before operations
+export const ensureDatabaseReady = async (): Promise<void> => {
+  const result = await setupDatabase();
+  if (!result.success) {
+    throw new Error(result.error || 'Database not ready');
+  }
+};
+
 // Legacy function for backward compatibility
-export const setupDatabase = async (): Promise<boolean> => {
-  const result = await checkDatabaseSetup();
-  if (!result.isSetup && result.error) {
+export const setupDatabaseLegacy = async (): Promise<boolean> => {
+  const result = await setupDatabase();
+  if (!result.success && result.error) {
     console.error(result.error);
   }
-  return result.isSetup;
+  return result.success;
 };
 
 // Helper function to create user profile after signup

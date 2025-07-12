@@ -204,8 +204,12 @@ export const useUserStore = create<UserState>()(
         });
         
         try {
-          // Ensure database is set up
-          await setupDatabase();
+          // Check database setup
+          const dbResult = await setupDatabase();
+          if (!dbResult.success) {
+            console.error("Database not set up:", dbResult.error);
+            return;
+          }
           
           // Update in Supabase
           const { error } = await supabase
@@ -243,8 +247,12 @@ export const useUserStore = create<UserState>()(
         });
         
         try {
-          // Ensure database is set up
-          await setupDatabase();
+          // Check database setup
+          const dbResult = await setupDatabase();
+          if (!dbResult.success) {
+            console.error("Database not set up:", dbResult.error);
+            return;
+          }
           
           // Update in Supabase
           const { error } = await supabase
@@ -278,8 +286,12 @@ export const useUserStore = create<UserState>()(
         });
         
         try {
-          // Ensure database is set up
-          await setupDatabase();
+          // Check database setup
+          const dbResult = await setupDatabase();
+          if (!dbResult.success) {
+            console.error("Database not set up:", dbResult.error);
+            return;
+          }
           
           // Update in Supabase
           const { error } = await supabase
@@ -312,8 +324,12 @@ export const useUserStore = create<UserState>()(
         });
         
         try {
-          // Ensure database is set up
-          await setupDatabase();
+          // Check database setup
+          const dbResult = await setupDatabase();
+          if (!dbResult.success) {
+            console.error("Database not set up:", dbResult.error);
+            return;
+          }
           
           // Convert to snake_case for Supabase
           const supabaseUpdates: any = {};
