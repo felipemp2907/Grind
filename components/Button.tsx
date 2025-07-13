@@ -93,6 +93,9 @@ export default function Button({
     // Variant styles
     if (variant === 'outline') {
       baseStyle.color = Colors.dark.primary;
+    } else if (variant === 'primary') {
+      // White button needs black text for contrast
+      baseStyle.color = '#000000';
     }
     
     return baseStyle;

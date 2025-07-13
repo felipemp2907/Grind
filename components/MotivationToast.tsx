@@ -118,22 +118,22 @@ export default function MotivationToast({
     switch (tone) {
       case 'cheerful':
         return {
-          background: 'rgba(0, 184, 148, 0.95)',
+          background: 'rgba(56, 217, 169, 0.95)',
           border: Colors.dark.success,
         };
       case 'data-driven':
         return {
-          background: 'rgba(108, 92, 231, 0.95)',
+          background: 'rgba(255, 255, 255, 0.95)',
           border: Colors.dark.primary,
         };
       case 'tough-love':
         return {
-          background: 'rgba(253, 203, 110, 0.95)',
+          background: 'rgba(255, 180, 0, 0.95)',
           border: Colors.dark.warning,
         };
       default:
         return {
-          background: 'rgba(108, 92, 231, 0.95)',
+          background: 'rgba(255, 255, 255, 0.95)',
           border: Colors.dark.primary,
         };
     }

@@ -4,6 +4,14 @@ Created by fmp
 
 ## Recent Updates
 
+### 🎨 Monochrome Theme Refresh
+
+**Design Updates:**
+- **Monochrome Palette**: Replaced purple accents with clean black-and-white design
+- **Functional Colors**: Success (green) and warning (amber) states preserved for clarity
+- **Enhanced Contrast**: Improved readability with refined background and text colors
+- **Modern Aesthetic**: Minimalist design inspired by iOS, Instagram, and Linear
+
 ### 🎯 Focus Mode & Task Generation Improvements
 
 **Fixed Issues:**
@@ -47,6 +55,19 @@ The setup creates:
 
 Run Edge deploy, then sign in to test Focus shortcut and new features.
 
+### Theming
+
+Grind now uses a monochrome palette: white accents on a charcoal background. The only colours outside black-and-white are functional greens and ambers for success and warnings.
+
+**Color Tokens:**
+- Background: `#0E0E12` (Dark charcoal)
+- Cards/Surfaces: `#18171D` (Elevated dark)
+- Primary Text: `#FFFFFF` (Pure white)
+- Secondary Text: `#A1A0AE` (Muted gray)
+- Primary Accent: `#FFFFFF` (White)
+- Success: `#38D9A9` (Green)
+- Warning: `#FFB400` (Amber)
+
 ### Testing
 
 Run tests with:
@@ -59,3 +80,4 @@ Includes tests for:
 - Task deduplication
 - Profile management
 - Focus mode functionality
+- Theme smoke tests

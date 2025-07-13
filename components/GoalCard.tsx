@@ -116,7 +116,7 @@ const styles = StyleSheet.create({
   activeContainer: {
     borderLeftWidth: 4,
     borderLeftColor: Colors.dark.primary,
-    backgroundColor: 'rgba(108, 92, 231, 0.05)',
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
   },
   header: {
     flexDirection: 'row',
@@ -127,7 +127,7 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: 'rgba(108, 92, 231, 0.1)',
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 8,
@@ -198,7 +198,7 @@ const styles = StyleSheet.create({
     marginLeft: 4,
   },
   activeBadge: {
-    backgroundColor: 'rgba(108, 92, 231, 0.15)',
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
     paddingVertical: 4,
     paddingHorizontal: 8,
     borderRadius: 12,

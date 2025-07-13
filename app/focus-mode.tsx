@@ -396,7 +396,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   focusIndicator: {
-    backgroundColor: 'rgba(0, 184, 148, 0.1)',
+    backgroundColor: 'rgba(56, 217, 169, 0.1)',
     borderRadius: 8,
     padding: 12,
     marginBottom: 24,

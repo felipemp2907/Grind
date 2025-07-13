@@ -158,7 +158,7 @@ const styles = StyleSheet.create({
   goalBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(108, 92, 231, 0.1)',
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
     paddingVertical: 4,
     paddingHorizontal: 8,
     borderRadius: 12,
@@ -178,7 +178,7 @@ const styles = StyleSheet.create({
   actionButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(108, 92, 231, 0.15)',
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
     paddingVertical: 6,
     paddingHorizontal: 10,
     borderRadius: 16,
@@ -192,7 +192,7 @@ const styles = StyleSheet.create({
   completedBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(0, 184, 148, 0.15)',
+    backgroundColor: 'rgba(56, 217, 169, 0.15)',
     paddingVertical: 6,
     paddingHorizontal: 10,
     borderRadius: 16,
@@ -213,7 +213,7 @@ const styles = StyleSheet.create({
     marginLeft: 4,
   },
   xpContainer: {
-    backgroundColor: 'rgba(108, 92, 231, 0.15)',
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
     paddingVertical: 4,
     paddingHorizontal: 8,
     borderRadius: 12,
@@ -226,7 +226,7 @@ const styles = StyleSheet.create({
   streakBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(253, 203, 110, 0.2)',
+    backgroundColor: 'rgba(255, 180, 0, 0.2)',
     borderRadius: 8,
     paddingHorizontal: 6,
     paddingVertical: 2,
@@ -242,7 +242,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 8,
     right: 8,
-    backgroundColor: 'rgba(0, 206, 206, 0.15)',
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
     paddingVertical: 2,
     paddingHorizontal: 6,
     borderRadius: 8,
@@ -256,7 +256,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 8,
     right: 8,
-    backgroundColor: 'rgba(253, 203, 110, 0.15)',
+    backgroundColor: 'rgba(255, 180, 0, 0.15)',
     paddingVertical: 2,
     paddingHorizontal: 6,
     borderRadius: 8,

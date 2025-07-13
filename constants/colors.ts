@@ -1,14 +1,14 @@
 // Color palette for Grind
 export default {
   dark: {
-    background: '#121212',
-    card: '#1E1E1E',
+    background: '#0E0E12',
+    card: '#18171D',
     text: '#FFFFFF',
-    subtext: '#AAAAAA',
-    primary: '#6C5CE7', // Main accent color (purple)
-    secondary: '#00CECE', // Secondary accent (teal)
-    success: '#00B894',
-    warning: '#FDCB6E',
+    subtext: '#A1A0AE',
+    primary: '#FFFFFF', // Monochrome accent
+    secondary: '#FFFFFF',
+    success: '#38D9A9',
+    warning: '#FFB400',
     danger: '#FF7675',
     inactive: '#4F4F4F',
     separator: '#2A2A2A',
@@ -20,10 +20,10 @@ export default {
     card: '#FFFFFF',
     text: '#1A1A1A',
     subtext: '#6C6C6C',
-    primary: '#6C5CE7', // Main accent color (purple)
-    secondary: '#00CECE', // Secondary accent (teal)
-    success: '#00B894',
-    warning: '#FDCB6E',
+    primary: '#000000', // Monochrome accent for light mode
+    secondary: '#000000',
+    success: '#38D9A9',
+    warning: '#FFB400',
     danger: '#FF7675',
     inactive: '#DEDEDE',
     separator: '#EEEEEE',
