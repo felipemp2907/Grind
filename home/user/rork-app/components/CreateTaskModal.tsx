@@ -14,10 +14,10 @@ import {
 } from 'react-native';
 import { X, Target, Clock, Flame } from 'lucide-react-native';
 import Colors from '@/constants/colors';
-import Button from './Button';
+import Button from '@/components/Button';
 import { useGoalStore } from '@/store/goalStore';
 import { useTaskStore } from '@/store/taskStore';
-import DateTimePicker from './DateTimePicker';
+import DateTimePicker from '@/components/DateTimePicker';
 import { formatDate } from '@/utils/dateUtils';
 
 interface CreateTaskModalProps {
