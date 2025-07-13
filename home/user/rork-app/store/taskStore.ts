@@ -3,10 +3,10 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Task } from '@/types';
 import { generateDailyTasksForGoal, generateDailyAgenda } from '@/utils/aiUtils';
-import { useGoalStore } from './goalStore';
-import { useUserStore } from './userStore';
+import { useGoalStore } from '@/store/goalStore';
+import { useUserStore } from '@/store/userStore';
 import { supabase, setupDatabase, serializeError } from '@/lib/supabase';
-import { useAuthStore } from './authStore';
+import { useAuthStore } from '@/store/authStore';
 
 // Interface for tasks returned from AI
 interface AIGeneratedTask {
