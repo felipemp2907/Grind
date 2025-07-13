@@ -26,11 +26,11 @@ import * as Haptics from 'expo-haptics';
 export default function FocusModeScreen() {
   const router = useRouter();
   const { getTasks } = useTaskStore();
-  const { addXp } = useUserStore();
+  const { addXP } = useUserStore();
   
   const [isActive, setIsActive] = useState(false);
   const [timeRemaining, setTimeRemaining] = useState(25 * 60); // 25 minutes in seconds
-  const [timer, setTimer] = useState<NodeJS.Timeout | null>(null);
+  const [timer, setTimer] = useState<ReturnType<typeof setInterval> | null>(null);
   const [sessionCompleted, setSessionCompleted] = useState(false);
   
   const todayTasks = getTasks(getTodayDate());
@@ -110,7 +110,7 @@ export default function FocusModeScreen() {
     setSessionCompleted(true);
     
     // Award XP for completing focus session
-    addXp(50);
+    addXP(50);
     
     // Provide completion haptic feedback
     if (Platform.OS !== 'web') {

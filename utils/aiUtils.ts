@@ -124,7 +124,7 @@ function postProcessTasks(
   }
   
   // 2. Deduplicate
-  const uniqueTasks = [];
+  const uniqueTasks: TaskCandidate[] = [];
   for (const task of filteredTasks) {
     const isDupe = uniqueTasks.some(existing => isDuplicateTask(task.title, existing.title));
     if (isDupe) {

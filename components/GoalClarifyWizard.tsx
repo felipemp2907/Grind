@@ -117,10 +117,10 @@ export default function GoalClarifyWizard({
       
       // Parse milestones
       const milestonesText = answers.milestones || '';
-      const milestones = milestonesText
+      const milestones = (typeof milestonesText === 'string' ? milestonesText : milestonesText.join(','))
         .split(/[,\n]/) 
-        .map(m => m.trim())
-        .filter(m => m.length > 0)
+        .map((m: string) => m.trim())
+        .filter((m: string) => m.length > 0)
         .slice(0, 3);
 
       const context: GoalContext = {
