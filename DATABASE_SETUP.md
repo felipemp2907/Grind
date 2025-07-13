@@ -25,14 +25,16 @@ The script will:
 - Set up proper foreign key relationships
 - Create storage buckets for profile pictures
 
-### 2. Verify the Setup (Optional)
+### 2. Verify the Setup (Recommended)
 
 To verify everything was set up correctly:
 
 1. In the SQL Editor, create another new query
-2. Copy the contents of `scripts/test-database.sql`
+2. Copy the contents of `scripts/diagnose-database.sql`
 3. Paste and run it
-4. Check that all tables, constraints, and functions are properly created
+4. Check the results - any ✗ marks indicate issues that need fixing
+
+If you see any problems, run the appropriate fix scripts mentioned in the results.
 
 ### 3. Update Your Environment
 
@@ -54,11 +56,26 @@ If you see errors like "violates foreign key constraint", it means:
 
 **Solution**: Re-run the complete `database-setup.sql` script. It will drop and recreate all tables with the correct relationships.
 
-### "Table does not exist" Errors
+### "Table does not exist" or "Column not found" Errors
 
-This means the database setup script wasn't run or failed partway through.
+This means the database setup script wasn't run or failed partway through, or there's a schema mismatch.
 
-**Solution**: Run the complete `database-setup.sql` script in your Supabase SQL Editor.
+**Solution**: 
+1. Run the complete `database-setup.sql` script in your Supabase SQL Editor
+2. If you still get column errors (like "Could not find the 'completed' column"), run the comprehensive fix script: `scripts/verify-and-fix-schema.sql`
+3. This will check all tables and add any missing columns without losing existing data
+
+### "Could not find the 'completed' column" Error
+
+This specific error occurs when the tasks table exists but is missing required columns. This can happen if:
+- The database was partially set up
+- An older version of the schema was used
+- The schema cache needs to be refreshed
+
+**Solution**: 
+1. Run `scripts/verify-and-fix-schema.sql` in your Supabase SQL Editor
+2. This script will add any missing columns to existing tables
+3. It will also refresh the schema cache
 
 ### RLS Policy Errors
 

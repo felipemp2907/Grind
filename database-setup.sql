@@ -147,7 +147,8 @@ CREATE POLICY "Users can delete milestones of their goals"
   );
 
 -- 10. Create tasks table
-CREATE TABLE IF NOT EXISTS public.tasks (
+DROP TABLE IF EXISTS public.tasks CASCADE;
+CREATE TABLE public.tasks (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE,
   goal_id UUID REFERENCES public.goals(id) ON DELETE CASCADE,
@@ -308,12 +309,15 @@ BEGIN
 END;
 $ LANGUAGE plpgsql SECURITY DEFINER;
 
--- 24. Verify setup by selecting from profiles table
+-- 24. Refresh schema cache to ensure all changes are recognized
+NOTIFY pgrst, 'reload schema';
+
+-- 25. Verify setup by selecting from profiles table
 -- This should return an empty result set if everything is working
 SELECT 'Database setup completed successfully!' as status;
 SELECT COUNT(*) as profile_count FROM public.profiles;
 
--- 25. Test foreign key relationships by creating a test profile and goal
+-- 26. Test foreign key relationships by creating a test profile and goal
 -- This will verify that the foreign key constraints are working properly
 DO $
 DECLARE
@@ -344,3 +348,16 @@ BEGIN
 END $;
 
 SELECT 'Database setup and verification completed!' as final_status;
+
+-- 27. Display table structures for verification
+SELECT 'TASKS TABLE COLUMNS:' as info;
+SELECT column_name, data_type, is_nullable 
+FROM information_schema.columns 
+WHERE table_schema = 'public' AND table_name = 'tasks'
+ORDER BY ordinal_position;
+
+SELECT 'GOALS TABLE COLUMNS:' as info;
+SELECT column_name, data_type, is_nullable 
+FROM information_schema.columns 
+WHERE table_schema = 'public' AND table_name = 'goals'
+ORDER BY ordinal_position;
