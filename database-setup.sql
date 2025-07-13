@@ -6,6 +6,20 @@
 --
 -- After running this script, return to the app and click "Check Setup"
 
+-- Drop existing tables if they exist to avoid foreign key conflicts
+DROP TABLE IF EXISTS public.journal_entries CASCADE;
+DROP TABLE IF EXISTS public.tasks CASCADE;
+DROP TABLE IF EXISTS public.milestones CASCADE;
+DROP TABLE IF EXISTS public.goals CASCADE;
+DROP TABLE IF EXISTS public.profiles CASCADE;
+
+-- Drop existing functions and triggers
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+DROP FUNCTION IF EXISTS public.handle_new_user();
+DROP FUNCTION IF EXISTS public.handle_updated_at();
+DROP FUNCTION IF EXISTS public.check_user_exists(UUID);
+DROP FUNCTION IF EXISTS public.exec_sql(text);
+
 -- 1. Create profiles table
 CREATE TABLE IF NOT EXISTS public.profiles (
   id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -41,7 +55,7 @@ CREATE POLICY "Users can insert their own profile"
 -- 4. Create goals table
 CREATE TABLE IF NOT EXISTS public.goals (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE,
   title TEXT NOT NULL,
   description TEXT,
   deadline TIMESTAMP WITH TIME ZONE,
@@ -135,7 +149,7 @@ CREATE POLICY "Users can delete milestones of their goals"
 -- 10. Create tasks table
 CREATE TABLE IF NOT EXISTS public.tasks (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE,
   goal_id UUID REFERENCES public.goals(id) ON DELETE CASCADE,
   title TEXT NOT NULL,
   description TEXT,
@@ -177,7 +191,7 @@ CREATE POLICY "Users can delete their own tasks"
 -- 13. Create journal_entries table
 CREATE TABLE IF NOT EXISTS public.journal_entries (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE,
   title TEXT NOT NULL,
   content TEXT NOT NULL,
   mood TEXT CHECK (mood IN ('great', 'good', 'neutral', 'bad', 'terrible')),
@@ -298,3 +312,35 @@ $ LANGUAGE plpgsql SECURITY DEFINER;
 -- This should return an empty result set if everything is working
 SELECT 'Database setup completed successfully!' as status;
 SELECT COUNT(*) as profile_count FROM public.profiles;
+
+-- 25. Test foreign key relationships by creating a test profile and goal
+-- This will verify that the foreign key constraints are working properly
+DO $
+DECLARE
+    test_user_id UUID;
+BEGIN
+    -- Get a test user ID from auth.users (if any exist)
+    SELECT id INTO test_user_id FROM auth.users LIMIT 1;
+    
+    IF test_user_id IS NOT NULL THEN
+        -- Try to insert a test profile
+        INSERT INTO public.profiles (id, name, level, xp, streak_days, longest_streak)
+        VALUES (test_user_id, 'Test User', 1, 0, 0, 0)
+        ON CONFLICT (id) DO NOTHING;
+        
+        -- Try to insert a test goal
+        INSERT INTO public.goals (user_id, title, description)
+        VALUES (test_user_id, 'Test Goal', 'This is a test goal')
+        ON CONFLICT DO NOTHING;
+        
+        -- Clean up test data
+        DELETE FROM public.goals WHERE title = 'Test Goal';
+        DELETE FROM public.profiles WHERE name = 'Test User' AND id = test_user_id;
+        
+        RAISE NOTICE 'Foreign key relationships verified successfully!';
+    ELSE
+        RAISE NOTICE 'No auth users found - foreign key test skipped';
+    END IF;
+END $;
+
+SELECT 'Database setup and verification completed!' as final_status;

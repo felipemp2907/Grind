@@ -192,7 +192,7 @@ export const useUserStore = create<UserState>()(
         }
       },
       
-      addXp: async (amount) => {
+      addXp: async (amount: number) => {
         const { profile } = get();
         const { user } = useAuthStore.getState();
         

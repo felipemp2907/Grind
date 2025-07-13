@@ -3,7 +3,7 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Goal, Milestone, ProgressUpdate, MilestoneAlert, GoalShareCard } from '@/types';
 import { supabase, setupDatabase, serializeError, getCurrentUser } from '@/lib/supabase';
-import { useAuthStore } from '@/store/authStore';
+import { useAuthStore } from './authStore';
 
 interface GoalState {
   goals: Goal[];

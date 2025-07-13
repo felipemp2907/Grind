@@ -6,7 +6,7 @@ import { generateDailyTasksForGoal, generateDailyAgenda } from '@/utils/aiUtils'
 import { useGoalStore } from '@/store/goalStore';
 import { useUserStore } from '@/store/userStore';
 import { supabase, setupDatabase, serializeError } from '@/lib/supabase';
-import { useAuthStore } from '@/store/authStore';
+import { useAuthStore } from './authStore';
 
 // Interface for tasks returned from AI
 interface AIGeneratedTask {
@@ -190,7 +190,7 @@ export const useTaskStore = create<TaskState>()(
         // Add XP to user
         if (task.xpValue) {
           const { addXp } = useUserStore.getState();
-          await addXp(task.xpValue);
+          addXp(task.xpValue);
         }
       },
       
