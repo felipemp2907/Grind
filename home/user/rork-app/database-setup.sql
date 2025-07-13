@@ -136,12 +136,16 @@ CREATE POLICY "Users can delete milestones of their goals"
 CREATE TABLE IF NOT EXISTS public.tasks (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  goal_id UUID REFERENCES public.goals(id) ON DELETE CASCADE,
   title TEXT NOT NULL,
   description TEXT,
   completed BOOLEAN DEFAULT FALSE,
   due_date TIMESTAMP WITH TIME ZONE,
   priority TEXT CHECK (priority IN ('low', 'medium', 'high')) DEFAULT 'medium',
-  category TEXT,
+  xp_value INTEGER DEFAULT 30,
+  is_habit BOOLEAN DEFAULT FALSE,
+  streak INTEGER DEFAULT 0,
+  completed_at TIMESTAMP WITH TIME ZONE,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );

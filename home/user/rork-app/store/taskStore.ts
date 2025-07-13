@@ -3,10 +3,10 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Task } from '@/types';
 import { generateDailyTasksForGoal, generateDailyAgenda } from '@/utils/aiUtils';
-import { useGoalStore } from '@/store/goalStore';
-import { useUserStore } from '@/store/userStore';
+import { useGoalStore } from './goalStore';
+import { useUserStore } from './userStore';
 import { supabase, setupDatabase, serializeError } from '@/lib/supabase';
-import { useAuthStore } from '@/store/authStore';
+import { useAuthStore } from './authStore';
 
 // Interface for tasks returned from AI
 interface AIGeneratedTask {
@@ -100,14 +100,17 @@ export const useTaskStore = create<TaskState>()(
           const { error } = await supabase
             .from('tasks')
             .insert({
-              id: task.id,
               user_id: user.id,
+              goal_id: task.goalId || null,
               title: task.title,
               description: task.description,
               completed: task.completed,
               due_date: task.date ? new Date(task.date).toISOString() : null,
               priority: task.priority || 'medium',
-              category: task.goalId
+              xp_value: task.xpValue || 30,
+              is_habit: task.isHabit || false,
+              streak: task.streak || 0,
+              completed_at: task.completedAt ? new Date(task.completedAt).toISOString() : null
             });
             
           if (error) {
@@ -143,7 +146,11 @@ export const useTaskStore = create<TaskState>()(
           if (updates.completed !== undefined) supabaseUpdates.completed = updates.completed;
           if (updates.date !== undefined) supabaseUpdates.due_date = updates.date ? new Date(updates.date).toISOString() : null;
           if (updates.priority !== undefined) supabaseUpdates.priority = updates.priority;
-          if (updates.goalId !== undefined) supabaseUpdates.category = updates.goalId;
+          if (updates.goalId !== undefined) supabaseUpdates.goal_id = updates.goalId;
+          if (updates.xpValue !== undefined) supabaseUpdates.xp_value = updates.xpValue;
+          if (updates.isHabit !== undefined) supabaseUpdates.is_habit = updates.isHabit;
+          if (updates.streak !== undefined) supabaseUpdates.streak = updates.streak;
+          if (updates.completedAt !== undefined) supabaseUpdates.completed_at = updates.completedAt ? new Date(updates.completedAt).toISOString() : null;
           
           const { error } = await supabase
             .from('tasks')
@@ -620,15 +627,15 @@ export const useTaskStore = create<TaskState>()(
               title: task.title,
               description: task.description || '',
               date: task.due_date ? task.due_date.split('T')[0] : new Date().toISOString().split('T')[0],
-              goalId: task.category || '',
+              goalId: task.goal_id || '',
               completed: task.completed || false,
-              xpValue: 30, // Default XP value
-              isHabit: false, // Default to false
-              streak: 0,
+              xpValue: task.xp_value || 30,
+              isHabit: task.is_habit || false,
+              streak: task.streak || 0,
               isUserCreated: true,
               requiresValidation: false,
               priority: task.priority as 'high' | 'medium' | 'low' || 'medium',
-              completedAt: task.completed ? task.updated_at : undefined
+              completedAt: task.completed_at || undefined
             }));
             
             set({ tasks });
