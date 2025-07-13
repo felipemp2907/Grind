@@ -126,15 +126,12 @@ export default function JournalScreen() {
             </TouchableOpacity>
           </View>
         ) : (
-          <>
-            <Text style={styles.headerTitle}>Journal</Text>
-            <TouchableOpacity
-              style={styles.searchButton}
-              onPress={() => setIsSearching(true)}
-            >
-              <Search size={20} color={Colors.dark.text} />
-            </TouchableOpacity>
-          </>
+          <TouchableOpacity
+            style={styles.searchButton}
+            onPress={() => setIsSearching(true)}
+          >
+            <Search size={20} color={Colors.dark.text} />
+          </TouchableOpacity>
         )}
       </View>
       
@@ -159,7 +156,7 @@ export default function JournalScreen() {
           style={styles.fab}
           onPress={handleAddEntry}
         >
-          <Plus size={24} color={Colors.dark.text} />
+          <Plus size={24} color="#000000" />
         </TouchableOpacity>
       </View>
     </SafeAreaView>

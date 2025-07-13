@@ -30,6 +30,8 @@ export default {
     overlay: 'rgba(0, 0, 0, 0.4)',
     border: '#EEEEEE',
   },
+  BLACK: '#000000',
+  WHITE: '#FFFFFF',
   common: {
     shadow: {
       shadowColor: '#000',

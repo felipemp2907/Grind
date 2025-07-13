@@ -273,7 +273,7 @@ export default function CalendarScreen() {
             style={styles.headerButton}
             onPress={goToPreviousMonth}
           >
-            <ChevronLeft size={24} color={Colors.dark.text} />
+            <ChevronLeft size={24} color="#000000" />
           </TouchableOpacity>
           
           <Text style={styles.headerTitle}>
@@ -284,7 +284,7 @@ export default function CalendarScreen() {
             style={styles.headerButton}
             onPress={goToNextMonth}
           >
-            <ChevronRight size={24} color={Colors.dark.text} />
+            <ChevronRight size={24} color="#000000" />
           </TouchableOpacity>
         </View>
         
@@ -419,7 +419,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#FFFFFF',
+    color: '#000000',
   },
   weekdaysHeader: {
     flexDirection: 'row',
@@ -461,7 +461,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   selectedDayCircle: {
-    backgroundColor: Colors.dark.primary,
+    backgroundColor: '#FFFFFF',
     width: 32,
     height: 32,
     borderRadius: 16,
@@ -469,7 +469,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   selectedDayText: {
-    color: '#FFFFFF',
+    color: '#000000',
     fontWeight: 'bold',
   },
   emptyDay: {
