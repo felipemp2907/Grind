@@ -97,6 +97,21 @@ export const useTaskStore = create<TaskState>()(
             return;
           }
           
+          // Ensure user profile exists
+          await supabase
+            .from('profiles')
+            .upsert({
+              id: user.id,
+              name: user.name || user.email?.split('@')[0] || 'User',
+              level: 1,
+              xp: 0,
+              streak_days: 0,
+              longest_streak: 0
+            }, {
+              onConflict: 'id',
+              ignoreDuplicates: true
+            });
+          
           const { error } = await supabase
             .from('tasks')
             .insert({
@@ -190,7 +205,7 @@ export const useTaskStore = create<TaskState>()(
         // Add XP to user
         if (task.xpValue) {
           const { addXp } = useUserStore.getState();
-          addXp(task.xpValue);
+          await addXp(task.xpValue);
         }
       },
       

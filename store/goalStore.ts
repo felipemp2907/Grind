@@ -76,36 +76,25 @@ export const useGoalStore = create<GoalState>()(
           }
           
           console.log('Adding goal for user:', currentUser.id);
-          console.log('User object:', JSON.stringify(currentUser, null, 2));
           
-          // First, let's check if the user profile exists
-          const { data: profileData, error: profileError } = await supabase
+          // Ensure user profile exists using upsert
+          const { error: profileUpsertError } = await supabase
             .from('profiles')
-            .select('id')
-            .eq('id', currentUser.id)
-            .single();
+            .upsert({
+              id: currentUser.id,
+              name: currentUser.user_metadata?.name || currentUser.email?.split('@')[0] || 'User',
+              level: 1,
+              xp: 0,
+              streak_days: 0,
+              longest_streak: 0
+            }, {
+              onConflict: 'id',
+              ignoreDuplicates: true
+            });
             
-          if (profileError) {
-            console.error('Profile check error:', serializeError(profileError));
-            // Try to create the profile if it doesn't exist
-            const { error: createProfileError } = await supabase
-              .from('profiles')
-              .insert({
-                id: currentUser.id,
-                name: currentUser.user_metadata?.name || 'User',
-                level: 1,
-                xp: 0,
-                streak_days: 0,
-                longest_streak: 0
-              });
-              
-            if (createProfileError) {
-              console.error('Error creating profile:', serializeError(createProfileError));
-            } else {
-              console.log('Profile created successfully');
-            }
-          } else {
-            console.log('Profile exists:', profileData);
+          if (profileUpsertError) {
+            console.error('Error ensuring profile exists:', serializeError(profileUpsertError));
+            // Continue anyway, the goal insert might still work
           }
           
           const { data, error } = await supabase
