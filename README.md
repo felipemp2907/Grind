@@ -1,2 +1,2 @@
-# rork-dailydeck--ai-self-mastery-platform
-Created by Rork
+Grind
+Created by fmp
