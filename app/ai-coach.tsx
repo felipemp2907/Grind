@@ -25,7 +25,8 @@ import { getTodayDate } from '@/utils/dateUtils';
 import Button from '@/components/Button';
 
 export default function AICoachScreen() {
-  const { goal } = useGoalStore();
+  const { goals, activeGoalId } = useGoalStore();
+  const goal = goals.find(g => g.id === activeGoalId) || goals[0];
   const { tasks, getTasks } = useTaskStore();
   const { profile } = useUserStore();
   

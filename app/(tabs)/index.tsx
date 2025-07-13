@@ -34,6 +34,7 @@ import GoalCard from '@/components/GoalCard';
 import AgendaCard from '@/components/AgendaCard';
 import MotivationToast from '@/components/MotivationToast';
 import FocusModePrompt from '@/components/FocusModePrompt';
+import FocusShortcut from '@/components/FocusShortcut';
 import { generateMotivationMessage } from '@/utils/aiUtils';
 
 export default function DashboardScreen() {
@@ -245,6 +246,9 @@ export default function DashboardScreen() {
           />
         }
       >
+        {/* Focus Mode Shortcut */}
+        <FocusShortcut />
+        
         {/* Daily Agenda Card */}
         {todayAgenda && (
           <AgendaCard

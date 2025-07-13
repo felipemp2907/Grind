@@ -19,13 +19,15 @@ import {
   Zap,
   CheckCircle,
   Clock,
-  Plus
+  Plus,
+  Target
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { useGoalStore } from '@/store/goalStore';
 import { useTaskStore } from '@/store/taskStore';
 import { useUserStore } from '@/store/userStore';
-import { callAI, parseTaskCommand } from '@/utils/aiUtils';
+import { callAI, parseTaskCommand, generateTasksWithContext } from '@/utils/aiUtils';
+import GoalClarifyWizard from '@/components/GoalClarifyWizard';
 import { AIMessage } from '@/types';
 import { getTodayDate, formatDate } from '@/utils/dateUtils';
 
@@ -42,6 +44,7 @@ export default function CoachScreen() {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [processingCommand, setProcessingCommand] = useState(false);
+  const [showGoalWizard, setShowGoalWizard] = useState(false);
   
   const goal = goals.find(g => g.id === activeGoalId) || goals[0];
   
@@ -358,6 +361,14 @@ export default function CoachScreen() {
           <Brain size={16} color={Colors.dark.primary} />
           <Text style={styles.quickActionText}>Progress Check</Text>
         </TouchableOpacity>
+        
+        <TouchableOpacity 
+          style={styles.quickActionButton}
+          onPress={() => setShowGoalWizard(true)}
+        >
+          <Target size={16} color={Colors.dark.primary} />
+          <Text style={styles.quickActionText}>Smart Tasks</Text>
+        </TouchableOpacity>
       </ScrollView>
     </View>
   );
@@ -427,6 +438,67 @@ export default function CoachScreen() {
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
+      
+      <GoalClarifyWizard
+        visible={showGoalWizard}
+        onDismiss={() => setShowGoalWizard(false)}
+        onComplete={async (context) => {
+          setShowGoalWizard(false);
+          if (goal) {
+            try {
+              setLoading(true);
+              const result = await generateTasksWithContext(
+                goal.title,
+                goal.description,
+                context
+              );
+              
+              // Add generated tasks
+              result.tasks.forEach((taskData, index) => {
+                const newTask = {
+                  id: `smart-task-${Date.now()}-${index}`,
+                  title: taskData.title,
+                  description: taskData.description,
+                  date: getTodayDate(),
+                  goalId: goal.id,
+                  completed: false,
+                  xpValue: taskData.xpValue,
+                  isHabit: taskData.isHabit,
+                  streak: 0,
+                  isUserCreated: false,
+                  requiresValidation: true,
+                  proofMode: taskData.proofMode
+                };
+                addTask(newTask);
+              });
+              
+              // Show confirmation message
+              const confirmationMessage = `✅ Generated ${result.tasks.length} smart tasks based on your goal clarification!${result.rejected.length > 0 ? ` Filtered out ${result.rejected.length} duplicate/invalid tasks.` : ''}`;
+              
+              setMessages(prev => [
+                ...prev,
+                {
+                  role: 'assistant',
+                  content: confirmationMessage
+                }
+              ]);
+              
+            } catch (error) {
+              console.error('Error generating smart tasks:', error);
+              setMessages(prev => [
+                ...prev,
+                {
+                  role: 'assistant',
+                  content: "Sorry, I had trouble generating smart tasks. Please try the regular task creation instead."
+                }
+              ]);
+            } finally {
+              setLoading(false);
+            }
+          }
+        }}
+        goalTitle={goal?.title || 'Your Goal'}
+      />
     </View>
   );
 }

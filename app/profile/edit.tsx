@@ -21,6 +21,7 @@ import { useAuthStore } from '@/store/authStore';
 import Button from '@/components/Button';
 import Colors from '@/constants/colors';
 import { supabase, checkDatabaseSetup, setupDatabase, serializeError } from '@/lib/supabase';
+import Toast from 'react-native-toast-message';
 import DatabaseSetupPrompt from '@/components/DatabaseSetupPrompt';
 
 export default function EditProfileScreen() {
@@ -268,7 +269,18 @@ export default function EditProfileScreen() {
           
         if (error) {
           console.error("Error saving profile:", serializeError(error));
+          Toast.show({
+            type: 'error',
+            text1: 'Profile Save Failed',
+            text2: `Failed to save profile: ${serializeError(error)}`
+          });
           throw new Error(`Failed to save profile: ${serializeError(error)}`);
+        } else {
+          Toast.show({
+            type: 'success',
+            text1: 'Profile Saved',
+            text2: 'Your profile has been updated successfully'
+          });
         }
       }
       
@@ -278,7 +290,6 @@ export default function EditProfileScreen() {
         avatarUrl: avatarUrlToSave || undefined
       });
       
-      Alert.alert("Success", "Profile updated successfully");
       router.back();
     } catch (error) {
       const errorMessage = serializeError(error);

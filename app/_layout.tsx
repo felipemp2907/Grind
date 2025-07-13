@@ -11,6 +11,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { trpc, trpcClient } from "@/lib/trpc";
 import { supabase } from "@/lib/supabase";
 import { AuthChangeEvent, Session } from "@supabase/supabase-js";
+import Toast from 'react-native-toast-message';
 
 export const unstable_settings = {
   initialRouteName: "index",
@@ -148,7 +149,15 @@ function RootLayoutNav() {
               presentation: "modal",
             }} 
           />
+          <Stack.Screen 
+            name="focus-mode" 
+            options={{ 
+              title: "Focus Mode",
+              presentation: "modal",
+            }} 
+          />
         </Stack>
+        <Toast />
       </QueryClientProvider>
     </trpc.Provider>
   );

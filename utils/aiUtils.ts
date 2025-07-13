@@ -1,6 +1,169 @@
 import { AIMessage, GoalBreakdown } from '@/types';
 import { MotivationTone } from '@/store/userStore';
 
+// String similarity for deduplication
+function levenshteinDistance(str1: string, str2: string): number {
+  const matrix = [];
+  
+  for (let i = 0; i <= str2.length; i++) {
+    matrix[i] = [i];
+  }
+  
+  for (let j = 0; j <= str1.length; j++) {
+    matrix[0][j] = j;
+  }
+  
+  for (let i = 1; i <= str2.length; i++) {
+    for (let j = 1; j <= str1.length; j++) {
+      if (str2.charAt(i - 1) === str1.charAt(j - 1)) {
+        matrix[i][j] = matrix[i - 1][j - 1];
+      } else {
+        matrix[i][j] = Math.min(
+          matrix[i - 1][j - 1] + 1,
+          matrix[i][j - 1] + 1,
+          matrix[i - 1][j] + 1
+        );
+      }
+    }
+  }
+  
+  return matrix[str2.length][str1.length];
+}
+
+function normalizeTitle(title: string): string {
+  return title
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, '')
+    .replace(/\b(the|a|an|and|or|but|in|on|at|to|for|of|with|by)\b/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function isDuplicateTask(title1: string, title2: string): boolean {
+  const norm1 = normalizeTitle(title1);
+  const norm2 = normalizeTitle(title2);
+  
+  if (norm1 === norm2) return true;
+  
+  const distance = levenshteinDistance(norm1, norm2);
+  const maxLength = Math.max(norm1.length, norm2.length);
+  const similarity = 1 - (distance / maxLength);
+  
+  return similarity > 0.8; // 80% similarity threshold
+}
+
+function hasPhotoKeywords(title: string): boolean {
+  const keywords = [
+    'gym', 'workout', 'exercise', 'meal', 'food', 'code', 'screen',
+    'selfie', 'photo', 'picture', 'progress', 'before', 'after',
+    'weight', 'measurement', 'result', 'completion'
+  ];
+  
+  const lowerTitle = title.toLowerCase();
+  return keywords.some(keyword => lowerTitle.includes(keyword));
+}
+
+interface GoalContext {
+  outcome: string;
+  unit: string;
+  milestones: string[];
+  dailyMinutes: number;
+  proofPrefs: 'photo' | 'audio' | 'either';
+  constraints: string;
+}
+
+interface TaskCandidate {
+  title: string;
+  description: string;
+  isHabit: boolean;
+  xpValue: number;
+  loadScore: number;
+  proofMode: 'realtime' | 'flex';
+}
+
+interface FilteredTaskResult {
+  tasks: TaskCandidate[];
+  rejected: Array<{ title: string; reason: string }>;
+}
+
+function postProcessTasks(
+  tasks: TaskCandidate[], 
+  context: GoalContext
+): FilteredTaskResult {
+  const rejected: Array<{ title: string; reason: string }> = [];
+  let filteredTasks = [...tasks];
+  
+  // 1. Cap Today Tasks and load score
+  const todayTasks = filteredTasks.filter(t => !t.isHabit);
+  if (todayTasks.length > 3) {
+    const excess = todayTasks.slice(3);
+    excess.forEach(task => {
+      rejected.push({ title: task.title, reason: 'Exceeded max 3 today tasks' });
+    });
+    filteredTasks = filteredTasks.filter(t => t.isHabit || todayTasks.slice(0, 3).includes(t));
+  }
+  
+  // Check total load score
+  const totalLoad = filteredTasks.filter(t => !t.isHabit).reduce((sum, t) => sum + t.loadScore, 0);
+  if (totalLoad > 5) {
+    // Remove lowest priority tasks until load <= 5
+    const sortedTasks = filteredTasks.filter(t => !t.isHabit).sort((a, b) => b.xpValue - a.xpValue);
+    let currentLoad = 0;
+    const keptTasks = [];
+    
+    for (const task of sortedTasks) {
+      if (currentLoad + task.loadScore <= 5) {
+        keptTasks.push(task);
+        currentLoad += task.loadScore;
+      } else {
+        rejected.push({ title: task.title, reason: 'Exceeded daily load budget' });
+      }
+    }
+    
+    filteredTasks = [...filteredTasks.filter(t => t.isHabit), ...keptTasks];
+  }
+  
+  // 2. Deduplicate
+  const uniqueTasks = [];
+  for (const task of filteredTasks) {
+    const isDupe = uniqueTasks.some(existing => isDuplicateTask(task.title, existing.title));
+    if (isDupe) {
+      rejected.push({ title: task.title, reason: 'Duplicate task detected' });
+    } else {
+      uniqueTasks.push(task);
+    }
+  }
+  filteredTasks = uniqueTasks;
+  
+  // 3. Proof mode sanity
+  filteredTasks = filteredTasks.map(task => {
+    let proofMode = task.proofMode;
+    
+    if (hasPhotoKeywords(task.title) || context.proofPrefs === 'photo') {
+      proofMode = 'realtime';
+    }
+    
+    return { ...task, proofMode };
+  });
+  
+  // 4. Streak vs Today guard
+  filteredTasks.forEach(task => {
+    if (task.isHabit) {
+      const rotatingKeywords = ['day', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+      const hasRotatingKeyword = rotatingKeywords.some(keyword => 
+        task.title.toLowerCase().includes(keyword)
+      );
+      
+      if (hasRotatingKeyword) {
+        rejected.push({ title: task.title, reason: 'Rotating phrase not suitable for streak habit' });
+        task.isHabit = false; // Convert to regular task
+      }
+    }
+  });
+  
+  return { tasks: filteredTasks, rejected };
+}
+
 // Function to clean AI response to ensure valid JSON
 const cleanJsonResponse = (response: string): string => {
   // Remove markdown code block syntax if present
@@ -447,6 +610,88 @@ Keep the message concise (1-2 sentences) but impactful. The goal is to motivate 
     return fallbacks[preferredTone];
   }
 };
+
+export async function generateTasksWithContext(
+  goalTitle: string,
+  goalDescription: string,
+  context: GoalContext
+): Promise<{ tasks: TaskCandidate[]; rejected: Array<{ title: string; reason: string }> }> {
+  try {
+    const systemPrompt = `You are Alvo, an AI task generator for the Grind app. Generate realistic, actionable tasks based on the goal clarification context.
+
+Goal Context:
+- Outcome: ${context.outcome} ${context.unit}
+- Daily Minutes Available: ${context.dailyMinutes}
+- Preferred Proof: ${context.proofPrefs}
+- Milestones: ${context.milestones.join(', ')}
+- Constraints: ${context.constraints}
+
+Generate 3-5 Today Tasks and 1-2 Streak Habits. Each task should have:
+- title: Clear, actionable task name
+- description: Brief explanation
+- isHabit: true for daily streaks, false for one-time tasks
+- xpValue: 20-50 XP based on difficulty
+- loadScore: 1-3 based on time/effort (total should not exceed 5 for today tasks)
+- proofMode: "realtime" for photo/immediate proof, "flex" for flexible proof
+
+Return only a JSON array of tasks. No markdown formatting.`;
+
+    const userPrompt = `Generate tasks for goal: "${goalTitle}" - ${goalDescription}`;
+
+    const response = await callAI([
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: userPrompt }
+    ]);
+
+    // Parse AI response
+    let rawTasks: TaskCandidate[] = [];
+    try {
+      const cleanedResponse = response
+        .replace(/```json\s*/g, '')
+        .replace(/```\s*$/g, '')
+        .replace(/```/g, '')
+        .trim();
+        
+      let jsonToParse = cleanedResponse;
+      if (!cleanedResponse.startsWith('[')) {
+        const match = cleanedResponse.match(/\[[\s\S]*\]/);
+        if (match) {
+          jsonToParse = match[0];
+        }
+      }
+      
+      rawTasks = JSON.parse(jsonToParse);
+    } catch (error) {
+      console.error('Error parsing AI response:', error);
+      // Fallback tasks
+      rawTasks = [
+        {
+          title: `Work on ${goalTitle} - ${context.dailyMinutes} min session`,
+          description: `Focused work session toward: ${goalDescription.substring(0, 50)}...`,
+          isHabit: false,
+          xpValue: 40,
+          loadScore: 2,
+          proofMode: 'flex'
+        },
+        {
+          title: `Daily progress check for ${goalTitle}`,
+          description: 'Review and track your daily progress',
+          isHabit: true,
+          xpValue: 20,
+          loadScore: 1,
+          proofMode: context.proofPrefs === 'photo' ? 'realtime' : 'flex'
+        }
+      ];
+    }
+
+    // Apply post-processing
+    return postProcessTasks(rawTasks, context);
+    
+  } catch (error) {
+    console.error('Error generating tasks with context:', error);
+    throw error;
+  }
+}
 
 // Enhanced image validation with detailed feedback
 export const validateTaskImageWithFeedback = async (
