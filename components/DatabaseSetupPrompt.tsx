@@ -276,7 +276,15 @@ CREATE POLICY "Users can update their own profile pictures"
 CREATE POLICY "Users can delete their own profile pictures"
   ON storage.objects
   FOR DELETE
-  USING (bucket_id = 'profiles' AND auth.uid()::text = (storage.foldername(name))[1]);`;
+  USING (bucket_id = 'profiles' AND auth.uid()::text = (storage.foldername(name))[1]);
+
+-- 22. Create exec_sql function for programmatic database setup (optional)
+CREATE OR REPLACE FUNCTION public.exec_sql(sql text)
+RETURNS void AS $
+BEGIN
+  EXECUTE sql;
+END;
+$ LANGUAGE plpgsql SECURITY DEFINER;`;
 
 export default function DatabaseSetupPrompt({ onSetupComplete }: DatabaseSetupPromptProps) {
   const [isChecking, setIsChecking] = useState(false);
