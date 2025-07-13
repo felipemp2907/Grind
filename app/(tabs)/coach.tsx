@@ -288,7 +288,10 @@ export default function CoachScreen() {
             isUser ? styles.userMessageBubble : styles.aiMessageBubble
           ]}
         >
-          <Text style={styles.messageText}>{message.content}</Text>
+          <Text style={[
+            styles.messageText,
+            isUser && { color: '#000000' }
+          ]}>{message.content}</Text>
           
           {message.commandResult && message.commandResult.action !== 'none' && (
             <View style={styles.commandResultContainer}>
@@ -434,7 +437,7 @@ export default function CoachScreen() {
             onPress={handleSend}
             disabled={!input.trim() || loading}
           >
-            <Send size={20} color={Colors.dark.text} />
+            <Send size={20} color="#000000" />
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
@@ -614,6 +617,12 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: Colors.dark.text,
     lineHeight: 20,
+  },
+  userMessageBubble: {
+    backgroundColor: Colors.dark.primary,
+  },
+  aiMessageBubble: {
+    backgroundColor: Colors.dark.card,
   },
   commandResultContainer: {
     marginTop: 8,

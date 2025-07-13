@@ -145,7 +145,7 @@ export default function CreateGoalScreen() {
           
           Alert.alert(
             "Goal Created! 🎯",
-            `Your goal "${title}" has been created and Alvo has generated ${breakdown.todayTasks.length} tasks and ${breakdown.streakHabits.length} daily habits to get you started!`,
+            `Your goal "${title}" has been created and Hustle has generated ${breakdown.todayTasks.length} tasks and ${breakdown.streakHabits.length} daily habits to get you started!`,
             [{ text: "Let's Go!" }]
           );
           
@@ -153,7 +153,7 @@ export default function CreateGoalScreen() {
           console.error('Error generating breakdown:', error);
           Alert.alert(
             "Goal Created",
-            "Your goal has been created! You can ask Alvo to generate tasks for you in the coach tab.",
+            "Your goal has been created! You can ask Hustle to generate tasks for you in the coach tab.",
             [{ text: "OK" }]
           );
         } finally {
@@ -297,7 +297,7 @@ export default function CreateGoalScreen() {
             <View style={styles.aiInfoContainer}>
               <Zap size={20} color={Colors.dark.secondary} />
               <Text style={styles.aiInfoText}>
-                After creating your goal, Alvo will generate personalized daily tasks, streak habits, and milestones to help you achieve it!
+                After creating your goal, Hustle will generate personalized daily tasks, streak habits, and milestones to help you achieve it!
               </Text>
             </View>
             

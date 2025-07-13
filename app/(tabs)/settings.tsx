@@ -312,7 +312,7 @@ export default function SettingsScreen() {
         {/* App Info */}
         <View style={styles.section}>
           <Text style={styles.appInfo}>
-            Grind v2.0 - Enhanced with Alvo Coach
+            Grind v2.0 - Enhanced with Hustle Coach
           </Text>
           <Text style={styles.appDescription}>
             Your intelligent companion for achieving goals through daily accountability and smart task management.

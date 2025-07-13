@@ -322,14 +322,14 @@ export default function CalendarScreen() {
           style={styles.addEventButton}
           onPress={handleAddTask}
         >
-          <PlusIcon size={20} color={Colors.dark.text} />
+          <PlusIcon size={20} color="#000000" />
         </TouchableOpacity>
       </View>
       
       {isGenerating ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={Colors.dark.primary} />
-          <Text style={styles.loadingText}>Alvo is generating tasks...</Text>
+          <Text style={styles.loadingText}>Hustle is generating tasks...</Text>
         </View>
       ) : selectedTasks.length === 0 && selectedDateDeadlines.length === 0 ? (
         <View style={styles.emptyState}>

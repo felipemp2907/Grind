@@ -63,7 +63,7 @@ export default function CoachScreen() {
     try {
       const systemMessage: AIMessage = {
         role: 'system',
-        content: `You are Alvo, an advanced AI coach for the Grind app. Your role is to help users achieve their goals through daily accountability, guidance, and intelligent task management.
+        content: `You are Hustle, an advanced AI coach for the Grind app. Your role is to help users achieve their goals through daily accountability, guidance, and intelligent task management.
         
         The user's goal is: ${goal?.title}
         Goal description: ${goal?.description}
@@ -90,7 +90,7 @@ export default function CoachScreen() {
       
       const userMessage: AIMessage = {
         role: 'user',
-        content: 'Hello Alvo, I just opened the coach tab. Give me a brief greeting and overview of how you can help me today.'
+        content: 'Hello Hustle, I just opened the coach tab. Give me a brief greeting and overview of how you can help me today.'
       };
       
       const response = await callAI([systemMessage, userMessage]);
@@ -106,7 +106,7 @@ export default function CoachScreen() {
       setMessages([
         {
           role: 'assistant',
-          content: "Hello! I'm Alvo, your advanced personal coach. I can help you create and manage tasks, provide personalized guidance, and keep you on track toward your goals. How can I help you make progress today?"
+          content: "Hello! I'm Hustle, your relentless personal coach. I can help you create and manage tasks, provide personalized guidance, and keep you on track toward your goals. How can I help you make progress today?"
         }
       ]);
     } finally {
@@ -195,7 +195,7 @@ export default function CoachScreen() {
         const aiMessages: AIMessage[] = [
           {
             role: 'system',
-            content: `You are Alvo, an advanced AI coach for the Grind app. Your role is to help users achieve their goals through daily accountability, guidance, and intelligent task management.
+            content: `You are Hustle, an advanced AI coach for the Grind app. Your role is to help users achieve their goals through daily accountability, guidance, and intelligent task management.
             
             The user's goal is: ${goal?.title}
             Goal description: ${goal?.description}
@@ -332,7 +332,7 @@ export default function CoachScreen() {
               <View style={styles.loadingContainer}>
                 <RefreshCw size={20} color={Colors.dark.primary} />
                 <Text style={styles.loadingText}>
-                  {processingCommand ? 'Processing command...' : 'Alvo is thinking...'}
+                  {processingCommand ? 'Processing command...' : 'Hustle is thinking...'}
                 </Text>
               </View>
             )}
@@ -341,7 +341,7 @@ export default function CoachScreen() {
           <View style={styles.inputContainer}>
             <TextInput
               style={styles.input}
-              placeholder="Ask Alvo for advice or say 'Schedule workout tomorrow at 8 AM'..."
+              placeholder="Ask Hustle for advice or say 'Schedule workout tomorrow at 8 AM'..."
               placeholderTextColor={Colors.dark.subtext}
               value={input}
               onChangeText={setInput}

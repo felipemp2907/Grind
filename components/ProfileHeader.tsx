@@ -69,7 +69,7 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   levelText: {
-    color: Colors.dark.text,
+    color: '#000000',
     fontWeight: 'bold',
     fontSize: 12,
   },
@@ -90,7 +90,7 @@ const styles = StyleSheet.create({
   statValue: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: Colors.dark.text,
+    color: '#000000',
   },
   statLabel: {
     fontSize: 12,
@@ -111,6 +111,6 @@ const styles = StyleSheet.create({
   progressValue: {
     fontSize: 12,
     fontWeight: 'bold',
-    color: Colors.dark.primary,
+    color: '#000000',
   },
 });

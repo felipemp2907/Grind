@@ -261,7 +261,7 @@ export default function GoalClarifyWizard({
           
           {currentQuestion.id === 'dailyMinutes' && (
             <Text style={styles.hint}>
-              💡 Alvo will use this to create realistic daily tasks that fit your schedule
+              💡 Hustle will use this to create realistic daily tasks that fit your schedule
             </Text>
           )}
         </ScrollView>

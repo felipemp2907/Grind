@@ -140,7 +140,7 @@ export default function OnboardingScreen() {
             <View style={styles.aiInfoContainer}>
               <Brain size={20} color={Colors.dark.secondary} />
               <Text style={styles.aiInfoText}>
-                Alvo will use your goal details to generate personalized daily tasks and habits to help you succeed.
+                Hustle will use your goal details to generate personalized daily tasks and habits to help you succeed.
               </Text>
             </View>
           </View>

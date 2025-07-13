@@ -229,7 +229,7 @@ export const generateGoalBreakdown = async (
   const messages: AIMessage[] = [
     {
       role: 'system',
-      content: `You are Alvo, the AI coach for Grind. Your job is to break down ambitious goals into actionable daily tasks and streak habits.
+      content: `You are Hustle, the AI coach for Grind. Your job is to break down ambitious goals into actionable daily tasks and streak habits.
 
 Goal Analysis:
 - Title: ${goalTitle}
@@ -385,7 +385,7 @@ export const parseTaskCommand = async (userInput: string, currentDate: string): 
   const messages: AIMessage[] = [
     {
       role: 'system',
-      content: `You are a task command parser for Alvo. Analyze user input and determine if they want to create, update, or reschedule a task.
+      content: `You are a task command parser for Hustle. Analyze user input and determine if they want to create, update, or reschedule a task.
 
 Current date: ${currentDate}
 
@@ -856,7 +856,7 @@ export const generateDailyTasksForGoal = async (
   const messages: AIMessage[] = [
     {
       role: 'system',
-      content: `You are Alvo, an AI assistant for the Grind app that helps users achieve their long-term goals. 
+      content: `You are Hustle, an AI assistant for the Grind app that helps users achieve their long-term goals. 
       Your job is to generate 4-6 specific, actionable daily tasks that will help the user make progress toward their goal.
       
       Create two types of tasks:
