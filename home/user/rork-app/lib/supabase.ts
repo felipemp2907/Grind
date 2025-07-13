@@ -86,7 +86,7 @@ export const checkDatabaseSetup = async (): Promise<{ isSetup: boolean; error?: 
     if (testError.code === '42P01' || testError.message.includes('relation') || testError.message.includes('does not exist')) {
       return { 
         isSetup: false, 
-        error: 'Database tables not found. Please run the database setup script in your Supabase SQL editor to create the required tables.' 
+        error: 'Database tables not found. Please run the database-setup.sql script in your Supabase SQL editor to create the required tables and policies.' 
       };
     }
     
@@ -123,13 +123,13 @@ export const setupDatabase = async (): Promise<{ success: boolean; error?: strin
     // Database is not set up, return error message directing to manual setup
     return { 
       success: false, 
-      error: 'Database setup required. Please run the database setup script in your Supabase SQL editor to create the required tables and policies.' 
+      error: 'Database setup required. Please copy and run the complete database-setup.sql script in your Supabase SQL editor to create all required tables and policies.' 
     };
   } catch (error) {
     console.error('Error checking database setup:', error);
     return { 
       success: false, 
-      error: 'Database setup required. Please run the database setup script in your Supabase SQL editor.' 
+      error: 'Database setup required. Please copy and run the complete database-setup.sql script in your Supabase SQL editor.' 
     };
   }
 };

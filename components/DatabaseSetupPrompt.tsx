@@ -369,6 +369,11 @@ export default function DatabaseSetupPrompt({ onSetupComplete }: DatabaseSetupPr
           <Text style={styles.subtitle}>
             Welcome to Grind! To get started, you need to set up the database tables in your Supabase project. This is a one-time setup that takes just a few minutes.
           </Text>
+          <View style={styles.warningBox}>
+            <Text style={styles.warningText}>
+              ⚠️ Database tables not found. Please follow the steps below to set up your database.
+            </Text>
+          </View>
         </View>
 
         <View style={styles.steps}>
@@ -422,7 +427,15 @@ export default function DatabaseSetupPrompt({ onSetupComplete }: DatabaseSetupPr
             • Goals and milestones tracking{"\n"}
             • Tasks and habit management{"\n"}
             • Journal entries storage{"\n"}
-            • Secure data access policies
+            • Secure data access policies{"\n"}
+            • Storage for profile pictures
+          </Text>
+        </View>
+        
+        <View style={styles.helpBox}>
+          <Text style={styles.helpTitle}>Need Help?</Text>
+          <Text style={styles.helpText}>
+            If you're having trouble, check the DATABASE_SETUP.md file in your project for detailed instructions and troubleshooting tips.
           </Text>
         </View>
 
@@ -594,6 +607,39 @@ const styles = StyleSheet.create({
   infoText: {
     fontSize: 14,
     color: '#4b5563',
+    lineHeight: 20,
+  },
+  warningBox: {
+    backgroundColor: '#fef3c7',
+    borderRadius: 8,
+    padding: 12,
+    marginTop: 16,
+    borderLeftWidth: 4,
+    borderLeftColor: '#f59e0b',
+  },
+  warningText: {
+    fontSize: 14,
+    color: '#92400e',
+    fontWeight: '500',
+    textAlign: 'center',
+  },
+  helpBox: {
+    backgroundColor: '#f0f9ff',
+    borderRadius: 8,
+    padding: 16,
+    marginBottom: 24,
+    borderLeftWidth: 4,
+    borderLeftColor: '#0ea5e9',
+  },
+  helpTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#0c4a6e',
+    marginBottom: 8,
+  },
+  helpText: {
+    fontSize: 14,
+    color: '#0369a1',
     lineHeight: 20,
   },
 });

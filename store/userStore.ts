@@ -94,7 +94,12 @@ export const useUserStore = create<UserState>()(
           const dbResult = await checkDatabaseSetup();
           
           if (!dbResult.isSetup) {
-            set({ needsDatabaseSetup: true, isLoading: false });
+            console.log('Database setup required:', dbResult.error);
+            set({ 
+              needsDatabaseSetup: true, 
+              isLoading: false,
+              error: dbResult.error || 'Database setup required'
+            });
             return;
           }
           
@@ -168,11 +173,21 @@ export const useUserStore = create<UserState>()(
         } catch (error: any) {
           const errorMessage = serializeError(error);
           console.error("Error fetching profile:", errorMessage);
-          set({ 
-            error: errorMessage,
-            isLoading: false,
-            needsDatabaseSetup: false
-          });
+          
+          // Check if this is a database setup issue
+          if (errorMessage.includes('relation') || errorMessage.includes('does not exist') || errorMessage.includes('table')) {
+            set({ 
+              error: 'Database setup required. Please run the database setup script.',
+              isLoading: false,
+              needsDatabaseSetup: true
+            });
+          } else {
+            set({ 
+              error: errorMessage,
+              isLoading: false,
+              needsDatabaseSetup: false
+            });
+          }
         }
       },
       
