@@ -100,17 +100,17 @@ export default function ChallengesScreen() {
           </Text>
           
           <ChallengeCard
-            challengeCode=\"75_hard\"
+            challengeCode="75_hard"
             onStart={() => handleStartChallenge('75_hard')}
           />
           
           <ChallengeCard
-            challengeCode=\"30_day\"
+            challengeCode="30_day"
             onStart={() => handleStartChallenge('30_day')}
           />
           
           <ChallengeCard
-            challengeCode=\"goggins_4x4x48\"
+            challengeCode="goggins_4x4x48"
             onStart={() => handleStartChallenge('goggins_4x4x48')}
           />
         </View>
