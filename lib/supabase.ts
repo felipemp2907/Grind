@@ -181,6 +181,39 @@ export const createUserProfile = async (userId: string, userData: { name?: strin
   }
 };
 
+// Helper function to check if user exists in auth.users table
+export const checkUserExists = async (userId: string): Promise<{ exists: boolean; error?: string }> => {
+  try {
+    // Use RPC to check if user exists in auth.users
+    const { data, error } = await supabase.rpc('check_user_exists', { user_id: userId });
+    
+    if (error) {
+      console.error('Error checking user existence:', error);
+      return { exists: false, error: error.message };
+    }
+    
+    return { exists: data === true };
+  } catch (error) {
+    console.error('Error in checkUserExists:', error);
+    return { exists: false, error: serializeError(error) };
+  }
+};
+
+// Helper function to get current authenticated user
+export const getCurrentUser = async (): Promise<{ user: any | null; error?: string }> => {
+  try {
+    const { data: { user }, error } = await supabase.auth.getUser();
+    
+    if (error) {
+      return { user: null, error: error.message };
+    }
+    
+    return { user };
+  } catch (error) {
+    return { user: null, error: serializeError(error) };
+  }
+};
+
 // Helper function to serialize errors properly
 export const serializeError = (error: any): string => {
   if (typeof error === 'string') {

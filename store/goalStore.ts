@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Goal, Milestone, ProgressUpdate, MilestoneAlert, GoalShareCard } from '@/types';
-import { supabase, setupDatabase, serializeError } from '@/lib/supabase';
+import { supabase, setupDatabase, serializeError, getCurrentUser } from '@/lib/supabase';
 import { useAuthStore } from '@/store/authStore';
 
 interface GoalState {
@@ -62,8 +62,12 @@ export const useGoalStore = create<GoalState>()(
       addGoal: async (goal) => {
         // Save to Supabase first to get the generated UUID
         try {
-          const { user } = useAuthStore.getState();
-          if (!user?.id) return;
+          // Get current user directly from Supabase to ensure it's valid
+          const { user: currentUser, error: userError } = await getCurrentUser();
+          if (userError || !currentUser) {
+            console.error('User not authenticated:', userError);
+            return;
+          }
           
           const dbResult = await setupDatabase();
           if (!dbResult.success) {
@@ -71,10 +75,43 @@ export const useGoalStore = create<GoalState>()(
             return;
           }
           
+          console.log('Adding goal for user:', currentUser.id);
+          console.log('User object:', JSON.stringify(currentUser, null, 2));
+          
+          // First, let's check if the user profile exists
+          const { data: profileData, error: profileError } = await supabase
+            .from('profiles')
+            .select('id')
+            .eq('id', currentUser.id)
+            .single();
+            
+          if (profileError) {
+            console.error('Profile check error:', serializeError(profileError));
+            // Try to create the profile if it doesn't exist
+            const { error: createProfileError } = await supabase
+              .from('profiles')
+              .insert({
+                id: currentUser.id,
+                name: currentUser.user_metadata?.name || 'User',
+                level: 1,
+                xp: 0,
+                streak_days: 0,
+                longest_streak: 0
+              });
+              
+            if (createProfileError) {
+              console.error('Error creating profile:', serializeError(createProfileError));
+            } else {
+              console.log('Profile created successfully');
+            }
+          } else {
+            console.log('Profile exists:', profileData);
+          }
+          
           const { data, error } = await supabase
             .from('goals')
             .insert({
-              user_id: user.id,
+              user_id: currentUser.id,
               title: goal.title,
               description: goal.description,
               deadline: goal.deadline ? new Date(goal.deadline).toISOString() : null
@@ -84,6 +121,7 @@ export const useGoalStore = create<GoalState>()(
             
           if (error) {
             console.error('Error saving goal to Supabase:', serializeError(error));
+            console.error('Full error object:', JSON.stringify(error, null, 2));
             return;
           }
           
@@ -129,8 +167,8 @@ export const useGoalStore = create<GoalState>()(
         
         // Update in Supabase
         try {
-          const { user } = useAuthStore.getState();
-          if (!user?.id) return;
+          const { user: currentUser, error: userError } = await getCurrentUser();
+          if (userError || !currentUser) return;
           
           const dbResult = await setupDatabase();
           if (!dbResult.success) {
@@ -147,7 +185,7 @@ export const useGoalStore = create<GoalState>()(
             .from('goals')
             .update(supabaseUpdates)
             .eq('id', id)
-            .eq('user_id', user.id);
+            .eq('user_id', currentUser.id);
             
           if (error) {
             console.error('Error updating goal in Supabase:', serializeError(error));
@@ -178,8 +216,8 @@ export const useGoalStore = create<GoalState>()(
         
         // Delete from Supabase
         try {
-          const { user } = useAuthStore.getState();
-          if (!user?.id) return;
+          const { user: currentUser, error: userError } = await getCurrentUser();
+          if (userError || !currentUser) return;
           
           const dbResult = await setupDatabase();
           if (!dbResult.success) {
@@ -191,7 +229,7 @@ export const useGoalStore = create<GoalState>()(
             .from('goals')
             .delete()
             .eq('id', id)
-            .eq('user_id', user.id);
+            .eq('user_id', currentUser.id);
             
           if (error) {
             console.error('Error deleting goal from Supabase:', serializeError(error));
@@ -468,8 +506,8 @@ export const useGoalStore = create<GoalState>()(
       
       fetchGoals: async () => {
         try {
-          const { user } = useAuthStore.getState();
-          if (!user?.id) return;
+          const { user: currentUser, error: userError } = await getCurrentUser();
+          if (userError || !currentUser) return;
           
           const dbResult = await setupDatabase();
           if (!dbResult.success) {
@@ -480,7 +518,7 @@ export const useGoalStore = create<GoalState>()(
           const { data, error } = await supabase
             .from('goals')
             .select('*')
-            .eq('user_id', user.id)
+            .eq('user_id', currentUser.id)
             .order('created_at', { ascending: false });
             
           if (error) {

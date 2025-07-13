@@ -278,7 +278,15 @@ CREATE POLICY "Users can delete their own profile pictures"
   FOR DELETE
   USING (bucket_id = 'profiles' AND auth.uid()::text = (storage.foldername(name))[1]);
 
--- 22. Create exec_sql function for programmatic database setup (optional)
+-- 22. Create function to check if user exists in auth.users
+CREATE OR REPLACE FUNCTION public.check_user_exists(user_id UUID)
+RETURNS BOOLEAN AS $
+BEGIN
+  RETURN EXISTS (SELECT 1 FROM auth.users WHERE id = user_id);
+END;
+$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- 23. Create exec_sql function for programmatic database setup (optional)
 CREATE OR REPLACE FUNCTION public.exec_sql(sql text)
 RETURNS void AS $
 BEGIN
@@ -286,7 +294,7 @@ BEGIN
 END;
 $ LANGUAGE plpgsql SECURITY DEFINER;
 
--- 23. Verify setup by selecting from profiles table
+-- 24. Verify setup by selecting from profiles table
 -- This should return an empty result set if everything is working
 SELECT 'Database setup completed successfully!' as status;
 SELECT COUNT(*) as profile_count FROM public.profiles;
