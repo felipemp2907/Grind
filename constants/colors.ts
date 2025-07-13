@@ -1,7 +1,7 @@
 // Color palette for Grind
 export default {
   dark: {
-    background: '#0E0E12',
+    background: '#0D0D0D',
     card: '#18171D',
     text: '#FFFFFF',
     subtext: '#A1A0AE',

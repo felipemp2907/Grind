@@ -5,7 +5,7 @@ import { UserProfile } from '@/types';
 import { supabase, checkDatabaseSetup, setupDatabase, serializeError } from '@/lib/supabase';
 import { useAuthStore } from './authStore';
 
-export type MotivationTone = 'cheerful' | 'data-driven' | 'tough-love';
+export type MotivationTone = 'data-driven' | 'tough-love';
 
 interface CoachSettings {
   preferredTone: MotivationTone;
@@ -31,6 +31,7 @@ interface UserState {
   error: string | null;
   needsDatabaseSetup: boolean;
   addXp: (amount: number) => Promise<void>;
+  addXP: (amount: number) => Promise<void>; // Alias for compatibility
   updateStreak: (increment: boolean) => Promise<void>;
   resetStreak: () => Promise<void>;
   updateProfile: (updates: Partial<UserProfile>) => Promise<void>;
@@ -49,7 +50,7 @@ interface UserState {
 const XP_LEVELS = [0, 100, 250, 450, 700, 1000, 1350, 1750, 2200, 2700, 3250];
 
 const defaultCoachSettings: CoachSettings = {
-  preferredTone: 'cheerful',
+  preferredTone: 'tough-love',
   agendaTime: '07:00',
   recapTime: '22:00',
   focusModeEnabled: true,
@@ -489,6 +490,11 @@ export const useUserStore = create<UserState>()(
         } catch (error) {
           console.error('Error checking database setup:', error);
         }
+      },
+      
+      // Alias for compatibility
+      addXP: async (amount: number) => {
+        return get().addXp(amount);
       }
     }),
     {

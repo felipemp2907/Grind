@@ -290,7 +290,7 @@ export default function TasksScreen() {
       {isGenerating && selectedTasks.length === 0 ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={Colors.dark.primary} />
-          <Text style={styles.loadingText}>Alvo is generating high-quality tasks...</Text>
+          <Text style={styles.loadingText}>Hustle is generating high-quality tasks...</Text>
         </View>
       ) : selectedTasks.length > 0 ? (
         <FlatList

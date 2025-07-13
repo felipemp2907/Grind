@@ -129,10 +129,33 @@ export interface AgendaTask {
 export interface MotivationMessage {
   id: string;
   message: string;
-  tone: 'cheerful' | 'data-driven' | 'tough-love';
+  tone: 'data-driven' | 'tough-love';
   escalationLevel: number;
   createdAt: string;
   dismissed: boolean;
+}
+
+export interface Challenge {
+  id: string;
+  code: '75_hard' | '30_day' | 'goggins_4x4x48';
+  title: string;
+  description: string;
+  dayIndex: number;
+  totalDays: number;
+  completed: boolean;
+  startedAt: string;
+  completedAt?: string;
+  rules: string[];
+  dailyTasks: string[];
+}
+
+export interface ChallengeProgress {
+  challengeId: string;
+  dayIndex: number;
+  completed: boolean;
+  completedAt?: string;
+  proofSubmitted?: boolean;
+  notes?: string;
 }
 
 export interface FocusSession {

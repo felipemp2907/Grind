@@ -482,7 +482,7 @@ export const generateDailyAgenda = async (
   motivation: string;
 }> => {
   const toneInstructions = {
-    'cheerful': 'Be enthusiastic, encouraging, and use positive language with emojis',
+
     'data-driven': 'Focus on metrics, progress tracking, and logical reasoning',
     'tough-love': 'Be direct, challenging, and push for accountability'
   };
@@ -490,7 +490,7 @@ export const generateDailyAgenda = async (
   const messages: AIMessage[] = [
     {
       role: 'system',
-      content: `You are Alvo, creating a focused daily agenda. Generate exactly 3 high-impact tasks for today that will meaningfully advance the user's goal.
+      content: `You are Hustle, creating a focused daily agenda. Generate exactly 3 high-impact tasks for today that will meaningfully advance the user's goal.
 
 Goal: ${goalTitle}
 Description: ${goalDescription}
@@ -559,9 +559,8 @@ export const generateMotivationMessage = async (
   const escalationLevel = Math.min(Math.floor((missedTaskCount + missedStreakCount) / 2), 3);
   
   const tonePrompts = {
-    'cheerful': 'Be encouraging, supportive, and optimistic. Use positive language and emojis.',
     'data-driven': 'Focus on statistics, progress metrics, and logical consequences. Be analytical.',
-    'tough-love': 'Be direct, challenging, and hold them accountable. Push for action.'
+    'tough-love': 'Be direct, challenging, and hold them accountable. Push for action like David Goggins.'
   };
 
   const escalationPrompts: { [key: number]: string } = {
@@ -574,7 +573,7 @@ export const generateMotivationMessage = async (
   const messages: AIMessage[] = [
     {
       role: 'system',
-      content: `You are Alvo, sending a motivation message to help the user get back on track.
+      content: `You are Hustle, sending a motivation message to help the user get back on track.
 
 Context:
 - Goal: ${goalTitle}
@@ -602,7 +601,6 @@ Keep the message concise (1-2 sentences) but impactful. The goal is to motivate 
     
     // Fallback messages based on tone
     const fallbacks = {
-      'cheerful': "Hey there! 🌟 Every champion has setbacks - what matters is getting back up! Your goal is waiting for you! 💪",
       'data-driven': `You're ${streakDays} days into your journey. Consistency compounds - one task today can restart your momentum.`,
       'tough-love': "Excuses don't build dreams. Your goal won't achieve itself. Time to step up and take action."
     };
@@ -617,7 +615,7 @@ export async function generateTasksWithContext(
   context: GoalContext
 ): Promise<{ tasks: TaskCandidate[]; rejected: Array<{ title: string; reason: string }> }> {
   try {
-    const systemPrompt = `You are Alvo, an AI task generator for the Grind app. Generate realistic, actionable tasks based on the goal clarification context.
+    const systemPrompt = `You are Hustle, an AI task generator for the Grind app. Generate realistic, actionable tasks based on the goal clarification context.
 
 Goal Context:
 - Outcome: ${context.outcome} ${context.unit}
@@ -707,7 +705,7 @@ export const validateTaskImageWithFeedback = async (
   const messages: AIMessage[] = [
     {
       role: 'system',
-      content: `You are Alvo's vision validator. Analyze the image to determine if it shows valid proof of task completion.
+      content: `You are Hustle's vision validator. Analyze the image to determine if it shows valid proof of task completion.
 
 Provide detailed, constructive feedback with confidence levels:
 - HIGH: Clear, obvious proof of task completion
@@ -782,7 +780,7 @@ export const generateNightlyRecap = async (
   tomorrowFocus: string;
 }> => {
   const toneInstructions = {
-    'cheerful': 'Be celebratory for wins and encouraging about tomorrow',
+
     'data-driven': 'Focus on metrics, progress analysis, and optimization',
     'tough-love': 'Be honest about performance and push for better tomorrow'
   };
@@ -790,7 +788,7 @@ export const generateNightlyRecap = async (
   const messages: AIMessage[] = [
     {
       role: 'system',
-      content: `You are Alvo providing a nightly recap. Analyze the day's performance and provide actionable insights.
+      content: `You are Hustle providing a nightly recap. Analyze the day's performance and provide actionable insights.
 
 Goal: ${goalTitle}
 Completed: ${completedTasks.length} tasks (${completedTasks.reduce((sum, t) => sum + t.xpValue, 0)} XP)
@@ -915,7 +913,7 @@ export const generateCoachingFeedback = async (
   const messages: AIMessage[] = [
     {
       role: 'system',
-      content: `You are Alvo, an AI coach for the Grind app. Provide motivational, insightful coaching to help the user stay on track with their goals.
+      content: `You are Hustle, an AI coach for the Grind app. Provide motivational, insightful coaching to help the user stay on track with their goals.
       Keep your response concise (2-3 paragraphs max), encouraging, and action-oriented.
       
       DO NOT format your response as JSON or use any markdown formatting.`
@@ -963,7 +961,7 @@ export const generateRescheduleSuggestions = async (
   const messages: AIMessage[] = [
     {
       role: 'system',
-      content: `You are Alvo's smart scheduler. Analyze incomplete tasks and suggest optimal rescheduling.
+      content: `You are Hustle's smart scheduler. Analyze incomplete tasks and suggest optimal rescheduling.
 
 Current date: ${currentDate}
 Goal context: ${goalTitle}

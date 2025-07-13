@@ -20,7 +20,9 @@ import {
   Flame,
   BookOpen,
   Calendar,
-  Focus
+  Focus,
+  Trophy,
+  Zap
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { useGoalStore } from '@/store/goalStore';
@@ -353,7 +355,7 @@ export default function DashboardScreen() {
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color={Colors.dark.primary} />
             <Text style={styles.loadingText}>
-              Alvo is generating high-quality tasks for your goals...
+              Hustle is generating high-quality tasks for your goals...
             </Text>
           </View>
         ) : todayTasks.length > 0 ? (
@@ -396,9 +398,27 @@ export default function DashboardScreen() {
           <View style={styles.coachContent}>
             <Brain size={24} color={Colors.dark.secondary} />
             <View style={styles.coachTextContainer}>
-              <Text style={styles.coachTitle}>Ask Alvo Coach</Text>
+              <Text style={styles.coachTitle}>Ask Hustle Coach</Text>
               <Text style={styles.coachDescription}>
                 Get personalized advice, create tasks, or schedule your day
+              </Text>
+            </View>
+          </View>
+          <ChevronRight size={20} color={Colors.dark.subtext} />
+        </TouchableOpacity>
+        
+        {/* Challenge Card */}
+        <TouchableOpacity 
+          style={styles.challengeCard}
+          onPress={() => router.push('/challenges')}
+          activeOpacity={0.8}
+        >
+          <View style={styles.challengeContent}>
+            <Trophy size={24} color={Colors.dark.warning} />
+            <View style={styles.challengeTextContainer}>
+              <Text style={styles.challengeTitle}>Mental Toughness Challenges</Text>
+              <Text style={styles.challengeDescription}>
+                75 Hard, 30-Day Discipline, Goggins 4x4x48
               </Text>
             </View>
           </View>
@@ -676,5 +696,36 @@ const styles = StyleSheet.create({
   actionButton: {
     flex: 1,
     marginHorizontal: 4,
+  },
+  challengeCard: {
+    backgroundColor: Colors.dark.card,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderLeftWidth: 4,
+    borderLeftColor: Colors.dark.warning,
+    ...Colors.common.shadow,
+  },
+  challengeContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  challengeTextContainer: {
+    marginLeft: 12,
+    flex: 1,
+  },
+  challengeTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: Colors.dark.text,
+    marginBottom: 4,
+  },
+  challengeDescription: {
+    fontSize: 14,
+    color: Colors.dark.subtext,
   },
 });

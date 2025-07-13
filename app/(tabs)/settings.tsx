@@ -80,8 +80,6 @@ export default function SettingsScreen() {
   
   const getToneIcon = (tone: MotivationTone) => {
     switch (tone) {
-      case 'cheerful':
-        return <Heart size={20} color={Colors.dark.success} />;
       case 'data-driven':
         return <TrendingUp size={20} color={Colors.dark.primary} />;
       case 'tough-love':
@@ -91,8 +89,6 @@ export default function SettingsScreen() {
   
   const getToneDescription = (tone: MotivationTone) => {
     switch (tone) {
-      case 'cheerful':
-        return 'Encouraging and positive messages with emojis';
       case 'data-driven':
         return 'Focus on metrics, progress, and logical reasoning';
       case 'tough-love':
@@ -148,24 +144,24 @@ export default function SettingsScreen() {
           </View>
         </View>
         
-        {/* Alvo Coach Settings */}
+        {/* Hustle Coach Settings */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Brain size={20} color={Colors.dark.secondary} />
-            <Text style={styles.sectionTitle}>Alvo Coach</Text>
+            <Text style={styles.sectionTitle}>Hustle Coach</Text>
           </View>
           
           <View style={styles.settingItem}>
             <View style={styles.settingLeft}>
               <Text style={styles.settingLabel}>Motivation Tone</Text>
               <Text style={styles.settingDescription}>
-                How Alvo communicates with you
+                How Hustle communicates with you
               </Text>
             </View>
           </View>
           
           <View style={styles.toneOptions}>
-            {(['cheerful', 'data-driven', 'tough-love'] as MotivationTone[]).map((tone) => (
+            {(['tough-love', 'data-driven'] as MotivationTone[]).map((tone) => (
               <TouchableOpacity
                 key={tone}
                 style={[

@@ -70,7 +70,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="coach"
         options={{
-          title: "AI Coach",
+          title: "Hustle Coach",
           tabBarIcon: ({ color, size }) => <Brain size={size} color={color} />
         }}
       />
