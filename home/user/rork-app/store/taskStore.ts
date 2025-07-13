@@ -189,8 +189,7 @@ export const useTaskStore = create<TaskState>()(
         
         // Add XP to user
         if (task.xpValue) {
-          const { addXp } = useUserStore.getState();
-          await addXp(task.xpValue);
+          await useUserStore.getState().addXp(task.xpValue);
         }
       },
       
