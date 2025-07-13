@@ -156,7 +156,7 @@ export const createUserProfile = async (userId: string, userData: { name?: strin
   try {
     const { data, error } = await supabase
       .from('profiles')
-      .insert({
+      .upsert({
         id: userId,
         name: userData.name || null,
         avatar_url: userData.avatar_url || null,
@@ -164,6 +164,9 @@ export const createUserProfile = async (userId: string, userData: { name?: strin
         xp: 0,
         streak_days: 0,
         longest_streak: 0,
+      }, {
+        onConflict: 'id',
+        ignoreDuplicates: false
       })
       .select()
       .single();
@@ -211,6 +214,51 @@ export const getCurrentUser = async (): Promise<{ user: any | null; error?: stri
     return { user };
   } catch (error) {
     return { user: null, error: serializeError(error) };
+  }
+};
+
+// Helper function to ensure user profile exists
+export const ensureUserProfile = async (userId: string, userData: { name?: string; email?: string } = {}): Promise<{ success: boolean; error?: string }> => {
+  try {
+    // First check if profile already exists
+    const { data: existingProfile, error: selectError } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('id', userId)
+      .single();
+    
+    if (existingProfile) {
+      // Profile already exists
+      return { success: true };
+    }
+    
+    // Profile doesn't exist, create it
+    const profileData = {
+      id: userId,
+      name: userData.name || userData.email?.split('@')[0] || 'User',
+      level: 1,
+      xp: 0,
+      streak_days: 0,
+      longest_streak: 0
+    };
+    
+    const { error: upsertError } = await supabase
+      .from('profiles')
+      .upsert(profileData, {
+        onConflict: 'id',
+        ignoreDuplicates: false
+      });
+    
+    if (upsertError) {
+      console.error('Error creating user profile:', upsertError);
+      return { success: false, error: serializeError(upsertError) };
+    }
+    
+    console.log('User profile created successfully for user:', userId);
+    return { success: true };
+  } catch (error) {
+    console.error('Error in ensureUserProfile:', error);
+    return { success: false, error: serializeError(error) };
   }
 };
 

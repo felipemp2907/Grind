@@ -5,7 +5,7 @@ import { Task } from '@/types';
 import { generateDailyTasksForGoal, generateDailyAgenda } from '@/utils/aiUtils';
 import { useGoalStore } from '@/store/goalStore';
 import { useUserStore } from '@/store/userStore';
-import { supabase, setupDatabase, serializeError } from '@/lib/supabase';
+import { supabase, setupDatabase, serializeError, ensureUserProfile } from '@/lib/supabase';
 import { useAuthStore } from './authStore';
 
 // Interface for tasks returned from AI
@@ -98,19 +98,15 @@ export const useTaskStore = create<TaskState>()(
           }
           
           // Ensure user profile exists
-          await supabase
-            .from('profiles')
-            .upsert({
-              id: user.id,
-              name: user.name || user.email?.split('@')[0] || 'User',
-              level: 1,
-              xp: 0,
-              streak_days: 0,
-              longest_streak: 0
-            }, {
-              onConflict: 'id',
-              ignoreDuplicates: true
-            });
+          const profileResult = await ensureUserProfile(user.id, {
+            name: user.name,
+            email: user.email
+          });
+          
+          if (!profileResult.success) {
+            console.error('Error ensuring profile exists:', profileResult.error);
+            throw new Error(`Failed to create user profile: ${profileResult.error}`);
+          }
           
           const { error } = await supabase
             .from('tasks')

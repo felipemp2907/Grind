@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Goal, Milestone, ProgressUpdate, MilestoneAlert, GoalShareCard } from '@/types';
-import { supabase, setupDatabase, serializeError, getCurrentUser } from '@/lib/supabase';
+import { supabase, setupDatabase, serializeError, getCurrentUser, ensureUserProfile } from '@/lib/supabase';
 import { useAuthStore } from './authStore';
 
 interface GoalState {
@@ -77,24 +77,15 @@ export const useGoalStore = create<GoalState>()(
           
           console.log('Adding goal for user:', currentUser.id);
           
-          // Ensure user profile exists using upsert
-          const { error: profileUpsertError } = await supabase
-            .from('profiles')
-            .upsert({
-              id: currentUser.id,
-              name: currentUser.user_metadata?.name || currentUser.email?.split('@')[0] || 'User',
-              level: 1,
-              xp: 0,
-              streak_days: 0,
-              longest_streak: 0
-            }, {
-              onConflict: 'id',
-              ignoreDuplicates: true
-            });
-            
-          if (profileUpsertError) {
-            console.error('Error ensuring profile exists:', serializeError(profileUpsertError));
-            // Continue anyway, the goal insert might still work
+          // Ensure user profile exists
+          const profileResult = await ensureUserProfile(currentUser.id, {
+            name: currentUser.user_metadata?.name,
+            email: currentUser.email
+          });
+          
+          if (!profileResult.success) {
+            console.error('Error ensuring profile exists:', profileResult.error);
+            throw new Error(`Failed to create user profile: ${profileResult.error}`);
           }
           
           const { data, error } = await supabase
