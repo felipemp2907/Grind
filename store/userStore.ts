@@ -30,6 +30,7 @@ interface UserState {
   isLoading: boolean;
   error: string | null;
   needsDatabaseSetup: boolean;
+  addXp: (amount: number) => Promise<void>;
   updateStreak: (increment: boolean) => Promise<void>;
   resetStreak: () => Promise<void>;
   updateProfile: (updates: Partial<UserProfile>) => Promise<void>;

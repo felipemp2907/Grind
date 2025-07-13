@@ -26,7 +26,7 @@ import * as Haptics from 'expo-haptics';
 export default function FocusModeScreen() {
   const router = useRouter();
   const { getTasks } = useTaskStore();
-  const { addXP } = useUserStore();
+  const { addXp } = useUserStore();
   
   const [isActive, setIsActive] = useState(false);
   const [timeRemaining, setTimeRemaining] = useState(25 * 60); // 25 minutes in seconds
@@ -110,7 +110,7 @@ export default function FocusModeScreen() {
     setSessionCompleted(true);
     
     // Award XP for completing focus session
-    addXP(50);
+    addXp(50);
     
     // Provide completion haptic feedback
     if (Platform.OS !== 'web') {
