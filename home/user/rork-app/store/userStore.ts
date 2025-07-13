@@ -3,7 +3,7 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { UserProfile } from '@/types';
 import { supabase, checkDatabaseSetup, setupDatabase, serializeError } from '@/lib/supabase';
-import { useAuthStore } from './authStore';
+import { useAuthStore } from '@/store/authStore';
 
 export type MotivationTone = 'cheerful' | 'data-driven' | 'tough-love';
 
@@ -42,6 +42,7 @@ interface UserState {
   startFocusSession: () => void;
   fetchProfile: () => Promise<void>;
   checkDatabaseSetup: () => Promise<void>;
+  addXp: (amount: number) => Promise<void>;
 }
 
 // XP required for each level
@@ -191,7 +192,7 @@ export const useUserStore = create<UserState>()(
         }
       },
       
-      addXp: async (amount) => {
+      addXp: async (amount: number) => {
         const { profile } = get();
         const { user } = useAuthStore.getState();
         
