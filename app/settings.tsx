@@ -233,7 +233,7 @@ export default function SettingsScreen() {
             {renderSettingItem(
               <HelpCircle size={20} color={Colors.dark.primary} />,
               "Help & FAQ",
-              "Get help with DailyDeck",
+              "Get help with Grind",
               <ChevronRight size={20} color={Colors.dark.subtext} />,
               () => {}
             )}
@@ -258,7 +258,7 @@ export default function SettingsScreen() {
           </View>
           
           <View style={styles.footer}>
-            <Text style={styles.versionText}>DailyDeck v1.0.0</Text>
+            <Text style={styles.versionText}>Grind v1.0.0</Text>
           </View>
         </ScrollView>
       </SafeAreaView>

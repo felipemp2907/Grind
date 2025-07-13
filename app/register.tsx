@@ -90,9 +90,9 @@ export default function RegisterScreen() {
           <View style={styles.header}>
             <View style={styles.logoContainer}>
               <Target size={32} color={Colors.dark.primary} />
-              <Text style={styles.logoText}>DailyDeck</Text>
+              <Text style={styles.logoText}>Grind</Text>
             </View>
-            <Text style={styles.tagline}>Your AI-Powered Self-Mastery OS</Text>
+            <Text style={styles.tagline}>Your AI Assistant for Daily Discipline</Text>
           </View>
           
           <View style={styles.formContainer}>

@@ -329,7 +329,7 @@ export default function CalendarScreen() {
       {isGenerating ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={Colors.dark.primary} />
-          <Text style={styles.loadingText}>DeckAI is generating tasks...</Text>
+          <Text style={styles.loadingText}>Alvo is generating tasks...</Text>
         </View>
       ) : selectedTasks.length === 0 && selectedDateDeadlines.length === 0 ? (
         <View style={styles.emptyState}>

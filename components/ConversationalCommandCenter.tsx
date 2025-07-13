@@ -188,7 +188,7 @@ export default function ConversationalCommandCenter({
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <View style={styles.header}>
-        <Text style={styles.title}>DeckAI Command Center</Text>
+        <Text style={styles.title}>Alvo Command Center</Text>
         <Text style={styles.subtitle}>
           Tell me what you want to do and I'll help you create tasks or events
         </Text>

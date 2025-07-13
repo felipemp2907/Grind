@@ -83,7 +83,7 @@ export const useAuthStore = create<AuthState>()(
           // Determine the appropriate redirect URL based on platform
           const redirectUrl = Platform.OS === 'web' 
             ? `${window.location.origin}/login` 
-            : 'dailydeck://login';
+            : 'grind://login';
           
           const { data, error } = await supabase.auth.signUp({
             email,
@@ -178,7 +178,7 @@ export const useAuthStore = create<AuthState>()(
           // Determine the appropriate redirect URL based on platform
           const redirectUrl = Platform.OS === 'web' 
             ? `${window.location.origin}/reset-password` 
-            : 'dailydeck://reset-password';
+            : 'grind://reset-password';
           
           const { error } = await supabase.auth.resetPasswordForEmail(email, {
             redirectTo: redirectUrl,
@@ -208,7 +208,7 @@ export const useAuthStore = create<AuthState>()(
           // Determine the appropriate redirect URL based on platform
           const redirectUrl = Platform.OS === 'web' 
             ? `${window.location.origin}/login` 
-            : 'dailydeck://login';
+            : 'grind://login';
           
           const { error } = await supabase.auth.resend({
             type: 'signup',
@@ -267,7 +267,7 @@ export const useAuthStore = create<AuthState>()(
       },
     }),
     {
-      name: 'dailydeck-auth-storage',
+      name: 'grind-auth-storage',
       storage: createJSONStorage(() => AsyncStorage),
       partialize: (state) => ({
         user: state.user,

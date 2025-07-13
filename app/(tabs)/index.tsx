@@ -349,7 +349,7 @@ export default function DashboardScreen() {
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color={Colors.dark.primary} />
             <Text style={styles.loadingText}>
-              DeckAI is generating high-quality tasks for your goals...
+              Alvo is generating high-quality tasks for your goals...
             </Text>
           </View>
         ) : todayTasks.length > 0 ? (
@@ -392,7 +392,7 @@ export default function DashboardScreen() {
           <View style={styles.coachContent}>
             <Brain size={24} color={Colors.dark.secondary} />
             <View style={styles.coachTextContainer}>
-              <Text style={styles.coachTitle}>Ask DeckAI Coach</Text>
+              <Text style={styles.coachTitle}>Ask Alvo Coach</Text>
               <Text style={styles.coachDescription}>
                 Get personalized advice, create tasks, or schedule your day
               </Text>

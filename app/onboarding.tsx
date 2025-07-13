@@ -85,7 +85,7 @@ export default function OnboardingScreen() {
       // Show error message after navigation
       setTimeout(() => {
         Alert.alert(
-          "Welcome to DailyDeck!",
+          "Welcome to Grind!",
           "Your goal has been created, but there was an issue generating tasks. You can manually generate them from the Tasks tab.",
           [{ text: "OK" }]
         );
@@ -132,7 +132,7 @@ export default function OnboardingScreen() {
             <View style={styles.aiInfoContainer}>
               <Brain size={20} color={Colors.dark.secondary} />
               <Text style={styles.aiInfoText}>
-                DeckAI will use your goal details to generate personalized daily tasks and habits to help you succeed.
+                Alvo will use your goal details to generate personalized daily tasks and habits to help you succeed.
               </Text>
             </View>
           </View>
@@ -203,9 +203,9 @@ export default function OnboardingScreen() {
           <View style={styles.header}>
             <View style={styles.logoContainer}>
               <Target size={32} color={Colors.dark.primary} />
-              <Text style={styles.logoText}>DailyDeck</Text>
+              <Text style={styles.logoText}>Grind</Text>
             </View>
-            <Text style={styles.tagline}>Your AI-Powered Self-Mastery OS</Text>
+            <Text style={styles.tagline}>Your AI Assistant for Daily Discipline</Text>
             {user && <Text style={styles.welcomeText}>Welcome, {user.name}!</Text>}
           </View>
           
