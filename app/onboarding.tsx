@@ -52,7 +52,7 @@ export default function OnboardingScreen() {
     try {
       // Update user profile with name from auth
       if (user) {
-        updateProfile({ name: user.name });
+        await updateProfile({ name: user.name });
       }
       
       // Create goal
@@ -62,10 +62,18 @@ export default function OnboardingScreen() {
         description: goalDescription,
         deadline,
         milestones: [],
-        createdAt: new Date().toISOString()
+        createdAt: new Date().toISOString(),
+        progressValue: 0,
+        targetValue: 100,
+        xpEarned: 0,
+        streakCount: 0,
+        todayTasksIds: [],
+        streakTaskIds: [],
+        status: 'active' as const,
+        updatedAt: new Date().toISOString()
       };
       
-      addGoal(newGoal);
+      await addGoal(newGoal);
       
       // Generate tasks for the goal
       await generateTasksForGoal(getTodayDate(), newGoal.id);

@@ -167,7 +167,7 @@ export default function ValidateTaskScreen() {
     }
   };
   
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!task || !mediaUri) return;
     
     // Check validation requirements
@@ -184,58 +184,68 @@ export default function ValidateTaskScreen() {
     
     setLoading(true);
     
-    // Create journal entry for validation
-    const journalEntry = {
-      id: `journal-${Date.now()}`,
-      date: task.date,
-      title: `Task: ${task.title}`,
-      content: journalContent || `Completed: ${task.title}`,
-      taskId: task.id,
-      mediaUri,
-      reflection,
-      createdAt: new Date().toISOString(),
-      validationStatus: (validationResult?.isValid ? 'approved' : 'pending') as const,
-      validationFeedback: validationResult?.feedback,
-      validationConfidence: validationResult?.confidence
-    };
-    
-    // Add journal entry
-    addEntry(journalEntry);
-    
-    // Mark task as completed
-    completeTask(task.id, journalEntry.id);
-    
-    // Add XP with bonus for high confidence validation
-    let xpBonus = 0;
-    if (validationResult?.confidence === 'high') {
-      xpBonus = Math.floor(task.xpValue * 0.2); // 20% bonus for high confidence
-    }
-    addXP(task.xpValue + xpBonus);
-    
-    // Update streak if it's a habit
-    if (task.isHabit) {
-      updateUserStreak(true);
-    }
-    
-    // Provide haptic feedback
-    if (Platform.OS !== 'web') {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    }
-    
-    // Show success message if there was an XP bonus
-    if (xpBonus > 0) {
+    try {
+      // Create journal entry for validation
+      const journalEntry = {
+        id: `journal-${Date.now()}`,
+        date: task.date,
+        title: `Task: ${task.title}`,
+        content: journalContent || `Completed: ${task.title}`,
+        taskId: task.id,
+        mediaUri,
+        reflection,
+        createdAt: new Date().toISOString(),
+        validationStatus: (validationResult?.isValid ? 'approved' : 'pending') as const,
+        validationFeedback: validationResult?.feedback,
+        validationConfidence: validationResult?.confidence
+      };
+      
+      // Add journal entry
+      await addEntry(journalEntry);
+      
+      // Mark task as completed
+      await completeTask(task.id, journalEntry.id);
+      
+      // Add XP with bonus for high confidence validation
+      let xpBonus = 0;
+      if (validationResult?.confidence === 'high') {
+        xpBonus = Math.floor(task.xpValue * 0.2); // 20% bonus for high confidence
+      }
+      await addXp(task.xpValue + xpBonus);
+      
+      // Update streak if it's a habit
+      if (task.isHabit) {
+        await updateUserStreak(true);
+      }
+      
+      // Provide haptic feedback
+      if (Platform.OS !== 'web') {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      }
+      
+      // Show success message if there was an XP bonus
+      if (xpBonus > 0) {
+        Alert.alert(
+          "Excellent Work!",
+          `Task completed with high confidence! You earned ${task.xpValue} XP + ${xpBonus} bonus XP for clear proof.`,
+          [{ text: "Awesome!" }]
+        );
+      }
+      
+      // Navigate back after a short delay
+      setTimeout(() => {
+        setLoading(false);
+        router.back();
+      }, 1000);
+    } catch (error) {
+      console.error('Error completing task:', error);
+      setLoading(false);
       Alert.alert(
-        "Excellent Work!",
-        `Task completed with high confidence! You earned ${task.xpValue} XP + ${xpBonus} bonus XP for clear proof.`,
-        [{ text: "Awesome!" }]
+        "Error",
+        "There was an error completing your task. Please try again.",
+        [{ text: "OK" }]
       );
     }
-    
-    // Navigate back after a short delay
-    setTimeout(() => {
-      setLoading(false);
-      router.back();
-    }, 1000);
   };
   
   const handleRejectTask = () => {

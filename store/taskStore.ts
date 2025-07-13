@@ -5,6 +5,8 @@ import { Task } from '@/types';
 import { generateDailyTasksForGoal, generateDailyAgenda } from '@/utils/aiUtils';
 import { useGoalStore } from './goalStore';
 import { useUserStore } from './userStore';
+import { supabase, setupDatabase, serializeError } from '@/lib/supabase';
+import { useAuthStore } from './authStore';
 
 // Interface for tasks returned from AI
 interface AIGeneratedTask {
@@ -39,13 +41,14 @@ interface TaskState {
   isGeneratingAgenda: boolean;
   
   // Task management
-  addTask: (task: Task) => void;
-  updateTask: (id: string, updates: Partial<Task>) => void;
-  completeTask: (id: string, journalEntryId: string) => void;
+  addTask: (task: Task) => Promise<void>;
+  updateTask: (id: string, updates: Partial<Task>) => Promise<void>;
+  completeTask: (id: string, journalEntryId: string) => Promise<void>;
   getTasks: (date: string) => Task[];
   getTasksByGoal: (date: string, goalId: string) => Task[];
   getTaskById: (id: string) => Task | undefined;
-  deleteTask: (id: string) => void;
+  deleteTask: (id: string) => Promise<void>;
+  fetchTasks: () => Promise<void>;
   generateDailyTasks: (date: string) => Promise<void>;
   generateTasksForGoal: (date: string, goalId: string) => Promise<void>;
   setIsGenerating: (isGenerating: boolean) => void;
@@ -77,29 +80,112 @@ export const useTaskStore = create<TaskState>()(
       
       setIsGenerating: (isGenerating) => set({ isGenerating }),
       
-      addTask: (task) => set((state) => ({ 
-        tasks: [...state.tasks, task] 
-      })),
+      addTask: async (task) => {
+        // Add to local state first
+        set((state) => ({ 
+          tasks: [...state.tasks, task] 
+        }));
+        
+        // Save to Supabase
+        try {
+          const { user } = useAuthStore.getState();
+          if (!user?.id) return;
+          
+          const dbResult = await setupDatabase();
+          if (!dbResult.success) {
+            console.error('Database not set up:', dbResult.error);
+            return;
+          }
+          
+          const { error } = await supabase
+            .from('tasks')
+            .insert({
+              id: task.id,
+              user_id: user.id,
+              title: task.title,
+              description: task.description,
+              completed: task.completed,
+              due_date: task.date ? new Date(task.date).toISOString() : null,
+              priority: task.priority || 'medium',
+              category: task.goalId
+            });
+            
+          if (error) {
+            console.error('Error saving task to Supabase:', serializeError(error));
+          }
+        } catch (error) {
+          console.error('Error saving task:', serializeError(error));
+        }
+      },
       
-      updateTask: (id, updates) => set((state) => ({
-        tasks: state.tasks.map(task => 
-          task.id === id ? { ...task, ...updates } : task
-        )
-      })),
+      updateTask: async (id, updates) => {
+        // Update local state first
+        set((state) => ({
+          tasks: state.tasks.map(task => 
+            task.id === id ? { ...task, ...updates } : task
+          )
+        }));
+        
+        // Update in Supabase
+        try {
+          const { user } = useAuthStore.getState();
+          if (!user?.id) return;
+          
+          const dbResult = await setupDatabase();
+          if (!dbResult.success) {
+            console.error('Database not set up:', dbResult.error);
+            return;
+          }
+          
+          const supabaseUpdates: any = {};
+          if (updates.title !== undefined) supabaseUpdates.title = updates.title;
+          if (updates.description !== undefined) supabaseUpdates.description = updates.description;
+          if (updates.completed !== undefined) supabaseUpdates.completed = updates.completed;
+          if (updates.date !== undefined) supabaseUpdates.due_date = updates.date ? new Date(updates.date).toISOString() : null;
+          if (updates.priority !== undefined) supabaseUpdates.priority = updates.priority;
+          if (updates.goalId !== undefined) supabaseUpdates.category = updates.goalId;
+          
+          const { error } = await supabase
+            .from('tasks')
+            .update(supabaseUpdates)
+            .eq('id', id)
+            .eq('user_id', user.id);
+            
+          if (error) {
+            console.error('Error updating task in Supabase:', serializeError(error));
+          }
+        } catch (error) {
+          console.error('Error updating task:', serializeError(error));
+        }
+      },
       
-      completeTask: (id, journalEntryId) => set((state) => ({
-        tasks: state.tasks.map(task => 
-          task.id === id 
-            ? { 
-                ...task, 
-                completed: true, 
-                completedAt: new Date().toISOString(),
-                journalEntryId,
-                streak: task.isHabit ? task.streak + 1 : task.streak
-              } 
-            : task
-        )
-      })),
+      completeTask: async (id, journalEntryId) => {
+        const task = get().getTaskById(id);
+        if (!task) return;
+        
+        const updates = {
+          completed: true,
+          completedAt: new Date().toISOString(),
+          journalEntryId,
+          streak: task.isHabit ? task.streak + 1 : task.streak
+        };
+        
+        // Update local state
+        set((state) => ({
+          tasks: state.tasks.map(t => 
+            t.id === id ? { ...t, ...updates } : t
+          )
+        }));
+        
+        // Update in Supabase
+        await get().updateTask(id, updates);
+        
+        // Add XP to user
+        if (task.xpValue) {
+          const { addXp } = useUserStore.getState();
+          await addXp(task.xpValue);
+        }
+      },
       
       getTasks: (date) => {
         return get().tasks.filter(task => task.date === date);
@@ -115,9 +201,36 @@ export const useTaskStore = create<TaskState>()(
         return get().tasks.find(task => task.id === id);
       },
       
-      deleteTask: (id) => set((state) => ({
-        tasks: state.tasks.filter(task => task.id !== id)
-      })),
+      deleteTask: async (id) => {
+        // Remove from local state
+        set((state) => ({
+          tasks: state.tasks.filter(task => task.id !== id)
+        }));
+        
+        // Delete from Supabase
+        try {
+          const { user } = useAuthStore.getState();
+          if (!user?.id) return;
+          
+          const dbResult = await setupDatabase();
+          if (!dbResult.success) {
+            console.error('Database not set up:', dbResult.error);
+            return;
+          }
+          
+          const { error } = await supabase
+            .from('tasks')
+            .delete()
+            .eq('id', id)
+            .eq('user_id', user.id);
+            
+          if (error) {
+            console.error('Error deleting task from Supabase:', serializeError(error));
+          }
+        } catch (error) {
+          console.error('Error deleting task:', serializeError(error));
+        }
+      },
       
       resetStreak: (id) => set((state) => ({
         tasks: state.tasks.map(task => 
@@ -252,8 +365,11 @@ export const useTaskStore = create<TaskState>()(
         }));
         
         // Add tasks and mark agenda as accepted
+        for (const task of newTasks) {
+          await get().addTask(task);
+        }
+        
         set((state) => ({
-          tasks: [...state.tasks, ...newTasks],
           dailyAgendas: state.dailyAgendas.map(a => 
             a.date === date ? { ...a, status: 'accepted' as const } : a
           )
@@ -332,9 +448,9 @@ export const useTaskStore = create<TaskState>()(
             }));
             
             // Add only the habit tasks
-            set((state) => ({ 
-              tasks: [...state.tasks, ...newHabitTasks] 
-            }));
+            for (const task of newHabitTasks) {
+              await get().addTask(task);
+            }
           }
           
           return;
@@ -418,9 +534,9 @@ export const useTaskStore = create<TaskState>()(
           }));
           
           // Add tasks to store
-          set((state) => ({ 
-            tasks: [...state.tasks, ...newTasks] 
-          }));
+          for (const task of newTasks) {
+            await get().addTask(task);
+          }
           
         } catch (error) {
           console.error('Error generating tasks for goal:', error);
@@ -468,11 +584,57 @@ export const useTaskStore = create<TaskState>()(
             }
           ];
           
-          set((state) => ({ 
-            tasks: [...state.tasks, ...fallbackTasks] 
-          }));
+          for (const task of fallbackTasks) {
+            await get().addTask(task);
+          }
         } finally {
           set({ isGenerating: false });
+        }
+      },
+      
+      fetchTasks: async () => {
+        try {
+          const { user } = useAuthStore.getState();
+          if (!user?.id) return;
+          
+          const dbResult = await setupDatabase();
+          if (!dbResult.success) {
+            console.error('Database not set up:', dbResult.error);
+            return;
+          }
+          
+          const { data, error } = await supabase
+            .from('tasks')
+            .select('*')
+            .eq('user_id', user.id)
+            .order('created_at', { ascending: false });
+            
+          if (error) {
+            console.error('Error fetching tasks:', serializeError(error));
+            return;
+          }
+          
+          if (data) {
+            const tasks: Task[] = data.map(task => ({
+              id: task.id,
+              title: task.title,
+              description: task.description || '',
+              date: task.due_date ? task.due_date.split('T')[0] : new Date().toISOString().split('T')[0],
+              goalId: task.category || '',
+              completed: task.completed || false,
+              xpValue: 30, // Default XP value
+              isHabit: false, // Default to false
+              streak: 0,
+              isUserCreated: true,
+              requiresValidation: false,
+              priority: task.priority as 'high' | 'medium' | 'low' || 'medium',
+              completedAt: task.completed ? task.updated_at : undefined
+            }));
+            
+            set({ tasks });
+          }
+        } catch (error) {
+          console.error('Error fetching tasks:', serializeError(error));
         }
       }
     }),

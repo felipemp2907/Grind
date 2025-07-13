@@ -78,7 +78,7 @@ export default function CreateTaskModal({ visible, onClose, date, goalId }: Crea
       requiresValidation: true
     };
     
-    addTask(newTask);
+    await addTask(newTask);
     
     // Show success message
     Alert.alert(

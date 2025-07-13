@@ -2,6 +2,8 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Goal, Milestone, ProgressUpdate, MilestoneAlert, GoalShareCard } from '@/types';
+import { supabase, setupDatabase, serializeError } from '@/lib/supabase';
+import { useAuthStore } from './authStore';
 
 interface GoalState {
   goals: Goal[];
@@ -10,10 +12,11 @@ interface GoalState {
   milestoneAlerts: MilestoneAlert[];
   
   // Goal management
-  addGoal: (goal: Goal) => void;
-  updateGoal: (id: string, updates: Partial<Goal>) => void;
-  deleteGoal: (id: string) => void;
+  addGoal: (goal: Goal) => Promise<void>;
+  updateGoal: (id: string, updates: Partial<Goal>) => Promise<void>;
+  deleteGoal: (id: string) => Promise<void>;
   setActiveGoal: (id: string) => void;
+  fetchGoals: () => Promise<void>;
   
   // Progress tracking
   updateProgress: (update: ProgressUpdate) => void;
@@ -56,7 +59,8 @@ export const useGoalStore = create<GoalState>()(
       isOnboarded: false,
       milestoneAlerts: [],
       
-      addGoal: (goal) => {
+      addGoal: async (goal) => {
+        // Add to local state first
         set((state) => {
           // Only allow up to 3 goals
           if (state.goals.length >= 3) {
@@ -73,17 +77,76 @@ export const useGoalStore = create<GoalState>()(
             activeGoalId: newActiveGoalId
           };
         });
+        
+        // Save to Supabase
+        try {
+          const { user } = useAuthStore.getState();
+          if (!user?.id) return;
+          
+          const dbResult = await setupDatabase();
+          if (!dbResult.success) {
+            console.error('Database not set up:', dbResult.error);
+            return;
+          }
+          
+          const { error } = await supabase
+            .from('goals')
+            .insert({
+              id: goal.id,
+              user_id: user.id,
+              title: goal.title,
+              description: goal.description,
+              deadline: goal.deadline ? new Date(goal.deadline).toISOString() : null
+            });
+            
+          if (error) {
+            console.error('Error saving goal to Supabase:', serializeError(error));
+          }
+        } catch (error) {
+          console.error('Error saving goal:', serializeError(error));
+        }
       },
       
-      updateGoal: (id, updates) => {
+      updateGoal: async (id, updates) => {
+        // Update local state first
         set((state) => ({
           goals: state.goals.map(goal => 
             goal.id === id ? { ...goal, ...updates, updatedAt: new Date().toISOString() } : goal
           )
         }));
+        
+        // Update in Supabase
+        try {
+          const { user } = useAuthStore.getState();
+          if (!user?.id) return;
+          
+          const dbResult = await setupDatabase();
+          if (!dbResult.success) {
+            console.error('Database not set up:', dbResult.error);
+            return;
+          }
+          
+          const supabaseUpdates: any = {};
+          if (updates.title !== undefined) supabaseUpdates.title = updates.title;
+          if (updates.description !== undefined) supabaseUpdates.description = updates.description;
+          if (updates.deadline !== undefined) supabaseUpdates.deadline = updates.deadline ? new Date(updates.deadline).toISOString() : null;
+          
+          const { error } = await supabase
+            .from('goals')
+            .update(supabaseUpdates)
+            .eq('id', id)
+            .eq('user_id', user.id);
+            
+          if (error) {
+            console.error('Error updating goal in Supabase:', serializeError(error));
+          }
+        } catch (error) {
+          console.error('Error updating goal:', serializeError(error));
+        }
       },
       
-      deleteGoal: (id) => {
+      deleteGoal: async (id) => {
+        // Remove from local state
         set((state) => {
           const newGoals = state.goals.filter(goal => goal.id !== id);
           
@@ -100,6 +163,30 @@ export const useGoalStore = create<GoalState>()(
             milestoneAlerts: state.milestoneAlerts.filter(alert => alert.goalId !== id)
           };
         });
+        
+        // Delete from Supabase
+        try {
+          const { user } = useAuthStore.getState();
+          if (!user?.id) return;
+          
+          const dbResult = await setupDatabase();
+          if (!dbResult.success) {
+            console.error('Database not set up:', dbResult.error);
+            return;
+          }
+          
+          const { error } = await supabase
+            .from('goals')
+            .delete()
+            .eq('id', id)
+            .eq('user_id', user.id);
+            
+          if (error) {
+            console.error('Error deleting goal from Supabase:', serializeError(error));
+          }
+        } catch (error) {
+          console.error('Error deleting goal:', serializeError(error));
+        }
       },
       
       setActiveGoal: (id) => {
@@ -366,6 +453,56 @@ export const useGoalStore = create<GoalState>()(
       resetGoals: () => set({ goals: [], activeGoalId: null, milestoneAlerts: [] }),
       
       setOnboarded: (value) => set({ isOnboarded: value }),
+      
+      fetchGoals: async () => {
+        try {
+          const { user } = useAuthStore.getState();
+          if (!user?.id) return;
+          
+          const dbResult = await setupDatabase();
+          if (!dbResult.success) {
+            console.error('Database not set up:', dbResult.error);
+            return;
+          }
+          
+          const { data, error } = await supabase
+            .from('goals')
+            .select('*')
+            .eq('user_id', user.id)
+            .order('created_at', { ascending: false });
+            
+          if (error) {
+            console.error('Error fetching goals:', serializeError(error));
+            return;
+          }
+          
+          if (data) {
+            const goals: Goal[] = data.map(goal => ({
+              id: goal.id,
+              title: goal.title,
+              description: goal.description || '',
+              deadline: goal.deadline || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // Default to 30 days from now
+              createdAt: goal.created_at,
+              updatedAt: goal.updated_at,
+              progressValue: 0,
+              targetValue: 100,
+              xpEarned: 0,
+              streakCount: 0,
+              todayTasksIds: [],
+              streakTaskIds: [],
+              status: 'active' as const,
+              milestones: []
+            }));
+            
+            set({ 
+              goals,
+              activeGoalId: goals.length > 0 && !get().activeGoalId ? goals[0].id : get().activeGoalId
+            });
+          }
+        } catch (error) {
+          console.error('Error fetching goals:', serializeError(error));
+        }
+      }
     }),
     {
       name: 'grind-goal-storage',

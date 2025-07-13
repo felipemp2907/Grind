@@ -6,6 +6,9 @@ import { useEffect } from "react";
 import { Platform, StatusBar, Alert } from "react-native";
 import { useGoalStore } from "@/store/goalStore";
 import { useAuthStore } from "@/store/authStore";
+import { useUserStore } from "@/store/userStore";
+import { useTaskStore } from "@/store/taskStore";
+import { useJournalStore } from "@/store/journalStore";
 import Colors from "@/constants/colors";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { trpc, trpcClient } from "@/lib/trpc";
@@ -28,13 +31,27 @@ export default function RootLayout() {
     ...FontAwesome.font,
   });
   
-  const { refreshSession } = useAuthStore();
+  const { refreshSession, user } = useAuthStore();
+  const { fetchProfile } = useUserStore();
+  const { fetchTasks } = useTaskStore();
+  const { fetchGoals } = useGoalStore();
+  const { fetchEntries } = useJournalStore();
   
   // Check for existing session on app load
   useEffect(() => {
     const checkSession = async () => {
       try {
         await refreshSession();
+        
+        // Fetch user data if authenticated
+        if (user) {
+          await Promise.all([
+            fetchProfile(),
+            fetchTasks(),
+            fetchGoals(),
+            fetchEntries()
+          ]);
+        }
       } catch (error) {
         console.error("Session refresh error:", error);
         if (__DEV__) {
@@ -55,6 +72,16 @@ export default function RootLayout() {
         async (event: AuthChangeEvent, session: Session | null) => {
           if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
             await refreshSession();
+            
+            // Fetch user data after successful auth
+            if (session?.user) {
+              await Promise.all([
+                fetchProfile(),
+                fetchTasks(),
+                fetchGoals(),
+                fetchEntries()
+              ]);
+            }
           } else if (event === 'SIGNED_OUT') {
             // Handle sign out if needed
           }

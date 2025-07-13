@@ -30,7 +30,7 @@ interface UserState {
   isLoading: boolean;
   error: string | null;
   needsDatabaseSetup: boolean;
-  addXP: (amount: number) => Promise<void>;
+  addXp: (amount: number) => Promise<void>;
   updateStreak: (increment: boolean) => Promise<void>;
   resetStreak: () => Promise<void>;
   updateProfile: (updates: Partial<UserProfile>) => Promise<void>;
@@ -177,7 +177,7 @@ export const useUserStore = create<UserState>()(
         }
       },
       
-      addXP: async (amount) => {
+      addXp: async (amount) => {
         const { profile } = get();
         const { user } = useAuthStore.getState();
         

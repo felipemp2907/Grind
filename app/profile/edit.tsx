@@ -390,9 +390,7 @@ export default function EditProfileScreen() {
                 </Text>
               )}
               
-              <View style={styles.editAvatarButton}>
-                <Edit size={16} color={Colors.dark.text} />
-              </View>
+
             </View>
             
             <View style={styles.avatarActions}>
@@ -448,14 +446,7 @@ export default function EditProfileScreen() {
             />
           </View>
           
-          {/* Save Button for bottom of screen */}
-          <Button
-            title="Save Changes"
-            onPress={handleSave}
-            style={styles.saveButton}
-            loading={isSaving}
-            disabled={isSaving}
-          />
+
         </View>
       </ScrollView>
     </SafeAreaView>
