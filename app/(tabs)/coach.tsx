@@ -618,12 +618,6 @@ const styles = StyleSheet.create({
     color: Colors.dark.text,
     lineHeight: 20,
   },
-  userMessageBubble: {
-    backgroundColor: Colors.dark.primary,
-  },
-  aiMessageBubble: {
-    backgroundColor: Colors.dark.card,
-  },
   commandResultContainer: {
     marginTop: 8,
     padding: 8,

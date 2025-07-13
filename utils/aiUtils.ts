@@ -609,6 +609,108 @@ Keep the message concise (1-2 sentences) but impactful. The goal is to motivate 
   }
 };
 
+// Process conversational commands for task/event creation
+export const processConversationalCommand = async (
+  userInput: string,
+  currentTasks: Array<{ title: string; date: string; isHabit: boolean }>,
+  currentDate: string,
+  activeGoal?: { title: string; description: string }
+): Promise<{
+  action: 'create_task' | 'create_event' | 'update_task' | 'reschedule' | 'query' | 'none';
+  taskData?: {
+    title: string;
+    description: string;
+    date: string;
+    time?: string;
+    isHabit: boolean;
+    xpValue: number;
+    proofMode?: 'realtime' | 'flex';
+  };
+  eventData?: {
+    title: string;
+    description?: string;
+    date: string;
+    time?: string;
+  };
+  updateData?: {
+    taskId?: string;
+    newDate?: string;
+    newTime?: string;
+  };
+  confirmation: string;
+  needsClarification?: boolean;
+  clarificationQuestion?: string;
+}> => {
+  const messages: AIMessage[] = [
+    {
+      role: 'system',
+      content: `You are Hustle's command processor. Analyze user input and determine the appropriate action.
+
+Current date: ${currentDate}
+Active goal: ${activeGoal ? `${activeGoal.title} - ${activeGoal.description}` : 'None'}
+Existing tasks: ${currentTasks.map(t => `${t.title} (${t.date})`).join(', ')}
+
+Determine if the user wants to:
+- create_task: Create a new task or habit
+- create_event: Schedule an event or meeting
+- update_task: Modify an existing task
+- reschedule: Move a task to different time/date
+- query: Ask about progress, tasks, or goals
+- none: General conversation or unclear intent
+
+For task creation, determine:
+- title: Clear, actionable task name
+- description: Brief explanation
+- date: YYYY-MM-DD format
+- time: HH:MM format if specified
+- isHabit: true for recurring/daily tasks
+- xpValue: 20-50 based on complexity
+- proofMode: "realtime" for photo proof, "flex" for flexible proof
+
+Date parsing:
+- "today" = ${currentDate}
+- "tomorrow" = next day
+- "Monday", "Tuesday", etc. = next occurrence
+- "next week" = 7 days from now
+
+Time parsing:
+- "morning" = 09:00
+- "afternoon" = 14:00
+- "evening" = 18:00
+- "night" = 20:00
+
+Respond with JSON:
+{
+  "action": "create_task|create_event|update_task|reschedule|query|none",
+  "taskData": { /* if creating task */ },
+  "eventData": { /* if creating event */ },
+  "updateData": { /* if updating/rescheduling */ },
+  "confirmation": "Natural language confirmation",
+  "needsClarification": false,
+  "clarificationQuestion": "Question if clarification needed"
+}
+
+IMPORTANT: Return ONLY the JSON object without markdown formatting.`
+    },
+    {
+      role: 'user',
+      content: userInput
+    }
+  ];
+
+  try {
+    const response = await callAI(messages);
+    const cleanedResponse = cleanJsonResponse(response);
+    return JSON.parse(cleanedResponse);
+  } catch (error) {
+    console.error('Error processing conversational command:', error);
+    return {
+      action: 'none',
+      confirmation: "I couldn't understand that command. Try something like 'Add workout tomorrow at 8 AM' or 'Schedule meeting Friday at 2 PM'."
+    };
+  }
+};
+
 export async function generateTasksWithContext(
   goalTitle: string,
   goalDescription: string,
