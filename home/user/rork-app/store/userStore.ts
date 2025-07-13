@@ -3,7 +3,7 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { UserProfile } from '@/types';
 import { supabase, checkDatabaseSetup, setupDatabase, serializeError } from '@/lib/supabase';
-import { useAuthStore } from './authStore';
+import { useAuthStore } from '@/store/authStore';
 
 export type MotivationTone = 'cheerful' | 'data-driven' | 'tough-love';
 
@@ -30,6 +30,7 @@ interface UserState {
   isLoading: boolean;
   error: string | null;
   needsDatabaseSetup: boolean;
+  addXp: (amount: number) => Promise<void>;
   updateStreak: (increment: boolean) => Promise<void>;
   resetStreak: () => Promise<void>;
   updateProfile: (updates: Partial<UserProfile>) => Promise<void>;
@@ -176,7 +177,7 @@ export const useUserStore = create<UserState>()(
         }
       },
       
-      addXp: async (amount) => {
+      addXp: async (amount: number) => {
         const { profile } = get();
         const { user } = useAuthStore.getState();
         
