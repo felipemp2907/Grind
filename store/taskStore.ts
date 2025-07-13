@@ -293,7 +293,7 @@ export const useTaskStore = create<TaskState>()(
         const { goals, activeGoalId } = useGoalStore.getState();
         const { coachSettings } = useUserStore.getState();
         
-        const activeGoal = goals.find(g => g.id === activeGoalId) || goals[0];
+        const activeGoal = goals.find((g: any) => g.id === activeGoalId) || goals[0];
         if (!activeGoal) return;
         
         // Check if agenda already exists for this date
@@ -344,7 +344,7 @@ export const useTaskStore = create<TaskState>()(
         if (!agenda) return;
         
         const { goals, activeGoalId } = useGoalStore.getState();
-        const activeGoal = goals.find(g => g.id === activeGoalId) || goals[0];
+        const activeGoal = goals.find((g: any) => g.id === activeGoalId) || goals[0];
         if (!activeGoal) return;
         
         // Convert agenda tasks to actual tasks
@@ -398,7 +398,7 @@ export const useTaskStore = create<TaskState>()(
         
         try {
           // Generate tasks for each goal
-          const promises = goals.map(goal => 
+          const promises = goals.map((goal: any) => 
             get().generateTasksForGoal(date, goal.id)
           );
           
@@ -413,7 +413,7 @@ export const useTaskStore = create<TaskState>()(
       // Generate tasks for a specific goal
       generateTasksForGoal: async (date, goalId) => {
         const { goals } = useGoalStore.getState();
-        const goal = goals.find(g => g.id === goalId);
+        const goal = goals.find((g: any) => g.id === goalId);
         
         if (!goal) return;
         
