@@ -36,7 +36,7 @@ export const signInWithGoogle = async (): Promise<GoogleAuthResult> => {
     const codeChallenge = await Crypto.digestStringAsync(
       Crypto.CryptoDigestAlgorithm.SHA256,
       Math.random().toString(36).substring(2, 15),
-      { encoding: Crypto.CryptoEncoding.BASE64URL }
+      { encoding: Crypto.CryptoEncoding.BASE64 }
     );
 
     // Create the auth request
