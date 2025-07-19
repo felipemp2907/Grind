@@ -154,11 +154,25 @@ export const setupDatabaseLegacy = async (): Promise<boolean> => {
 // Helper function to create user profile after signup
 export const createUserProfile = async (userId: string, userData: { name?: string; avatar_url?: string } = {}) => {
   try {
+    // First try using the RPC function which has better error handling
+    const { data: rpcResult, error: rpcError } = await supabase.rpc('ensure_user_profile', {
+      user_id: userId,
+      user_name: userData.name || 'User'
+    });
+    
+    if (!rpcError && rpcResult) {
+      console.log('Profile ensured via RPC for user:', userId);
+      return { data: { id: userId }, error: null };
+    }
+    
+    // Fallback to direct insert if RPC fails
+    console.log('RPC failed, trying direct upsert:', rpcError);
+    
     const { data, error } = await supabase
       .from('profiles')
       .upsert({
         id: userId,
-        name: userData.name || null,
+        name: userData.name || 'User',
         avatar_url: userData.avatar_url || null,
         level: 1,
         xp: 0,
@@ -211,6 +225,16 @@ export const getCurrentUser = async (): Promise<{ user: any | null; error?: stri
       return { user: null, error: error.message };
     }
     
+    if (!user) {
+      return { user: null, error: 'No authenticated user found' };
+    }
+    
+    // Verify user exists in auth.users by checking if we can get their session
+    const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+    if (sessionError || !sessionData.session) {
+      return { user: null, error: 'Invalid or expired session' };
+    }
+    
     return { user };
   } catch (error) {
     return { user: null, error: serializeError(error) };
@@ -220,7 +244,14 @@ export const getCurrentUser = async (): Promise<{ user: any | null; error?: stri
 // Helper function to ensure user profile exists
 export const ensureUserProfile = async (userId: string, userData: { name?: string; email?: string } = {}): Promise<{ success: boolean; error?: string }> => {
   try {
-    // First check if profile already exists
+    // First check if user exists in auth.users
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user || user.id !== userId) {
+      console.error('User not found in auth.users:', authError);
+      return { success: false, error: 'User not authenticated or user ID mismatch' };
+    }
+    
+    // Check if profile already exists
     const { data: existingProfile, error: selectError } = await supabase
       .from('profiles')
       .select('id')
@@ -229,32 +260,40 @@ export const ensureUserProfile = async (userId: string, userData: { name?: strin
     
     if (existingProfile) {
       // Profile already exists
+      console.log('Profile already exists for user:', userId);
       return { success: true };
     }
     
     // Profile doesn't exist, create it
     const profileData = {
       id: userId,
-      name: userData.name || userData.email?.split('@')[0] || 'User',
+      name: userData.name || userData.email?.split('@')[0] || user.user_metadata?.name || 'User',
       level: 1,
       xp: 0,
       streak_days: 0,
       longest_streak: 0
     };
     
-    const { error: upsertError } = await supabase
-      .from('profiles')
-      .upsert(profileData, {
-        onConflict: 'id',
-        ignoreDuplicates: false
-      });
+    console.log('Creating profile for user:', userId, 'with data:', profileData);
     
-    if (upsertError) {
-      console.error('Error creating user profile:', upsertError);
-      return { success: false, error: serializeError(upsertError) };
+    const { data: insertedProfile, error: insertError } = await supabase
+      .from('profiles')
+      .insert(profileData)
+      .select()
+      .single();
+    
+    if (insertError) {
+      // If it's a duplicate key error, that's actually fine - profile exists
+      if (insertError.code === '23505') {
+        console.log('Profile already exists (duplicate key), continuing...');
+        return { success: true };
+      }
+      
+      console.error('Error creating user profile:', insertError);
+      return { success: false, error: serializeError(insertError) };
     }
     
-    console.log('User profile created successfully for user:', userId);
+    console.log('User profile created successfully:', insertedProfile);
     return { success: true };
   } catch (error) {
     console.error('Error in ensureUserProfile:', error);

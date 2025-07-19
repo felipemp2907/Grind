@@ -66,27 +66,51 @@ export const useGoalStore = create<GoalState>()(
           const { user: currentUser, error: userError } = await getCurrentUser();
           if (userError || !currentUser) {
             console.error('User not authenticated:', userError);
-            return;
+            throw new Error(`Authentication error: ${userError || 'No user found'}`);
           }
           
           const dbResult = await setupDatabase();
           if (!dbResult.success) {
             console.error('Database not set up:', dbResult.error);
-            return;
+            throw new Error(`Database setup error: ${dbResult.error}`);
           }
           
           console.log('Adding goal for user:', currentUser.id);
           
-          // Ensure user profile exists
-          const profileResult = await ensureUserProfile(currentUser.id, {
+          // Ensure user profile exists with retry logic
+          let profileResult = await ensureUserProfile(currentUser.id, {
             name: currentUser.user_metadata?.name,
             email: currentUser.email
           });
+          
+          // If profile creation failed, try once more after a short delay
+          if (!profileResult.success) {
+            console.log('Profile creation failed, retrying in 1 second...');
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            profileResult = await ensureUserProfile(currentUser.id, {
+              name: currentUser.user_metadata?.name,
+              email: currentUser.email
+            });
+          }
           
           if (!profileResult.success) {
             console.error('Error ensuring profile exists:', profileResult.error);
             throw new Error(`Failed to create user profile: ${profileResult.error}`);
           }
+          
+          // Verify profile exists before inserting goal
+          const { data: profileCheck, error: profileCheckError } = await supabase
+            .from('profiles')
+            .select('id')
+            .eq('id', currentUser.id)
+            .single();
+            
+          if (profileCheckError || !profileCheck) {
+            console.error('Profile verification failed:', profileCheckError);
+            throw new Error('User profile does not exist and could not be created');
+          }
+          
+          console.log('Profile verified, inserting goal...');
           
           const { data, error } = await supabase
             .from('goals')
@@ -102,10 +126,18 @@ export const useGoalStore = create<GoalState>()(
           if (error) {
             console.error('Error saving goal to Supabase:', serializeError(error));
             console.error('Full error object:', JSON.stringify(error, null, 2));
-            return;
+            
+            // If it's a foreign key constraint error, provide a more helpful message
+            if (error.code === '23503' && error.message.includes('goals_user_id_fkey')) {
+              throw new Error('User profile not found. Please try logging out and logging back in.');
+            }
+            
+            throw new Error(`Database error: ${serializeError(error)}`);
           }
           
           if (data) {
+            console.log('Goal saved successfully:', data);
+            
             // Update the goal with the database-generated ID
             const goalWithDbId = {
               ...goal,
@@ -134,6 +166,7 @@ export const useGoalStore = create<GoalState>()(
           }
         } catch (error) {
           console.error('Error saving goal:', serializeError(error));
+          throw error; // Re-throw so the UI can handle it
         }
       },
       

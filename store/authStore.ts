@@ -51,6 +51,22 @@ export const useAuthStore = create<AuthState>()(
           }
           
           if (data?.user) {
+            // Ensure user profile exists on login
+            try {
+              const profileResult = await createUserProfile(data.user.id, { 
+                name: data.user.user_metadata?.name 
+              });
+              if (profileResult.error) {
+                console.log('Profile creation failed during login, trying RPC fallback');
+                await supabase.rpc('ensure_user_profile', {
+                  user_id: data.user.id,
+                  user_name: data.user.user_metadata?.name || 'User'
+                });
+              }
+            } catch (profileError) {
+              console.error('Error ensuring profile on login:', serializeError(profileError));
+            }
+            
             const user: AuthUser = {
               id: data.user.id,
               email: data.user.email || '',
@@ -124,10 +140,21 @@ export const useAuthStore = create<AuthState>()(
               isLoading: false,
             });
             
-            // Create user profile (this will be handled by the database trigger)
-            // But we can also try to create it manually as a fallback
+            // Ensure user profile is created
+            // The database trigger should handle this, but we'll ensure it exists
             try {
-              await createUserProfile(data.user.id, { name });
+              const profileResult = await createUserProfile(data.user.id, { name });
+              if (profileResult.error) {
+                console.error('Error creating profile:', profileResult.error);
+                // Try using the RPC function as fallback
+                const { error: rpcError } = await supabase.rpc('ensure_user_profile', {
+                  user_id: data.user.id,
+                  user_name: name
+                });
+                if (rpcError) {
+                  console.error('RPC profile creation also failed:', rpcError);
+                }
+              }
             } catch (profileError) {
               console.error('Error creating profile:', serializeError(profileError));
               // Continue with navigation even if profile creation fails
