@@ -667,7 +667,7 @@ const styles = StyleSheet.create({
   addTaskText: {
     fontSize: 14,
     fontWeight: 'bold',
-    color: '#FFFFFF',
+    color: '#000000',
   },
   generateTasksButton: {
     backgroundColor: 'rgba(108, 92, 231, 0.15)',

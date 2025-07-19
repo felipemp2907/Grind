@@ -90,11 +90,11 @@ const styles = StyleSheet.create({
   statValue: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#000000',
+    color: '#FFFFFF',
   },
   statLabel: {
     fontSize: 12,
-    color: Colors.dark.text,
+    color: '#FFFFFF',
   },
   progressContainer: {
     marginTop: 4,
@@ -111,6 +111,6 @@ const styles = StyleSheet.create({
   progressValue: {
     fontSize: 12,
     fontWeight: 'bold',
-    color: '#000000',
+    color: '#FFFFFF',
   },
 });
