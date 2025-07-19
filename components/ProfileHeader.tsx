@@ -94,7 +94,7 @@ const styles = StyleSheet.create({
   },
   statLabel: {
     fontSize: 12,
-    color: Colors.dark.subtext,
+    color: Colors.dark.text,
   },
   progressContainer: {
     marginTop: 4,
