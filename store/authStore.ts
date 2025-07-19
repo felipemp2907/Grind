@@ -4,6 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Alert, Platform } from 'react-native';
 import { router } from 'expo-router';
 import { supabase, createUserProfile, serializeError } from '@/lib/supabase';
+import { signInWithGoogleSupabase } from '@/lib/googleAuth';
 import { AuthUser, LoginCredentials, RegisterCredentials } from '@/types';
 import { AuthError, Session, User } from '@supabase/supabase-js';
 
@@ -16,6 +17,7 @@ interface AuthState {
   
   // Auth methods
   login: (credentials: LoginCredentials) => Promise<void>;
+  loginWithGoogle: () => Promise<void>;
   register: (credentials: RegisterCredentials) => Promise<void>;
   logout: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
@@ -85,6 +87,71 @@ export const useAuthStore = create<AuthState>()(
         } catch (error: any) {
           const errorMessage = serializeError(error);
           console.error("Login error:", errorMessage);
+          set({ 
+            error: errorMessage,
+            isLoading: false,
+          });
+        }
+      },
+
+      loginWithGoogle: async () => {
+        set({ isLoading: true, error: null });
+        
+        try {
+          const result = await signInWithGoogleSupabase();
+          
+          if (!result.success) {
+            throw new Error(result.error || 'Google authentication failed');
+          }
+
+          // For web, the redirect will handle the session
+          if (Platform.OS === 'web') {
+            set({ isLoading: false });
+            return;
+          }
+
+          // For mobile, handle the user data
+          if (result.user) {
+            // Ensure user profile exists
+            try {
+              const profileResult = await createUserProfile(result.user.id, { 
+                name: result.user.name,
+                avatar_url: result.user.avatar_url
+              });
+              if (profileResult.error) {
+                console.log('Profile creation failed during Google login, trying RPC fallback');
+                await supabase.rpc('ensure_user_profile', {
+                  user_id: result.user.id,
+                  user_name: result.user.name
+                });
+              }
+            } catch (profileError) {
+              console.error('Error ensuring profile on Google login:', serializeError(profileError));
+            }
+            
+            const user: AuthUser = {
+              id: result.user.id,
+              email: result.user.email,
+              name: result.user.name,
+            };
+            
+            // Get the current session
+            const { data: sessionData } = await supabase.auth.getSession();
+            
+            set({ 
+              user,
+              session: sessionData.session,
+              isAuthenticated: true,
+              isLoading: false,
+            });
+            
+            router.replace('/(tabs)');
+          } else {
+            set({ isLoading: false });
+          }
+        } catch (error: any) {
+          const errorMessage = serializeError(error);
+          console.error("Google login error:", errorMessage);
           set({ 
             error: errorMessage,
             isLoading: false,

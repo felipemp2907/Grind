@@ -17,11 +17,12 @@ import { Link, useRouter } from 'expo-router';
 import { Target, Mail, Lock, Eye, EyeOff, AlertCircle } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import Button from '@/components/Button';
+import GoogleSignInButton from '@/components/GoogleSignInButton';
 import { useAuthStore } from '@/store/authStore';
 
 export default function LoginScreen() {
   const router = useRouter();
-  const { login, resetPassword, resendConfirmationEmail, isLoading, error, clearError, isAuthenticated } = useAuthStore();
+  const { login, loginWithGoogle, resetPassword, resendConfirmationEmail, isLoading, error, clearError, isAuthenticated } = useAuthStore();
   
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -116,6 +117,10 @@ export default function LoginScreen() {
     await resendConfirmationEmail(email);
     setShowResendConfirmation(false);
   };
+
+  const handleGoogleLogin = async () => {
+    await loginWithGoogle();
+  };
   
   return (
     <SafeAreaView style={styles.container}>
@@ -195,6 +200,19 @@ export default function LoginScreen() {
               onPress={handleLogin}
               loading={isLoading}
               style={styles.loginButton}
+            />
+
+            {/* Divider */}
+            <View style={styles.dividerContainer}>
+              <View style={styles.dividerLine} />
+              <Text style={styles.dividerText}>or</Text>
+              <View style={styles.dividerLine} />
+            </View>
+
+            {/* Google Sign In */}
+            <GoogleSignInButton
+              onPress={handleGoogleLogin}
+              loading={isLoading}
             />
             
             {/* Email confirmation notice */}
@@ -375,6 +393,22 @@ const styles = StyleSheet.create({
   },
   loginButton: {
     marginTop: 16,
+  },
+  dividerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 20,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: Colors.dark.subtext,
+    opacity: 0.3,
+  },
+  dividerText: {
+    color: Colors.dark.subtext,
+    fontSize: 14,
+    marginHorizontal: 16,
   },
   noticeContainer: {
     flexDirection: 'row',
