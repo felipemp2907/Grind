@@ -22,7 +22,7 @@ import {
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import Button from './Button';
-import { processConversationalCommand } from '@/utils/aiUtils';
+import { parseTaskCommand } from '@/utils/aiUtils';
 import { useTaskStore } from '@/store/taskStore';
 import { useGoalStore } from '@/store/goalStore';
 import * as Haptics from 'expo-haptics';
@@ -60,20 +60,11 @@ export default function ConversationalCommandCenter({
         isHabit: t.isHabit
       }));
 
-      const result = await processConversationalCommand(
-        message,
-        currentTasks,
-        currentDate,
-        activeGoal ? { title: activeGoal.title, description: activeGoal.description } : undefined
-      );
+      const result = await parseTaskCommand(message, currentDate);
 
       setLastCommand(result);
       
-      if (result.needsClarification) {
-        // Show clarification UI
-        setMessage('');
-        setShowConfirmation(true);
-      } else if (result.action !== 'none') {
+      if (result.action !== 'none') {
         setShowConfirmation(true);
       }
 
@@ -101,7 +92,7 @@ export default function ConversationalCommandCenter({
     if (!lastCommand) return;
 
     try {
-      if (lastCommand.action === 'create_task' && lastCommand.taskData) {
+      if (lastCommand.action === 'create' && lastCommand.taskData) {
         const newTask = {
           id: `task-${Date.now()}`,
           title: lastCommand.taskData.title,
@@ -114,7 +105,7 @@ export default function ConversationalCommandCenter({
           streak: 0,
           scheduledTime: lastCommand.taskData.time,
           isUserCreated: true,
-          requiresValidation: lastCommand.taskData.proofMode === 'realtime',
+          requiresValidation: true,
           priority: 'medium' as const,
           estimatedTime: '30 min'
         };
@@ -126,9 +117,9 @@ export default function ConversationalCommandCenter({
         if (Platform.OS !== 'web') {
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         }
-      } else if (lastCommand.action === 'create_event' && lastCommand.eventData) {
-        // Handle event creation
-        onEventCreated?.(lastCommand.eventData);
+      } else if (lastCommand.action === 'reschedule' && lastCommand.updateData) {
+        // Handle task rescheduling
+        console.log('Reschedule action:', lastCommand.updateData);
       }
 
       setMessage('');
@@ -149,16 +140,12 @@ export default function ConversationalCommandCenter({
     if (!lastCommand) return null;
     
     switch (lastCommand.action) {
-      case 'create_task':
+      case 'create':
         return <CheckCircle size={20} color={Colors.dark.success} />;
-      case 'create_event':
-        return <Calendar size={20} color={Colors.dark.primary} />;
-      case 'update_task':
+      case 'update':
         return <Clock size={20} color={Colors.dark.warning} />;
       case 'reschedule':
         return <Clock size={20} color={Colors.dark.warning} />;
-      case 'query':
-        return <Zap size={20} color={Colors.dark.primary} />;
       default:
         return <AlertCircle size={20} color={Colors.dark.subtext} />;
     }
@@ -168,15 +155,11 @@ export default function ConversationalCommandCenter({
     if (!lastCommand) return Colors.dark.card;
     
     switch (lastCommand.action) {
-      case 'create_task':
+      case 'create':
         return 'rgba(0, 184, 148, 0.1)';
-      case 'create_event':
-        return 'rgba(108, 92, 231, 0.1)';
-      case 'update_task':
+      case 'update':
       case 'reschedule':
         return 'rgba(253, 203, 110, 0.1)';
-      case 'query':
-        return 'rgba(108, 92, 231, 0.1)';
       default:
         return 'rgba(255, 118, 117, 0.1)';
     }
@@ -204,14 +187,12 @@ export default function ConversationalCommandCenter({
             <View style={styles.confirmationHeader}>
               {getActionIcon()}
               <Text style={styles.confirmationTitle}>
-                {lastCommand.needsClarification ? 'Need Clarification' : 'Confirm Action'}
+                Confirm Action
               </Text>
             </View>
             
             <Text style={styles.confirmationText}>
-              {lastCommand.needsClarification 
-                ? lastCommand.clarificationQuestion 
-                : lastCommand.confirmation}
+              {lastCommand.confirmation}
             </Text>
 
             {lastCommand.taskData && (
@@ -237,21 +218,19 @@ export default function ConversationalCommandCenter({
               </View>
             )}
 
-            {!lastCommand.needsClarification && (
-              <View style={styles.confirmationActions}>
-                <Button
-                  title="Confirm"
-                  onPress={handleConfirmAction}
-                  style={styles.confirmButton}
-                />
-                <Button
-                  title="Cancel"
-                  onPress={handleCancelAction}
-                  variant="outline"
-                  style={styles.cancelButton}
-                />
-              </View>
-            )}
+            <View style={styles.confirmationActions}>
+              <Button
+                title="Confirm"
+                onPress={handleConfirmAction}
+                style={styles.confirmButton}
+              />
+              <Button
+                title="Cancel"
+                onPress={handleCancelAction}
+                variant="outline"
+                style={styles.cancelButton}
+              />
+            </View>
           </View>
         )}
       </ScrollView>
