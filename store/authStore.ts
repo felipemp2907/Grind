@@ -145,6 +145,13 @@ export const useAuthStore = create<AuthState>()(
               isLoading: false,
             });
             
+            // Show success message for demo
+            Alert.alert(
+              "Demo Login Successful",
+              "You've been signed in with a demo Google account for testing purposes.",
+              [{ text: 'OK' }]
+            );
+            
             router.replace('/(tabs)');
           } else {
             set({ isLoading: false });

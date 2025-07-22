@@ -15,14 +15,25 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "app.rork.dailydesk-ai-self-mastery-platform"
+      "bundleIdentifier": "app.rork.dailydesk-ai-self-mastery-platform",
+      "infoPlist": {
+        "NSPhotoLibraryUsageDescription": "Allow $(PRODUCT_NAME) to access your photos",
+        "NSCameraUsageDescription": "Allow $(PRODUCT_NAME) to access your camera",
+        "NSMicrophoneUsageDescription": "Allow $(PRODUCT_NAME) to access your microphone"
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "app.rork.dailydesk-ai-self-mastery-platform"
+      "package": "app.rork.dailydesk-ai-self-mastery-platform",
+      "permissions": [
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE",
+        "android.permission.VIBRATE"
+      ]
     },
     "web": {
       "favicon": "./assets/images/favicon.png"
@@ -32,6 +43,12 @@
         "expo-router",
         {
           "origin": "https://rork.app/"
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "The app accesses your photos to let you share them with your friends."
         }
       ]
     ],
