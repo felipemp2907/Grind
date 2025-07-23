@@ -795,6 +795,39 @@ export const useTaskStore = create<TaskState>()(
         } finally {
           set({ isGenerating: false });
         }
+      },
+      
+      resetTasks: async () => {
+        try {
+          const { user } = useAuthStore.getState();
+          if (!user?.id) return;
+          
+          const dbResult = await setupDatabase();
+          if (!dbResult.success) {
+            console.error('Database not set up:', dbResult.error);
+            return;
+          }
+          
+          // Delete all tasks from Supabase
+          const { error } = await supabase
+            .from('tasks')
+            .delete()
+            .eq('user_id', user.id);
+            
+          if (error) {
+            console.error('Error deleting all tasks from Supabase:', serializeError(error));
+          }
+          
+          // Clear local state
+          set({ 
+            tasks: [],
+            dailyAgendas: [],
+            isGenerating: false,
+            isGeneratingAgenda: false
+          });
+        } catch (error) {
+          console.error('Error resetting tasks:', serializeError(error));
+        }
       }
     }),
     {

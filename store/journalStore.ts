@@ -14,6 +14,7 @@ interface JournalState {
   getTaskValidationEntry: (taskId: string) => JournalEntry | undefined;
   deleteEntry: (id: string) => Promise<void>;
   fetchEntries: () => Promise<void>;
+  resetEntries: () => Promise<void>;
 }
 
 export const useJournalStore = create<JournalState>()(
@@ -194,6 +195,34 @@ export const useJournalStore = create<JournalState>()(
           }
         } catch (error) {
           console.error('Error fetching journal entries:', serializeError(error));
+        }
+      },
+      
+      resetEntries: async () => {
+        try {
+          const { user } = useAuthStore.getState();
+          if (!user?.id) return;
+          
+          const dbResult = await setupDatabase();
+          if (!dbResult.success) {
+            console.error('Database not set up:', dbResult.error);
+            return;
+          }
+          
+          // Delete all entries from Supabase
+          const { error } = await supabase
+            .from('journal_entries')
+            .delete()
+            .eq('user_id', user.id);
+            
+          if (error) {
+            console.error('Error deleting all journal entries from Supabase:', serializeError(error));
+          }
+          
+          // Clear local state
+          set({ entries: [] });
+        } catch (error) {
+          console.error('Error resetting journal entries:', serializeError(error));
         }
       }
     }),
