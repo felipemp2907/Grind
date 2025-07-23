@@ -16,132 +16,130 @@ export interface GoogleAuthResult {
 // In production, you would need to configure Google OAuth in Supabase
 export const signInWithGoogle = async (): Promise<GoogleAuthResult> => {
   try {
-    // Use a fixed demo user to avoid email validation issues
-    // This simulates a real Google OAuth flow
-    const mockGoogleUser = {
-      email: 'demo@grindapp.com',
-      password: 'DemoPassword123!',
+    console.log('🔧 Using mock Google authentication for development');
+    
+    // Try to sign in with a pre-created demo user first
+    const knownDemoUsers = [
+      'demo@grindapp.com',
+      'testuser@grindapp.com',
+      'google.demo@grindapp.com'
+    ];
+    
+    const demoPassword = 'DemoPassword123!';
+    
+    // Try each known demo user
+    for (const demoEmail of knownDemoUsers) {
+      try {
+        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+          email: demoEmail,
+          password: demoPassword,
+        });
+
+        if (!signInError && signInData.user) {
+          console.log('🔧 Successfully signed in with existing demo user:', demoEmail);
+          return {
+            success: true,
+            user: {
+              id: signInData.user.id,
+              email: signInData.user.email || demoEmail,
+              name: signInData.user.user_metadata?.full_name || 'Demo Google User',
+              avatar_url: signInData.user.user_metadata?.avatar_url || 'https://lh3.googleusercontent.com/a/default-user=s96-c',
+            },
+          };
+        }
+      } catch (err) {
+        // Continue to next demo user
+        console.log('Demo user', demoEmail, 'not available, trying next...');
+      }
+    }
+
+    // If no existing demo users work, try to create a new one
+    console.log('🔧 No existing demo users available, creating new one...');
+    
+    const timestamp = Date.now();
+    const newDemoUser = {
+      email: `demo.user.${timestamp}@gmail.com`,
+      password: demoPassword,
       name: 'Demo Google User',
       avatar_url: 'https://lh3.googleusercontent.com/a/default-user=s96-c'
     };
 
-    console.log('🔧 Using mock Google authentication for development');
-    console.log('🔧 Mock user email:', mockGoogleUser.email);
-
-    // Try to sign in first
-    const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-      email: mockGoogleUser.email,
-      password: mockGoogleUser.password,
+    const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+      email: newDemoUser.email,
+      password: newDemoUser.password,
+      options: {
+        data: {
+          full_name: newDemoUser.name,
+          avatar_url: newDemoUser.avatar_url,
+          provider: 'google'
+        }
+      }
     });
 
-    if (signInError && signInError.message.includes('Invalid login credentials')) {
-      // User doesn't exist, create them
-      console.log('🔧 Creating new mock Google user...');
+    if (signUpError) {
+      console.error('Demo user creation failed:', signUpError);
       
-      // First try with email confirmation disabled for demo
-      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-        email: mockGoogleUser.email,
-        password: mockGoogleUser.password,
-        options: {
-          data: {
-            full_name: mockGoogleUser.name,
-            avatar_url: mockGoogleUser.avatar_url,
-            provider: 'google'
-          },
-          emailRedirectTo: undefined // Disable email confirmation for demo
-        }
-      });
-
-      if (signUpError) {
-        console.error('Mock Google sign-up error:', signUpError);
-        
-        // If email validation fails, try with a different approach
-        if (signUpError.message.includes('invalid') || signUpError.message.includes('email')) {
-          console.log('🔧 Email validation failed, trying alternative approach...');
-          
-          // Try with a more standard email format
-          const altEmail = `demouser${Date.now()}@gmail.com`;
-          const { data: altSignUpData, error: altSignUpError } = await supabase.auth.signUp({
-            email: altEmail,
-            password: mockGoogleUser.password,
-            options: {
-              data: {
-                full_name: mockGoogleUser.name,
-                avatar_url: mockGoogleUser.avatar_url,
-                provider: 'google'
-              }
-            }
-          });
-          
-          if (altSignUpError) {
-            return {
-              success: false,
-              error: `Demo authentication failed: ${altSignUpError.message}. This is a development demo - in production, real Google OAuth would be used.`,
-            };
-          }
-          
-          if (altSignUpData.user) {
-            console.log('🔧 Alternative mock Google user created successfully');
-            return {
-              success: true,
-              user: {
-                id: altSignUpData.user.id,
-                email: altSignUpData.user.email || altEmail,
-                name: mockGoogleUser.name,
-                avatar_url: mockGoogleUser.avatar_url,
-              },
-            };
-          }
-        }
-        
+      // Provide specific error messages for common issues
+      if (signUpError.message.includes('Email not confirmed') || 
+          signUpError.message.includes('confirmation')) {
         return {
           success: false,
-          error: `Demo sign-up failed: ${signUpError.message}. This is a development demo.`,
+          error: 'Email confirmation is required in your Supabase project. To fix this:\n\n1. Go to your Supabase Dashboard\n2. Navigate to Authentication > Settings\n3. Turn OFF "Enable email confirmations"\n4. Try again\n\nAlternatively, you can use regular email/password registration.',
         };
       }
-
-      if (signUpData.user) {
-        console.log('🔧 Mock Google user created successfully');
+      
+      if (signUpError.message.includes('invalid') && signUpError.message.includes('email')) {
         return {
-          success: true,
-          user: {
-            id: signUpData.user.id,
-            email: signUpData.user.email || mockGoogleUser.email,
-            name: mockGoogleUser.name,
-            avatar_url: mockGoogleUser.avatar_url,
-          },
+          success: false,
+          error: 'Email validation failed. This is a demo authentication - please try regular email/password login instead.',
         };
       }
-    } else if (signInError) {
-      console.error('Mock Google sign-in error:', signInError);
+      
       return {
         success: false,
-        error: `Demo sign-in failed: ${signInError.message}. This is a development demo.`,
+        error: `Demo authentication setup failed: ${signUpError.message}\n\nThis is a development demo. In production, real Google OAuth would be used. You can try regular email/password authentication instead.`,
       };
     }
 
-    if (signInData.user) {
-      console.log('🔧 Mock Google user signed in successfully');
+    if (signUpData?.user) {
+      // Check if user needs email confirmation
+      if (!signUpData.session) {
+        return {
+          success: false,
+          error: 'Email confirmation is required. To fix this:\n\n1. Go to your Supabase Dashboard\n2. Navigate to Authentication > Settings\n3. Turn OFF "Enable email confirmations"\n4. Try again\n\nAlternatively, you can use regular email/password registration.',
+        };
+      }
+
+      console.log('🔧 New demo user created successfully');
       return {
         success: true,
         user: {
-          id: signInData.user.id,
-          email: signInData.user.email || mockGoogleUser.email,
-          name: signInData.user.user_metadata?.full_name || mockGoogleUser.name,
-          avatar_url: signInData.user.user_metadata?.avatar_url || mockGoogleUser.avatar_url,
+          id: signUpData.user.id,
+          email: signUpData.user.email || newDemoUser.email,
+          name: newDemoUser.name,
+          avatar_url: newDemoUser.avatar_url,
         },
       };
     }
 
     return {
       success: false,
-      error: 'Demo authentication failed - no user data received',
+      error: 'Demo authentication failed to create user. Please try regular email/password authentication instead.',
     };
   } catch (error: any) {
     console.error('Google sign-in error:', error);
+    
+    // Provide helpful error messages for common issues
+    if (error.message?.includes('Email not confirmed') || error.message?.includes('confirmation')) {
+      return {
+        success: false,
+        error: 'Email confirmation is required. Please disable email confirmation in Supabase Auth settings for development, or use regular email/password authentication.',
+      };
+    }
+    
     return {
       success: false,
-      error: `Demo authentication error: ${error.message || 'An unexpected error occurred'}. This is a development demo.`,
+      error: `Demo authentication error: ${error.message || 'An unexpected error occurred'}\n\nThis is a development demo. Please try regular email/password authentication instead.`,
     };
   }
 };

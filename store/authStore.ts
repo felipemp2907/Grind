@@ -105,10 +105,10 @@ export const useAuthStore = create<AuthState>()(
             const errorMessage = result.error || 'Google authentication failed';
             console.error("Google login error:", errorMessage);
             
-            // Show a more user-friendly error for demo purposes
+            // Show the specific error message from the Google auth function
             Alert.alert(
-              "Demo Authentication",
-              "This is a demo Google authentication. In a production app, this would connect to real Google OAuth. The demo authentication encountered an issue - you can try regular email/password login instead.",
+              "Demo Google Authentication",
+              errorMessage + "\n\nThis is a development demo. In production, real Google OAuth would be used.",
               [{ text: 'OK' }]
             );
             
@@ -178,8 +178,8 @@ export const useAuthStore = create<AuthState>()(
           
           // Show user-friendly error for demo
           Alert.alert(
-            "Demo Authentication Error",
-            "The demo Google authentication encountered an issue. In production, this would use real Google OAuth. You can try regular email/password login instead.",
+            "Demo Google Authentication Error",
+            `${errorMessage}\n\nThis is a development demo. In production, real Google OAuth would be used. You can try regular email/password login instead.`,
             [{ text: 'OK' }]
           );
           
