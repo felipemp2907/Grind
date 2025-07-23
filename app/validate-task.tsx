@@ -423,7 +423,7 @@ export default function ValidateTaskScreen() {
               onPress={validateImage}
               disabled={validating}
               loading={validating}
-              icon={<Eye size={16} color={Colors.dark.text} />}
+              icon={<Eye size={16} color={Colors.dark.background} />}
               style={styles.validateButton}
             />
           )}
@@ -672,6 +672,7 @@ const styles = StyleSheet.create({
   },
   validateButton: {
     marginBottom: 24,
+    backgroundColor: Colors.dark.primary,
   },
   feedbackContainer: {
     padding: 16,

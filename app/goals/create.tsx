@@ -30,8 +30,7 @@ export default function CreateGoalScreen() {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [deadline, setDeadline] = useState(getDatePlusDays(30)); // Default 30 days
-  const [targetValue, setTargetValue] = useState('');
-  const [unit, setUnit] = useState('');
+
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [creating, setCreating] = useState(false);
   const [generatingBreakdown, setGeneratingBreakdown] = useState(false);
@@ -63,8 +62,8 @@ export default function CreateGoalScreen() {
         
         // Enhanced Grind fields
         progressValue: 0,
-        targetValue: parseFloat(targetValue) || 1,
-        unit: unit || '',
+        targetValue: 100, // Default to 100 for percentage-based progress
+        unit: '',
         xpEarned: 0,
         streakCount: 0,
         todayTasksIds: [],
@@ -85,16 +84,16 @@ export default function CreateGoalScreen() {
             title,
             description,
             deadline,
-            parseFloat(targetValue) || 1,
-            unit,
+            100, // Use 100 as default target for percentage-based progress
+            '',
             0
           );
           
           // Create tasks from breakdown
           const todayDate = getTodayDate();
           
-          // Add today tasks
-          breakdown.todayTasks.forEach((task, index) => {
+          // Add today tasks (limit to 3)
+          breakdown.todayTasks.slice(0, 3).forEach((task, index) => {
             const newTask = {
               id: `task-${Date.now()}-${index}`,
               title: task.title,
@@ -118,8 +117,8 @@ export default function CreateGoalScreen() {
             addTask(newTask);
           });
           
-          // Add streak habits
-          breakdown.streakHabits.forEach((habit, index) => {
+          // Add streak habits (limit to 3)
+          breakdown.streakHabits.slice(0, 3).forEach((habit, index) => {
             const newTask = {
               id: `habit-${Date.now()}-${index}`,
               title: habit.title,
@@ -145,7 +144,7 @@ export default function CreateGoalScreen() {
           
           Alert.alert(
             "Goal Created! 🎯",
-            `Your goal "${title}" has been created and Hustle has generated ${breakdown.todayTasks.length} tasks and ${breakdown.streakHabits.length} daily habits to get you started!`,
+            `Your goal "${title}" has been created and Hustle has generated ${Math.min(breakdown.todayTasks.length, 3)} tasks and ${Math.min(breakdown.streakHabits.length, 3)} daily habits to get you started!`,
             [{ text: "Let's Go!" }]
           );
           
@@ -233,34 +232,7 @@ export default function CreateGoalScreen() {
               textAlignVertical="top"
             />
             
-            <View style={styles.targetContainer}>
-              <View style={styles.targetRow}>
-                <View style={styles.targetValueContainer}>
-                  <Text style={styles.label}>Target Value</Text>
-                  <TextInput
-                    style={styles.targetInput}
-                    placeholder="10"
-                    placeholderTextColor={Colors.dark.subtext}
-                    value={targetValue}
-                    onChangeText={setTargetValue}
-                    keyboardType="numeric"
-                  />
-                </View>
-                <View style={styles.unitContainer}>
-                  <Text style={styles.label}>Unit</Text>
-                  <TextInput
-                    style={styles.targetInput}
-                    placeholder="kg, books, $"
-                    placeholderTextColor={Colors.dark.subtext}
-                    value={unit}
-                    onChangeText={setUnit}
-                  />
-                </View>
-              </View>
-              <Text style={styles.targetHint}>
-                e.g., "10 kg" for weight gain, "5 books" for reading, "$1000" for savings
-              </Text>
-            </View>
+
             
             <Text style={styles.label}>Deadline</Text>
             <View style={styles.datePickerContainer}>
@@ -383,34 +355,7 @@ const styles = StyleSheet.create({
     height: 120,
     paddingTop: 16,
   },
-  targetContainer: {
-    marginBottom: 16,
-  },
-  targetRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  targetValueContainer: {
-    flex: 2,
-    marginRight: 8,
-  },
-  unitContainer: {
-    flex: 1,
-    marginLeft: 8,
-  },
-  targetInput: {
-    backgroundColor: Colors.dark.card,
-    borderRadius: 8,
-    padding: 16,
-    fontSize: 16,
-    color: Colors.dark.text,
-  },
-  targetHint: {
-    fontSize: 12,
-    color: Colors.dark.subtext,
-    marginTop: 8,
-    fontStyle: 'italic',
-  },
+
   datePickerContainer: {
     flexDirection: 'row',
     alignItems: 'center',

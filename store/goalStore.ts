@@ -60,19 +60,39 @@ export const useGoalStore = create<GoalState>()(
       milestoneAlerts: [],
       
       addGoal: async (goal) => {
-        // Save to Supabase first to get the generated UUID
+        // Add to local state first for immediate UI feedback
+        set((state) => {
+          // Only allow up to 3 goals
+          if (state.goals.length >= 3) {
+            return state;
+          }
+          
+          const newGoals = [...state.goals, goal];
+          
+          // If this is the first goal, set it as active
+          const newActiveGoalId = state.activeGoalId || goal.id;
+          
+          return { 
+            goals: newGoals,
+            activeGoalId: newActiveGoalId
+          };
+        });
+        
+        // Save to Supabase in the background
         try {
           // Get current user directly from Supabase to ensure it's valid
           const { user: currentUser, error: userError } = await getCurrentUser();
           if (userError || !currentUser) {
             console.error('User not authenticated:', userError);
-            throw new Error(`Authentication error: ${userError || 'No user found'}`);
+            // Don't throw error here, just log it
+            return;
           }
           
           const dbResult = await setupDatabase();
           if (!dbResult.success) {
             console.error('Database not set up:', dbResult.error);
-            throw new Error(`Database setup error: ${dbResult.error}`);
+            // Don't throw error here, just log it
+            return;
           }
           
           console.log('Adding goal for user:', currentUser.id);
@@ -95,7 +115,8 @@ export const useGoalStore = create<GoalState>()(
           
           if (!profileResult.success) {
             console.error('Error ensuring profile exists:', profileResult.error);
-            throw new Error(`Failed to create user profile: ${profileResult.error}`);
+            // Don't throw error here, just log it
+            return;
           }
           
           // Verify profile exists before inserting goal
@@ -107,7 +128,8 @@ export const useGoalStore = create<GoalState>()(
             
           if (profileCheckError || !profileCheck) {
             console.error('Profile verification failed:', profileCheckError);
-            throw new Error('User profile does not exist and could not be created');
+            // Don't throw error here, just log it
+            return;
           }
           
           console.log('Profile verified, inserting goal...');
@@ -127,46 +149,31 @@ export const useGoalStore = create<GoalState>()(
             console.error('Error saving goal to Supabase:', serializeError(error));
             console.error('Full error object:', JSON.stringify(error, null, 2));
             
-            // If it's a foreign key constraint error, provide a more helpful message
-            if (error.code === '23503' && error.message.includes('goals_user_id_fkey')) {
-              throw new Error('User profile not found. Please try logging out and logging back in.');
-            }
-            
-            throw new Error(`Database error: ${serializeError(error)}`);
+            // Don't throw error here, just log it - the goal is already in local state
+            return;
           }
           
           if (data) {
             console.log('Goal saved successfully:', data);
             
-            // Update the goal with the database-generated ID
-            const goalWithDbId = {
-              ...goal,
-              id: data.id,
-              createdAt: data.created_at,
-              updatedAt: data.updated_at
-            };
-            
-            // Add to local state with the correct ID
-            set((state) => {
-              // Only allow up to 3 goals
-              if (state.goals.length >= 3) {
-                return state;
-              }
-              
-              const newGoals = [...state.goals, goalWithDbId];
-              
-              // If this is the first goal, set it as active
-              const newActiveGoalId = state.activeGoalId || goalWithDbId.id;
-              
-              return { 
-                goals: newGoals,
-                activeGoalId: newActiveGoalId
-              };
-            });
+            // Update the goal in local state with the database-generated ID
+            set((state) => ({
+              goals: state.goals.map(g => 
+                g.id === goal.id 
+                  ? {
+                      ...g,
+                      id: data.id,
+                      createdAt: data.created_at,
+                      updatedAt: data.updated_at
+                    }
+                  : g
+              ),
+              activeGoalId: state.activeGoalId === goal.id ? data.id : state.activeGoalId
+            }));
           }
         } catch (error) {
           console.error('Error saving goal:', serializeError(error));
-          throw error; // Re-throw so the UI can handle it
+          // Don't throw error - goal is already in local state
         }
       },
       

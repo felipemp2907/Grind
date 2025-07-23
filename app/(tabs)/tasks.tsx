@@ -17,7 +17,8 @@ import {
   ChevronRight,
   Plus,
   Target,
-  Flame
+  Flame,
+  Zap
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { useGoalStore } from '@/store/goalStore';
@@ -36,7 +37,7 @@ import CreateTaskModal from '@/components/CreateTaskModal';
 export default function TasksScreen() {
   const router = useRouter();
   const { goals, activeGoalId, setActiveGoal } = useGoalStore();
-  const { tasks, getTasks, getTasksByGoal, generateDailyTasks, generateTasksForGoal, isGenerating } = useTaskStore();
+  const { tasks, getTasks, getTasksByGoal, generateDailyTasks, generateTasksForGoal, isGenerating, generateAISuggestions, canAddMoreTasks } = useTaskStore();
   const { entries } = useJournalStore();
   
   const [selectedDate, setSelectedDate] = useState(getTodayDate());
@@ -276,6 +277,24 @@ export default function TasksScreen() {
             <Calendar size={20} color={Colors.dark.text} />
           </TouchableOpacity>
           
+          {!isPastDate(selectedDate) && goals.length > 0 && (
+            <TouchableOpacity 
+              style={styles.aiSuggestButton}
+              onPress={async () => {
+                const activeGoal = goals.find(g => g.id === activeGoalId) || goals[0];
+                if (activeGoal) {
+                  const taskLimits = canAddMoreTasks(selectedDate, filterByGoal || activeGoal.id);
+                  if (taskLimits.canAddToday || taskLimits.canAddHabits) {
+                    await generateAISuggestions(selectedDate, filterByGoal || activeGoal.id);
+                  }
+                }
+              }}
+              disabled={isGenerating}
+            >
+              <Zap size={18} color={Colors.dark.secondary} />
+            </TouchableOpacity>
+          )}
+          
           {!isPastDate(selectedDate) && (
             <TouchableOpacity 
               style={styles.addButton}
@@ -438,6 +457,15 @@ const styles = StyleSheet.create({
   },
   calendarButton: {
     backgroundColor: Colors.dark.card,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 8,
+  },
+  aiSuggestButton: {
+    backgroundColor: 'rgba(0, 206, 201, 0.15)',
     width: 36,
     height: 36,
     borderRadius: 18,

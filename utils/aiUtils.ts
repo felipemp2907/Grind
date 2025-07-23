@@ -239,8 +239,8 @@ Goal Analysis:
 - Current Progress: ${currentProgress} ${unit}
 
 Create a comprehensive breakdown with:
-1. TODAY TASKS: 3-5 specific, actionable one-time tasks for today
-2. STREAK HABITS: 2-3 daily habits that build toward the goal
+1. TODAY TASKS: Maximum 3 specific, actionable one-time tasks for today
+2. STREAK HABITS: Maximum 3 daily habits that build toward the goal
 3. MILESTONES: 4-5 progress checkpoints (25%, 50%, 75%, 100%)
 4. MOTIVATION: Inspiring message about achieving this goal
 5. TIME ESTIMATE: Realistic timeline for completion
@@ -959,11 +959,11 @@ export const generateDailyTasksForGoal = async (
     {
       role: 'system',
       content: `You are Hustle, an AI assistant for the Grind app that helps users achieve their long-term goals. 
-      Your job is to generate 4-6 specific, actionable daily tasks that will help the user make progress toward their goal.
+      Your job is to generate up to 6 specific, actionable daily tasks that will help the user make progress toward their goal.
       
       Create two types of tasks:
-      1. Today Tasks: One-time tasks specific to today (${formattedDate}) that move the user toward their goal. These should be UNIQUE for each day and NOT repetitive.
-      2. Streak Tasks: Daily habits that should be maintained consistently (marked with isHabit: true)
+      1. Today Tasks: Maximum 3 one-time tasks specific to today (${formattedDate}) that move the user toward their goal. These should be UNIQUE for each day and NOT repetitive.
+      2. Streak Tasks: Maximum 3 daily habits that should be maintained consistently (marked with isHabit: true)
       
       Tasks should be:
       - Concrete and measurable

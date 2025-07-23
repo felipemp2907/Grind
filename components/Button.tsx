@@ -94,8 +94,8 @@ export default function Button({
     if (variant === 'outline') {
       baseStyle.color = Colors.dark.primary;
     } else if (variant === 'primary') {
-      // White button needs black text for contrast
-      baseStyle.color = '#000000';
+      // Primary button should have contrasting text color
+      baseStyle.color = Colors.dark.background;
     }
     
     return baseStyle;
@@ -110,7 +110,7 @@ export default function Button({
     >
       {loading ? (
         <ActivityIndicator 
-          color={variant === 'outline' ? Colors.dark.primary : Colors.dark.text} 
+          color={variant === 'outline' ? Colors.dark.primary : variant === 'primary' ? Colors.dark.background : Colors.dark.text} 
           size="small" 
         />
       ) : (

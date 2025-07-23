@@ -68,6 +68,10 @@ interface TaskState {
   getCompletionRate: (date: string) => number;
   getStreakTasks: (date: string) => Task[];
   getMissedTasks: (date: string) => Task[];
+  
+  // AI Suggestions
+  generateAISuggestions: (date: string, goalId?: string) => Promise<void>;
+  canAddMoreTasks: (date: string, goalId?: string) => { canAddToday: boolean; canAddHabits: boolean; todayCount: number; habitCount: number };
 }
 
 export const useTaskStore = create<TaskState>()(
@@ -365,8 +369,8 @@ export const useTaskStore = create<TaskState>()(
         const activeGoal = goals.find((g: any) => g.id === activeGoalId) || goals[0];
         if (!activeGoal) return;
         
-        // Convert agenda tasks to actual tasks
-        const newTasks: Task[] = agenda.tasks.map((agendaTask, index) => ({
+        // Convert agenda tasks to actual tasks (limit to 3)
+        const newTasks: Task[] = agenda.tasks.slice(0, 3).map((agendaTask, index) => ({
           id: `agenda-task-${Date.now()}-${index}`,
           title: agendaTask.title,
           description: agendaTask.description,
@@ -440,12 +444,13 @@ export const useTaskStore = create<TaskState>()(
           task => task.date === date && task.goalId === goalId
         );
         
-        // Only generate new non-habit tasks if none exist for this date
+        // Only generate new non-habit tasks if we don't have enough for this date
         // For habit tasks, we'll check individually
         const existingRegularTasks = existingTasks.filter(task => !task.isHabit);
+        const existingHabitTasks = existingTasks.filter(task => task.isHabit);
         
-        if (existingRegularTasks.length > 0) {
-          // If we already have regular tasks for this date, don't generate new ones
+        if (existingRegularTasks.length >= 3 && existingHabitTasks.length >= 3) {
+          // If we already have enough tasks for this date, don't generate new ones
           // But we might still need to create habit tasks if they don't exist
           
           // Get existing habit tasks for this goal
@@ -453,10 +458,11 @@ export const useTaskStore = create<TaskState>()(
             task => task.goalId === goalId && task.isHabit
           );
           
-          // If we have habit tasks but none for this date, create copies for today
-          if (habitTasks.length > 0 && !existingTasks.some(task => task.isHabit)) {
-            // Create copies of habit tasks for today
-            const newHabitTasks = habitTasks.map(habitTask => ({
+          // If we have habit tasks but none for this date and we need more, create copies for today
+          if (habitTasks.length > 0 && existingHabitTasks.length < 3) {
+            // Create copies of habit tasks for today (up to 3 total)
+            const tasksToAdd = Math.min(3 - existingHabitTasks.length, habitTasks.length);
+            const newHabitTasks = habitTasks.slice(0, tasksToAdd).map(habitTask => ({
               ...habitTask,
               id: `task-${Date.now()}-${goalId}-habit-${Math.random().toString(36).substring(7)}`,
               date,
@@ -536,8 +542,13 @@ export const useTaskStore = create<TaskState>()(
             ];
           }
           
+          // Separate today tasks and habit tasks, then limit each
+          const todayTasks = aiTasks.filter(task => !task.isHabit).slice(0, 3);
+          const habitTasks = aiTasks.filter(task => task.isHabit).slice(0, 3);
+          const limitedTasks = [...todayTasks, ...habitTasks];
+          
           // Create task objects from AI response
-          const newTasks: Task[] = aiTasks.map((aiTask: AIGeneratedTask, index: number) => ({
+          const newTasks: Task[] = limitedTasks.map((aiTask: AIGeneratedTask, index: number) => ({
             id: `task-${Date.now()}-${goalId}-${index}-${Math.random().toString(36).substring(7)}`,
             title: aiTask.title,
             description: aiTask.description,
@@ -559,7 +570,7 @@ export const useTaskStore = create<TaskState>()(
         } catch (error) {
           console.error('Error generating tasks for goal:', error);
           
-          // Create fallback tasks if AI fails
+          // Create fallback tasks if AI fails (limited to 3 today + 3 habits)
           const fallbackTasks: Task[] = [
             {
               id: `task-${Date.now()}-${goalId}-1-${Math.random().toString(36).substring(7)}`,
@@ -576,7 +587,7 @@ export const useTaskStore = create<TaskState>()(
             },
             {
               id: `task-${Date.now()}-${goalId}-2-${Math.random().toString(36).substring(7)}`,
-              title: `Research for ${goal.title} - ${new Date(date).getDay()}`,
+              title: `Research for ${goal.title}`,
               description: "Gather information and resources to help you progress",
               date,
               goalId,
@@ -589,6 +600,19 @@ export const useTaskStore = create<TaskState>()(
             },
             {
               id: `task-${Date.now()}-${goalId}-3-${Math.random().toString(36).substring(7)}`,
+              title: `Plan next steps for ${goal.title}`,
+              description: "Create a detailed action plan for tomorrow",
+              date,
+              goalId,
+              completed: false,
+              xpValue: 25,
+              isHabit: false,
+              streak: 0,
+              isUserCreated: false,
+              requiresValidation: true
+            },
+            {
+              id: `task-${Date.now()}-${goalId}-4-${Math.random().toString(36).substring(7)}`,
               title: `Daily habit for ${goal.title}`,
               description: "Maintain your daily practice",
               date,
@@ -653,6 +677,120 @@ export const useTaskStore = create<TaskState>()(
           }
         } catch (error) {
           console.error('Error fetching tasks:', serializeError(error));
+        }
+      },
+      
+      // Check if more tasks can be added for a specific date and goal
+      canAddMoreTasks: (date, goalId) => {
+        const existingTasks = goalId 
+          ? get().tasks.filter(task => task.date === date && task.goalId === goalId)
+          : get().tasks.filter(task => task.date === date);
+          
+        const todayTasks = existingTasks.filter(task => !task.isHabit);
+        const habitTasks = existingTasks.filter(task => task.isHabit);
+        
+        return {
+          canAddToday: todayTasks.length < 3,
+          canAddHabits: habitTasks.length < 3,
+          todayCount: todayTasks.length,
+          habitCount: habitTasks.length
+        };
+      },
+      
+      // Generate AI task suggestions when user requests them
+      generateAISuggestions: async (date, goalId) => {
+        const { goals } = useGoalStore.getState();
+        const goal = goalId ? goals.find((g: any) => g.id === goalId) : goals[0];
+        
+        if (!goal) return;
+        
+        const taskLimits = get().canAddMoreTasks(date, goalId);
+        
+        // Only generate if we can add more tasks
+        if (!taskLimits.canAddToday && !taskLimits.canAddHabits) {
+          return;
+        }
+        
+        set({ isGenerating: true });
+        
+        try {
+          // Get previous tasks for context
+          const previousTasks = get().tasks
+            .filter(task => task.goalId === goal.id && task.completed)
+            .map(task => task.title);
+          
+          // Call AI to generate suggestions
+          const aiResponse = await generateDailyTasksForGoal(
+            goal.title,
+            goal.description,
+            goal.deadline,
+            previousTasks,
+            date
+          );
+          
+          // Parse AI response
+          let aiTasks: AIGeneratedTask[] = [];
+          try {
+            const cleanedResponse = aiResponse
+              .replace(/```json\s*/g, '')
+              .replace(/```\s*$/g, '')
+              .replace(/```/g, '')
+              .trim();
+              
+            let jsonToparse = cleanedResponse;
+            if (!cleanedResponse.startsWith('[')) {
+              const match = cleanedResponse.match(/\[[\s\S]*\]/);
+              if (match) {
+                jsonToparse = match[0];
+              }
+            }
+            
+            aiTasks = JSON.parse(jsonToparse);
+          } catch (error) {
+            console.error('Error parsing AI suggestions:', error);
+            return;
+          }
+          
+          // Filter tasks based on what we can add
+          const todayTasks = aiTasks.filter(task => !task.isHabit);
+          const habitTasks = aiTasks.filter(task => task.isHabit);
+          
+          const tasksToAdd: AIGeneratedTask[] = [];
+          
+          if (taskLimits.canAddToday) {
+            const todayToAdd = Math.min(3 - taskLimits.todayCount, todayTasks.length);
+            tasksToAdd.push(...todayTasks.slice(0, todayToAdd));
+          }
+          
+          if (taskLimits.canAddHabits) {
+            const habitsToAdd = Math.min(3 - taskLimits.habitCount, habitTasks.length);
+            tasksToAdd.push(...habitTasks.slice(0, habitsToAdd));
+          }
+          
+          // Create task objects from AI suggestions
+          const newTasks: Task[] = tasksToAdd.map((aiTask: AIGeneratedTask, index: number) => ({
+            id: `ai-suggestion-${Date.now()}-${goal.id}-${index}-${Math.random().toString(36).substring(7)}`,
+            title: aiTask.title,
+            description: aiTask.description,
+            date,
+            goalId: goal.id,
+            completed: false,
+            xpValue: aiTask.xpValue || Math.floor(Math.random() * 30) + 20,
+            isHabit: aiTask.isHabit || false,
+            streak: 0,
+            isUserCreated: false,
+            requiresValidation: true
+          }));
+          
+          // Add suggested tasks
+          for (const task of newTasks) {
+            await get().addTask(task);
+          }
+          
+        } catch (error) {
+          console.error('Error generating AI suggestions:', error);
+        } finally {
+          set({ isGenerating: false });
         }
       }
     }),
