@@ -44,17 +44,19 @@ export default function JournalScreen() {
   const handleAddEntry = async () => {
     // Create a new journal entry
     const newEntry = {
-      id: `journal-${Date.now()}`,
       date: getTodayDate(),
       title: "New Journal Entry",
       content: "",
       createdAt: new Date().toISOString()
     };
     
-    addEntry(newEntry);
+    // Add entry and get the UUID from database
+    const entryWithId = await addEntry(newEntry);
     
-    // Navigate to the new entry
-    router.push(`/journal/${newEntry.id}`);
+    // Navigate to the new entry if we got an ID back
+    if (entryWithId?.id) {
+      router.push(`/journal/${entryWithId.id}`);
+    }
   };
   
   const handleAddPhotoEntry = async () => {
@@ -77,7 +79,6 @@ export default function JournalScreen() {
     if (!pickerResult.canceled) {
       // Create a new journal entry with the selected image
       const newEntry = {
-        id: `journal-${Date.now()}`,
         date: getTodayDate(),
         title: "Photo Journal Entry",
         content: "",
@@ -85,10 +86,13 @@ export default function JournalScreen() {
         createdAt: new Date().toISOString()
       };
       
-      addEntry(newEntry);
+      // Add entry and get the UUID from database
+      const entryWithId = await addEntry(newEntry);
       
-      // Navigate to the new entry
-      router.push(`/journal/${newEntry.id}`);
+      // Navigate to the new entry if we got an ID back
+      if (entryWithId?.id) {
+        router.push(`/journal/${entryWithId.id}`);
+      }
     }
   };
   

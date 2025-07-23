@@ -7,7 +7,7 @@ import { useAuthStore } from './authStore';
 
 interface JournalState {
   entries: JournalEntry[];
-  addEntry: (entry: JournalEntry) => Promise<void>;
+  addEntry: (entry: Omit<JournalEntry, 'id'>) => Promise<JournalEntry | null>;
   updateEntry: (id: string, updates: Partial<JournalEntry>) => Promise<void>;
   getEntryById: (id: string) => JournalEntry | undefined;
   getEntriesByDate: (date: string) => JournalEntry[];
@@ -22,38 +22,54 @@ export const useJournalStore = create<JournalState>()(
       entries: [],
       
       addEntry: async (entry) => {
-        // Add to local state first
-        set((state) => ({ 
-          entries: [...state.entries, entry] 
-        }));
-        
-        // Save to Supabase
+        // Save to Supabase first to get the generated UUID
         try {
           const { user } = useAuthStore.getState();
-          if (!user?.id) return;
+          if (!user?.id) return null;
           
           const dbResult = await setupDatabase();
           if (!dbResult.success) {
             console.error('Database not set up:', dbResult.error);
-            return;
+            return null;
           }
           
-          const { error } = await supabase
+          const { data, error } = await supabase
             .from('journal_entries')
             .insert({
-              id: entry.id,
               user_id: user.id,
               title: entry.title,
               content: entry.content,
               mood: entry.mood,
               tags: entry.tags
-            });
+            })
+            .select()
+            .single();
             
           if (error) {
             console.error('Error saving journal entry to Supabase:', serializeError(error));
+            return null;
           }
+          
+          // Add to local state with the UUID from database
+          if (data) {
+            const entryWithUUID = {
+              ...entry,
+              id: data.id,
+              createdAt: data.created_at,
+              updatedAt: data.updated_at
+            };
+            
+            set((state) => ({ 
+              entries: [...state.entries, entryWithUUID] 
+            }));
+            
+            return entryWithUUID;
+          }
+          
+          return null;
         } catch (error) {
           console.error('Error saving journal entry:', serializeError(error));
+          return null;
         }
       },
       

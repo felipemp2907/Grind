@@ -186,8 +186,7 @@ export default function ValidateTaskScreen() {
     
     try {
       // Create journal entry for validation
-      const journalEntry = {
-        id: `journal-${Date.now()}`,
+      const journalEntryData = {
         date: task.date,
         title: `Task: ${task.title}`,
         content: journalContent || `Completed: ${task.title}`,
@@ -200,8 +199,12 @@ export default function ValidateTaskScreen() {
         validationConfidence: validationResult?.confidence
       };
       
-      // Add journal entry
-      await addEntry(journalEntry);
+      // Add journal entry and get the created entry with UUID
+      const journalEntry = await addEntry(journalEntryData);
+      
+      if (!journalEntry) {
+        throw new Error('Failed to create journal entry');
+      }
       
       // Mark task as completed
       await completeTask(task.id, journalEntry.id);
