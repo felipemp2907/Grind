@@ -194,7 +194,7 @@ export default function ValidateTaskScreen() {
         mediaUri,
         reflection,
         createdAt: new Date().toISOString(),
-        validationStatus: (validationResult?.isValid ? 'approved' : 'pending') as const,
+        validationStatus: validationResult?.isValid ? 'approved' : 'pending',
         validationFeedback: validationResult?.feedback,
         validationConfidence: validationResult?.confidence
       };
