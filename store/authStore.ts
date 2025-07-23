@@ -24,6 +24,7 @@ interface AuthState {
   resendConfirmationEmail: (email: string) => Promise<void>;
   clearError: () => void;
   refreshSession: () => Promise<void>;
+  resetAuth: () => void;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -413,6 +414,16 @@ export const useAuthStore = create<AuthState>()(
       
       clearError: () => {
         set({ error: null });
+      },
+      
+      resetAuth: () => {
+        set({
+          user: null,
+          session: null,
+          isAuthenticated: false,
+          isLoading: false,
+          error: null
+        });
       },
     }),
     {

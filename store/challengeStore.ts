@@ -16,6 +16,7 @@ interface ChallengeState {
   abandonChallenge: (challengeId: string) => void;
   getChallengeProgress: (challengeId: string) => ChallengeProgress[];
   getActiveChallenges: () => Challenge[];
+  resetChallenges: () => void;
 }
 
 const CHALLENGE_TEMPLATES = {
@@ -166,6 +167,16 @@ export const useChallengeStore = create<ChallengeState>()(
       
       getActiveChallenges: () => {
         return get().activeChallenges;
+      },
+      
+      resetChallenges: () => {
+        set({
+          challenges: [],
+          progress: [],
+          activeChallenges: [],
+          isLoading: false,
+          error: null
+        });
       }
     }),
     {

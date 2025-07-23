@@ -28,6 +28,7 @@ import { useUserStore, MotivationTone } from '@/store/userStore';
 import { useGoalStore } from '@/store/goalStore';
 import { useTaskStore } from '@/store/taskStore';
 import { useJournalStore } from '@/store/journalStore';
+import { useAuthStore } from '@/store/authStore';
 import { useRouter } from 'expo-router';
 
 export default function SettingsScreen() {
@@ -36,6 +37,7 @@ export default function SettingsScreen() {
   const { goals, resetEverything: resetGoals } = useGoalStore();
   const { resetTasks } = useTaskStore();
   const { resetEntries } = useJournalStore();
+  const { resetAuth } = useAuthStore();
   
   const [localSettings, setLocalSettings] = useState(coachSettings);
   
@@ -95,12 +97,31 @@ export default function SettingsScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
+              console.log('Starting reset everything process...');
+              
               // Reset all stores
+              console.log('Resetting goals...');
               await resetGoals();
-              await resetTasks?.();
-              await resetEntries?.();
+              
+              console.log('Resetting tasks...');
+              await resetTasks();
+              
+              console.log('Resetting journal entries...');
+              await resetEntries();
+              
+              // Reset user profile to defaults
+              console.log('Resetting user profile...');
+              const { updateProfile } = useUserStore.getState();
+              await updateProfile({
+                level: 1,
+                xp: 0,
+                xpToNextLevel: 100,
+                streakDays: 0,
+                longestStreak: 0
+              });
               
               // Reset user settings
+              console.log('Resetting coach settings...');
               updateCoachSettings({
                 preferredTone: 'tough-love',
                 agendaTime: '07:00',
@@ -118,13 +139,18 @@ export default function SettingsScreen() {
                 }
               });
               
+              // Reset auth state (but keep user logged in)
+              console.log('Resetting auth state...');
+              // Don't call resetAuth() as it would log the user out
+              
+              console.log('Reset complete!');
               Alert.alert('Success', 'All data has been reset. The app will restart.');
               
               // Navigate to onboarding
               router.replace('/onboarding');
             } catch (error) {
               console.error('Error resetting everything:', error);
-              Alert.alert('Error', 'Failed to reset all data. Please try again.');
+              Alert.alert('Error', `Failed to reset all data: ${error.message || error}. Please try again.`);
             }
           }
         }
