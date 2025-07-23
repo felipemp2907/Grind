@@ -72,6 +72,9 @@ interface TaskState {
   // AI Suggestions
   generateAISuggestions: (date: string, goalId?: string) => Promise<void>;
   canAddMoreTasks: (date: string, goalId?: string) => { canAddToday: boolean; canAddHabits: boolean; todayCount: number; habitCount: number };
+  
+  // Reset
+  resetTasks: () => Promise<void>;
 }
 
 export const useTaskStore = create<TaskState>()(

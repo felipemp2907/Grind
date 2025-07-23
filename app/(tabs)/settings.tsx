@@ -19,17 +19,23 @@ import {
   TrendingUp,
   Zap,
   ChevronRight,
-  Settings as SettingsIcon
+  Settings as SettingsIcon,
+  AlertTriangle,
+  Trash2
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { useUserStore, MotivationTone } from '@/store/userStore';
 import { useGoalStore } from '@/store/goalStore';
+import { useTaskStore } from '@/store/taskStore';
+import { useJournalStore } from '@/store/journalStore';
 import { useRouter } from 'expo-router';
 
 export default function SettingsScreen() {
   const router = useRouter();
   const { profile, coachSettings, updateCoachSettings } = useUserStore();
-  const { goals } = useGoalStore();
+  const { goals, resetEverything: resetGoals } = useGoalStore();
+  const { resetTasks } = useTaskStore();
+  const { resetEntries } = useJournalStore();
   
   const [localSettings, setLocalSettings] = useState(coachSettings);
   
@@ -72,6 +78,54 @@ export default function SettingsScreen() {
               missedStreakCount: 0,
               lastMotivationSent: null
             }));
+          }
+        }
+      ]
+    );
+  };
+
+  const resetEverything = () => {
+    Alert.alert(
+      '⚠️ DEVELOPER ONLY - Reset Everything',
+      'This will permanently delete ALL your data including:\n\n• All goals and progress\n• All tasks and habits\n• All journal entries\n• All XP and streaks\n• All settings\n\nThis action cannot be undone. Are you absolutely sure?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'DELETE EVERYTHING', 
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              // Reset all stores
+              await resetGoals();
+              await resetTasks?.();
+              await resetEntries?.();
+              
+              // Reset user settings
+              updateCoachSettings({
+                preferredTone: 'tough-love',
+                agendaTime: '07:00',
+                recapTime: '22:00',
+                focusModeEnabled: true,
+                notificationsEnabled: true,
+                missedTaskCount: 0,
+                missedStreakCount: 0,
+                lastMotivationSent: null,
+                focusStats: {
+                  blurEvents: 0,
+                  lastBlurTime: null,
+                  focusPromptSent: false,
+                  focusSessionsToday: 0
+                }
+              });
+              
+              Alert.alert('Success', 'All data has been reset. The app will restart.');
+              
+              // Navigate to onboarding
+              router.replace('/onboarding');
+            } catch (error) {
+              console.error('Error resetting everything:', error);
+              Alert.alert('Error', 'Failed to reset all data. Please try again.');
+            }
           }
         }
       ]
@@ -309,6 +363,28 @@ export default function SettingsScreen() {
           </TouchableOpacity>
         </View>
         
+        {/* Developer Section */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <AlertTriangle size={20} color={Colors.dark.danger} />
+            <Text style={styles.sectionTitle}>Developer Only</Text>
+          </View>
+          
+          <View style={styles.warningContainer}>
+            <Text style={styles.warningText}>
+              ⚠️ This section is for development purposes only and will be removed in production.
+            </Text>
+          </View>
+          
+          <TouchableOpacity 
+            style={styles.dangerButton}
+            onPress={resetEverything}
+          >
+            <Trash2 size={20} color={Colors.dark.text} />
+            <Text style={styles.dangerButtonText}>Reset Everything</Text>
+          </TouchableOpacity>
+        </View>
+
         {/* App Info */}
         <View style={styles.section}>
           <Text style={styles.appInfo}>
@@ -531,5 +607,33 @@ const styles = StyleSheet.create({
     color: Colors.dark.subtext,
     textAlign: 'center',
     lineHeight: 20,
+  },
+  warningContainer: {
+    backgroundColor: 'rgba(255, 118, 117, 0.1)',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 118, 117, 0.3)',
+  },
+  warningText: {
+    fontSize: 14,
+    color: Colors.dark.danger,
+    textAlign: 'center',
+    fontWeight: '500',
+  },
+  dangerButton: {
+    backgroundColor: Colors.dark.danger,
+    borderRadius: 8,
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dangerButtonText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: Colors.dark.text,
+    marginLeft: 8,
   },
 });
