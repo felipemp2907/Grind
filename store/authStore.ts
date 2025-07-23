@@ -108,8 +108,13 @@ export const useAuthStore = create<AuthState>()(
             // Show the specific error message from the Google auth function
             Alert.alert(
               "Demo Google Authentication",
-              errorMessage + "\n\nThis is a development demo. In production, real Google OAuth would be used.",
-              [{ text: 'OK' }]
+              errorMessage,
+              [
+                { text: 'Use Email/Password', onPress: () => {
+                  // User can continue with regular login
+                }},
+                { text: 'OK', style: 'default' }
+              ]
             );
             
             set({ 

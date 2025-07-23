@@ -335,4 +335,71 @@ export const serializeError = (error: any): string => {
   return 'An unknown error occurred';
 };
 
+// Helper function to create demo users for Google authentication
+export const createDemoGoogleUser = async (): Promise<{ success: boolean; error?: string; user?: any }> => {
+  try {
+    const demoEmail = 'demo@grindapp.com';
+    const demoPassword = 'DemoPassword123!';
+    
+    // Try to create the demo user
+    const { data, error } = await supabase.auth.signUp({
+      email: demoEmail,
+      password: demoPassword,
+      options: {
+        data: {
+          full_name: 'Demo Google User',
+          avatar_url: 'https://lh3.googleusercontent.com/a/default-user=s96-c',
+          provider: 'google'
+        }
+      }
+    });
+
+    if (error) {
+      // If user already exists, try to sign in instead
+      if (error.message.includes('already registered')) {
+        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+          email: demoEmail,
+          password: demoPassword,
+        });
+
+        if (signInError) {
+          return { 
+            success: false, 
+            error: `Demo user exists but sign-in failed: ${signInError.message}` 
+          };
+        }
+
+        return { 
+          success: true, 
+          user: signInData.user,
+          error: 'Demo user already exists and was signed in successfully'
+        };
+      }
+
+      return { 
+        success: false, 
+        error: `Failed to create demo user: ${error.message}` 
+      };
+    }
+
+    if (data?.user) {
+      return { 
+        success: true, 
+        user: data.user,
+        error: 'Demo user created successfully'
+      };
+    }
+
+    return { 
+      success: false, 
+      error: 'Failed to create demo user - no user data returned' 
+    };
+  } catch (error) {
+    return { 
+      success: false, 
+      error: `Error creating demo user: ${serializeError(error)}` 
+    };
+  }
+};
+
 export { supabase };

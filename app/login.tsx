@@ -215,6 +215,14 @@ export default function LoginScreen() {
               loading={isLoading}
             />
             
+            {/* Demo Google Auth Notice */}
+            <View style={styles.demoNoticeContainer}>
+              <AlertCircle size={16} color={Colors.dark.warning || '#f59e0b'} />
+              <Text style={styles.demoNoticeText}>
+                Google sign-in is a demo feature. If it fails, please disable email confirmations in Supabase settings or use regular email/password login.
+              </Text>
+            </View>
+            
             {/* Email confirmation notice */}
             <View style={styles.noticeContainer}>
               <AlertCircle size={16} color={Colors.dark.primary} />
@@ -410,13 +418,28 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginHorizontal: 16,
   },
+  demoNoticeContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: 'rgba(245, 158, 11, 0.1)',
+    borderRadius: 8,
+    padding: 12,
+    marginTop: 12,
+  },
+  demoNoticeText: {
+    flex: 1,
+    fontSize: 11,
+    color: Colors.dark.text,
+    marginLeft: 8,
+    opacity: 0.8,
+  },
   noticeContainer: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     backgroundColor: 'rgba(108, 92, 231, 0.1)',
     borderRadius: 8,
     padding: 12,
-    marginTop: 16,
+    marginTop: 8,
   },
   noticeText: {
     flex: 1,
