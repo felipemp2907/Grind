@@ -63,7 +63,6 @@ export default function CreateGoalScreen() {
         // Enhanced Grind fields
         progressValue: 0,
         targetValue: 100, // Default to 100 for percentage-based progress
-        unit: '',
         xpEarned: 0,
         streakCount: 0,
         todayTasksIds: [],
@@ -85,7 +84,7 @@ export default function CreateGoalScreen() {
             description,
             deadline,
             100, // Use 100 as default target for percentage-based progress
-            '',
+            'progress',
             0
           );
           
@@ -266,6 +265,13 @@ export default function CreateGoalScreen() {
               </TouchableOpacity>
             </View>
             
+            <View style={styles.warningContainer}>
+              <Text style={styles.warningTitle}>⚠️ Important Notice</Text>
+              <Text style={styles.warningText}>
+                Ultimate goals cannot be deleted once created. Please seriously commit to this goal and describe it in as much detail as possible. This will be your main focus for the duration you set.
+              </Text>
+            </View>
+            
             <View style={styles.aiInfoContainer}>
               <Zap size={20} color={Colors.dark.secondary} />
               <Text style={styles.aiInfoText}>
@@ -392,6 +398,25 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: Colors.dark.primary,
     fontWeight: '600',
+  },
+  warningContainer: {
+    backgroundColor: 'rgba(255, 118, 117, 0.1)',
+    borderRadius: 8,
+    padding: 16,
+    marginBottom: 16,
+    borderLeftWidth: 3,
+    borderLeftColor: Colors.dark.danger,
+  },
+  warningTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: Colors.dark.danger,
+    marginBottom: 8,
+  },
+  warningText: {
+    fontSize: 14,
+    color: Colors.dark.text,
+    lineHeight: 20,
   },
   aiInfoContainer: {
     flexDirection: 'row',

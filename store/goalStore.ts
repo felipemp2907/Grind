@@ -46,6 +46,7 @@ interface GoalState {
   
   // Utility functions
   resetGoals: () => void;
+  resetEverything: () => Promise<void>; // Developer only
   setOnboarded: (value: boolean) => void;
   getActiveGoal: () => Goal | null;
   getGoalById: (id: string) => Goal | null;

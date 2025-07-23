@@ -37,6 +37,7 @@ import AgendaCard from '@/components/AgendaCard';
 import MotivationToast from '@/components/MotivationToast';
 import FocusModePrompt from '@/components/FocusModePrompt';
 import FocusShortcut from '@/components/FocusShortcut';
+import GoalClarifyWizard from '@/components/GoalClarifyWizard';
 import { generateMotivationMessage } from '@/utils/aiUtils';
 
 export default function DashboardScreen() {
@@ -67,6 +68,8 @@ export default function DashboardScreen() {
   const [motivationMessage, setMotivationMessage] = useState('');
   const [focusPromptVisible, setFocusPromptVisible] = useState(false);
   const [lastBlurCheck, setLastBlurCheck] = useState(Date.now());
+  const [goalClarifyVisible, setGoalClarifyVisible] = useState(false);
+  const [selectedGoalForClarify, setSelectedGoalForClarify] = useState<string | null>(null);
   
   const todayDate = getTodayDate();
   const todayTasks = getTasks(todayDate);
@@ -223,6 +226,19 @@ export default function DashboardScreen() {
   const handleStartFocus = () => {
     startFocusSession();
     setFocusPromptVisible(false);
+  };
+  
+  const handleGoalClarify = (goalId: string) => {
+    setSelectedGoalForClarify(goalId);
+    setGoalClarifyVisible(true);
+  };
+  
+  const handleGoalClarifyComplete = (context: any) => {
+    // Handle the goal clarification completion
+    console.log('Goal clarification completed:', context);
+    setGoalClarifyVisible(false);
+    setSelectedGoalForClarify(null);
+    // You can use this context to generate better tasks
   };
   
   return (
@@ -407,6 +423,25 @@ export default function DashboardScreen() {
           <ChevronRight size={20} color={Colors.dark.subtext} />
         </TouchableOpacity>
         
+        {goals.length > 0 && (
+          <TouchableOpacity 
+            style={styles.clarifyCard}
+            onPress={() => handleGoalClarify(activeGoalId || goals[0].id)}
+            activeOpacity={0.8}
+          >
+            <View style={styles.coachContent}>
+              <Target size={24} color={Colors.dark.primary} />
+              <View style={styles.coachTextContainer}>
+                <Text style={styles.coachTitle}>Goal Clarification</Text>
+                <Text style={styles.coachDescription}>
+                  Get more specific about your goals for better task generation
+                </Text>
+              </View>
+            </View>
+            <ChevronRight size={20} color={Colors.dark.subtext} />
+          </TouchableOpacity>
+        )}
+        
 
         
         <View style={styles.quickActions}>
@@ -464,6 +499,19 @@ export default function DashboardScreen() {
         onStartFocus={handleStartFocus}
         blurCount={coachSettings.focusStats.blurEvents}
       />
+      
+      {/* Goal Clarification Wizard */}
+      {selectedGoalForClarify && (
+        <GoalClarifyWizard
+          visible={goalClarifyVisible}
+          onDismiss={() => {
+            setGoalClarifyVisible(false);
+            setSelectedGoalForClarify(null);
+          }}
+          onComplete={handleGoalClarifyComplete}
+          goalTitle={goals.find(g => g.id === selectedGoalForClarify)?.title || ''}
+        />
+      )}
     </SafeAreaView>
   );
 }
@@ -621,6 +669,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    ...Colors.common.shadow,
+  },
+  clarifyCard: {
+    backgroundColor: Colors.dark.card,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderLeftWidth: 3,
+    borderLeftColor: Colors.dark.primary,
     ...Colors.common.shadow,
   },
   coachContent: {

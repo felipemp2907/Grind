@@ -194,7 +194,7 @@ export default function ValidateTaskScreen() {
         mediaUri,
         reflection,
         createdAt: new Date().toISOString(),
-        validationStatus: validationResult?.isValid ? 'approved' as const : 'pending' as const,
+        validationStatus: validationResult?.isValid ? 'approved' : 'pending',
         validationFeedback: validationResult?.feedback,
         validationConfidence: validationResult?.confidence
       };
@@ -426,7 +426,7 @@ export default function ValidateTaskScreen() {
               onPress={validateImage}
               disabled={validating}
               loading={validating}
-              icon={<Eye size={16} color={Colors.dark.background} />}
+              icon={<Eye size={16} color="#FFFFFF" />}
               style={styles.validateButton}
             />
           )}
@@ -496,7 +496,7 @@ export default function ValidateTaskScreen() {
             onPress={handleSubmit}
             disabled={!mediaUri || loading || (task.requiresValidation && (!validationResult || !validationResult.isValid))}
             loading={loading}
-            icon={<CheckCircle size={16} color={Colors.dark.text} />}
+            icon={<CheckCircle size={16} color="#FFFFFF" />}
             style={styles.submitButton}
           />
           
