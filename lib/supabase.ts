@@ -338,61 +338,67 @@ export const serializeError = (error: any): string => {
 // Helper function to create demo users for Google authentication
 export const createDemoGoogleUser = async (): Promise<{ success: boolean; error?: string; user?: any }> => {
   try {
-    const demoEmail = 'demo@grindapp.com';
+    // Try multiple realistic demo emails
+    const demoEmails = [
+      'demo.user@gmail.com',
+      'testuser@gmail.com', 
+      'google.demo@gmail.com',
+      'demo.google@gmail.com'
+    ];
     const demoPassword = 'DemoPassword123!';
     
-    // Try to create the demo user
-    const { data, error } = await supabase.auth.signUp({
-      email: demoEmail,
-      password: demoPassword,
-      options: {
-        data: {
-          full_name: 'Demo Google User',
-          avatar_url: 'https://lh3.googleusercontent.com/a/default-user=s96-c',
-          provider: 'google'
-        }
-      }
-    });
-
-    if (error) {
-      // If user already exists, try to sign in instead
-      if (error.message.includes('already registered')) {
+    // Try each demo email
+    for (const demoEmail of demoEmails) {
+      try {
+        // First try to sign in if user already exists
         const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
           email: demoEmail,
           password: demoPassword,
         });
 
-        if (signInError) {
+        if (!signInError && signInData.user) {
+          console.log('Successfully signed in with existing demo user:', demoEmail);
           return { 
-            success: false, 
-            error: `Demo user exists but sign-in failed: ${signInError.message}` 
+            success: true, 
+            user: signInData.user,
+            error: 'Demo user already exists and was signed in successfully'
           };
         }
 
-        return { 
-          success: true, 
-          user: signInData.user,
-          error: 'Demo user already exists and was signed in successfully'
-        };
+        // If sign-in failed, try to create the user
+        const { data, error } = await supabase.auth.signUp({
+          email: demoEmail,
+          password: demoPassword,
+          options: {
+            data: {
+              full_name: 'Demo Google User',
+              avatar_url: 'https://lh3.googleusercontent.com/a/default-user=s96-c',
+              provider: 'google'
+            }
+          }
+        });
+
+        if (!error && data?.user) {
+          console.log('Successfully created demo user:', demoEmail);
+          return { 
+            success: true, 
+            user: data.user,
+            error: 'Demo user created successfully'
+          };
+        }
+
+        // Log the error and try next email
+        console.log(`Failed to create/sign-in with ${demoEmail}:`, error?.message);
+      } catch (emailError) {
+        console.log(`Error with ${demoEmail}:`, emailError);
+        continue;
       }
-
-      return { 
-        success: false, 
-        error: `Failed to create demo user: ${error.message}` 
-      };
     }
 
-    if (data?.user) {
-      return { 
-        success: true, 
-        user: data.user,
-        error: 'Demo user created successfully'
-      };
-    }
-
+    // If all emails failed, return helpful error
     return { 
       success: false, 
-      error: 'Failed to create demo user - no user data returned' 
+      error: `Failed to create demo user with any email. This usually means email confirmation is required in Supabase settings.` 
     };
   } catch (error) {
     return { 

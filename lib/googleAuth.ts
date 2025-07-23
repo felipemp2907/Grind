@@ -20,10 +20,10 @@ export const signInWithGoogle = async (): Promise<GoogleAuthResult> => {
     
     // First, try to sign in with pre-created demo users that should already be confirmed
     const knownDemoUsers = [
-      'demo@grindapp.com',
-      'testuser@grindapp.com',
-      'google.demo@grindapp.com',
-      'demo.google@example.com'
+      'demo.user@gmail.com',
+      'testuser@gmail.com',
+      'google.demo@gmail.com',
+      'demo.google@gmail.com'
     ];
     
     const demoPassword = 'DemoPassword123!';
@@ -65,7 +65,7 @@ export const signInWithGoogle = async (): Promise<GoogleAuthResult> => {
         success: true,
         user: {
           id: createResult.user.id,
-          email: createResult.user.email || 'demo@grindapp.com',
+          email: createResult.user.email || 'demo.user@gmail.com',
           name: createResult.user.user_metadata?.full_name || 'Demo Google User',
           avatar_url: createResult.user.user_metadata?.avatar_url || 'https://lh3.googleusercontent.com/a/default-user=s96-c',
         },
@@ -75,7 +75,7 @@ export const signInWithGoogle = async (): Promise<GoogleAuthResult> => {
     // If creation failed, provide clear instructions
     return {
       success: false,
-      error: `Demo Google Authentication Setup Required\n\n${createResult.error || 'Failed to create demo user'}\n\nTo fix this:\n\n1. Go to your Supabase Dashboard\n2. Navigate to Authentication > Settings\n3. Turn OFF "Enable email confirmations"\n4. Try Google sign-in again\n\nOR\n\nCreate a demo user manually:\n1. Use regular registration with:\n   Email: demo@grindapp.com\n   Password: DemoPassword123!\n2. Then use Google sign-in\n\nAlternatively, use regular email/password authentication.`,
+      error: `Demo Google Authentication Setup Required\n\n${createResult.error || 'Failed to create demo user'}\n\nTo fix this:\n\n1. Go to your Supabase Dashboard\n2. Navigate to Authentication > Settings\n3. Turn OFF "Enable email confirmations"\n4. Try Google sign-in again\n\nOR\n\nCreate a demo user manually:\n1. Use regular registration with:\n   Email: demo.user@gmail.com\n   Password: DemoPassword123!\n2. Then use Google sign-in\n\nAlternatively, use regular email/password authentication.`,
     };
   } catch (error: any) {
     console.error('Google sign-in error:', error);
