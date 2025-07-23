@@ -150,7 +150,8 @@ export default function SettingsScreen() {
               router.replace('/onboarding');
             } catch (error) {
               console.error('Error resetting everything:', error);
-              Alert.alert('Error', `Failed to reset all data: ${error.message || error}. Please try again.`);
+              const errorMessage = error instanceof Error ? error.message : String(error);
+              Alert.alert('Error', `Failed to reset all data: ${errorMessage}. Please try again.`);
             }
           }
         }
