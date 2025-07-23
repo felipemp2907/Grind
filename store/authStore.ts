@@ -101,7 +101,22 @@ export const useAuthStore = create<AuthState>()(
           const result = await signInWithGoogleSupabase();
           
           if (!result.success) {
-            throw new Error(result.error || 'Google authentication failed');
+            // If the mock Google auth fails, provide a helpful error message
+            const errorMessage = result.error || 'Google authentication failed';
+            console.error("Google login error:", errorMessage);
+            
+            // Show a more user-friendly error for demo purposes
+            Alert.alert(
+              "Demo Authentication",
+              "This is a demo Google authentication. In a production app, this would connect to real Google OAuth. The demo authentication encountered an issue - you can try regular email/password login instead.",
+              [{ text: 'OK' }]
+            );
+            
+            set({ 
+              error: null, // Don't show the technical error to user
+              isLoading: false,
+            });
+            return;
           }
 
           // For web, the redirect will handle the session
@@ -127,6 +142,7 @@ export const useAuthStore = create<AuthState>()(
               }
             } catch (profileError) {
               console.error('Error ensuring profile on Google login:', serializeError(profileError));
+              // Continue with login even if profile creation fails
             }
             
             const user: AuthUser = {
@@ -148,7 +164,7 @@ export const useAuthStore = create<AuthState>()(
             // Show success message for demo
             Alert.alert(
               "Demo Login Successful",
-              "You've been signed in with a demo Google account for testing purposes.",
+              "You've been signed in with a demo Google account for testing purposes. In production, this would use real Google OAuth.",
               [{ text: 'OK' }]
             );
             
@@ -159,8 +175,16 @@ export const useAuthStore = create<AuthState>()(
         } catch (error: any) {
           const errorMessage = serializeError(error);
           console.error("Google login error:", errorMessage);
+          
+          // Show user-friendly error for demo
+          Alert.alert(
+            "Demo Authentication Error",
+            "The demo Google authentication encountered an issue. In production, this would use real Google OAuth. You can try regular email/password login instead.",
+            [{ text: 'OK' }]
+          );
+          
           set({ 
-            error: errorMessage,
+            error: null, // Don't show technical error to user
             isLoading: false,
           });
         }

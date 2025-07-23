@@ -24,7 +24,7 @@ export default function GoogleSignInButton({ onPress, loading = false, style }: 
             <View style={styles.iconContainer}>
               <Text style={styles.googleIcon}>G</Text>
             </View>
-            <Text style={styles.text}>Continue with Google (Demo)</Text>
+            <Text style={styles.text}>Demo Google Sign-In</Text>
           </>
         )}
       </View>
