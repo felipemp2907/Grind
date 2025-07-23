@@ -194,7 +194,7 @@ export default function ValidateTaskScreen() {
         mediaUri,
         reflection,
         createdAt: new Date().toISOString(),
-        validationStatus: (validationResult?.isValid ? 'approved' : 'pending') as 'pending' | 'approved' | 'rejected',
+        validationStatus: (validationResult?.isValid ? 'approved' : 'pending') as const,
         validationFeedback: validationResult?.feedback,
         validationConfidence: validationResult?.confidence
       };
@@ -235,18 +235,23 @@ export default function ValidateTaskScreen() {
         );
       }
       
-      // Navigate back after a short delay
-      setTimeout(() => {
-        setLoading(false);
-        router.back();
-      }, 1000);
+      // Navigate back immediately instead of using setTimeout
+      setLoading(false);
+      router.back();
     } catch (error) {
       console.error('Error completing task:', error);
       setLoading(false);
       Alert.alert(
         "Error",
         "There was an error completing your task. Please try again.",
-        [{ text: "OK" }]
+        [
+          { 
+            text: "Go Back", 
+            onPress: () => router.back(),
+            style: "cancel"
+          },
+          { text: "Try Again" }
+        ]
       );
     }
   };

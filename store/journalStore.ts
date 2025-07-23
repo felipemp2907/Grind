@@ -40,8 +40,14 @@ export const useJournalStore = create<JournalState>()(
               user_id: user.id,
               title: entry.title,
               content: entry.content,
-              mood: entry.mood,
-              tags: entry.tags
+              task_id: entry.taskId || null,
+              media_uri: entry.mediaUri || null,
+              reflection: entry.reflection || null,
+              validation_status: entry.validationStatus || null,
+              validation_feedback: entry.validationFeedback || null,
+              validation_confidence: entry.validationConfidence || null,
+              mood: entry.mood || null,
+              tags: entry.tags || []
             })
             .select()
             .single();
@@ -96,6 +102,12 @@ export const useJournalStore = create<JournalState>()(
           const supabaseUpdates: any = {};
           if (updates.title !== undefined) supabaseUpdates.title = updates.title;
           if (updates.content !== undefined) supabaseUpdates.content = updates.content;
+          if (updates.taskId !== undefined) supabaseUpdates.task_id = updates.taskId;
+          if (updates.mediaUri !== undefined) supabaseUpdates.media_uri = updates.mediaUri;
+          if (updates.reflection !== undefined) supabaseUpdates.reflection = updates.reflection;
+          if (updates.validationStatus !== undefined) supabaseUpdates.validation_status = updates.validationStatus;
+          if (updates.validationFeedback !== undefined) supabaseUpdates.validation_feedback = updates.validationFeedback;
+          if (updates.validationConfidence !== undefined) supabaseUpdates.validation_confidence = updates.validationConfidence;
           if (updates.mood !== undefined) supabaseUpdates.mood = updates.mood;
           if (updates.tags !== undefined) supabaseUpdates.tags = updates.tags;
           
@@ -183,10 +195,15 @@ export const useJournalStore = create<JournalState>()(
               id: entry.id,
               title: entry.title,
               content: entry.content,
-              mood: entry.mood as JournalEntry['mood'],
-              tags: entry.tags || [],
               date: entry.created_at.split('T')[0], // Extract date from timestamp
               taskId: entry.task_id,
+              mediaUri: entry.media_uri,
+              reflection: entry.reflection,
+              validationStatus: entry.validation_status as 'pending' | 'approved' | 'rejected',
+              validationFeedback: entry.validation_feedback,
+              validationConfidence: entry.validation_confidence as 'high' | 'medium' | 'low',
+              mood: entry.mood as JournalEntry['mood'],
+              tags: entry.tags || [],
               createdAt: entry.created_at,
               updatedAt: entry.updated_at
             }));

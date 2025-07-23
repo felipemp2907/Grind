@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import uuid from 'react-native-uuid';
+import { randomUUID } from 'expo-crypto';
 import { Task } from '@/types';
 import { generateDailyTasksForGoal, generateDailyAgenda } from '@/utils/aiUtils';
 import { useGoalStore } from '@/store/goalStore';
@@ -385,7 +385,7 @@ export const useTaskStore = create<TaskState>()(
         
         // Convert agenda tasks to actual tasks (limit to 3)
         const newTasks: Task[] = agenda.tasks.slice(0, 3).map((agendaTask, index) => ({
-          id: uuid.v4() as string,
+          id: randomUUID(),
           title: agendaTask.title,
           description: agendaTask.description,
           date,
@@ -478,7 +478,7 @@ export const useTaskStore = create<TaskState>()(
             const tasksToAdd = Math.min(3 - existingHabitTasks.length, habitTasks.length);
             const newHabitTasks = habitTasks.slice(0, tasksToAdd).map(habitTask => ({
               ...habitTask,
-              id: uuid.v4() as string,
+              id: randomUUID(),
               date,
               completed: false,
               completedAt: undefined,
@@ -563,7 +563,7 @@ export const useTaskStore = create<TaskState>()(
           
           // Create task objects from AI response
           const newTasks: Task[] = limitedTasks.map((aiTask: AIGeneratedTask, index: number) => ({
-            id: uuid.v4() as string,
+            id: randomUUID(),
             title: aiTask.title,
             description: aiTask.description,
             date,
@@ -587,7 +587,7 @@ export const useTaskStore = create<TaskState>()(
           // Create fallback tasks if AI fails (limited to 3 today + 3 habits)
           const fallbackTasks: Task[] = [
             {
-              id: uuid.v4() as string,
+              id: randomUUID(),
               title: `Work on ${goal.title} - ${new Date(date).toLocaleDateString('en-US', {month: 'short', day: 'numeric'})}`,
               description: `Make progress on your goal: ${goal.description.substring(0, 50)}...`,
               date,
@@ -600,7 +600,7 @@ export const useTaskStore = create<TaskState>()(
               requiresValidation: true
             },
             {
-              id: uuid.v4() as string,
+              id: randomUUID(),
               title: `Research for ${goal.title}`,
               description: "Gather information and resources to help you progress",
               date,
@@ -613,7 +613,7 @@ export const useTaskStore = create<TaskState>()(
               requiresValidation: true
             },
             {
-              id: uuid.v4() as string,
+              id: randomUUID(),
               title: `Plan next steps for ${goal.title}`,
               description: "Create a detailed action plan for tomorrow",
               date,
@@ -626,7 +626,7 @@ export const useTaskStore = create<TaskState>()(
               requiresValidation: true
             },
             {
-              id: uuid.v4() as string,
+              id: randomUUID(),
               title: `Daily habit for ${goal.title}`,
               description: "Maintain your daily practice",
               date,
@@ -783,7 +783,7 @@ export const useTaskStore = create<TaskState>()(
           
           // Create task objects from AI suggestions
           const newTasks: Task[] = tasksToAdd.map((aiTask: AIGeneratedTask, index: number) => ({
-            id: uuid.v4() as string,
+            id: randomUUID(),
             title: aiTask.title,
             description: aiTask.description,
             date,
