@@ -573,6 +573,62 @@ export const useGoalStore = create<GoalState>()(
         } catch (error) {
           console.error('Error fetching goals:', serializeError(error));
         }
+      },
+
+      resetEverything: async () => {
+        try {
+          const { user: currentUser, error: userError } = await getCurrentUser();
+          if (userError || !currentUser) {
+            // Reset local state even if user not authenticated
+            set({ 
+              goals: [], 
+              activeGoalId: null, 
+              milestoneAlerts: [], 
+              isOnboarded: false 
+            });
+            return;
+          }
+          
+          const dbResult = await setupDatabase();
+          if (!dbResult.success) {
+            console.error('Database not set up:', dbResult.error);
+            // Reset local state even if database not set up
+            set({ 
+              goals: [], 
+              activeGoalId: null, 
+              milestoneAlerts: [], 
+              isOnboarded: false 
+            });
+            return;
+          }
+          
+          // Delete all goals for the current user
+          const { error: deleteError } = await supabase
+            .from('goals')
+            .delete()
+            .eq('user_id', currentUser.id);
+            
+          if (deleteError) {
+            console.error('Error deleting goals from Supabase:', serializeError(deleteError));
+          }
+          
+          // Reset local state
+          set({ 
+            goals: [], 
+            activeGoalId: null, 
+            milestoneAlerts: [], 
+            isOnboarded: false 
+          });
+        } catch (error) {
+          console.error('Error resetting everything:', serializeError(error));
+          // Reset local state even if there's an error
+          set({ 
+            goals: [], 
+            activeGoalId: null, 
+            milestoneAlerts: [], 
+            isOnboarded: false 
+          });
+        }
       }
     }),
     {
