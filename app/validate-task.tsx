@@ -195,7 +195,7 @@ export default function ValidateTaskScreen() {
         mediaUri,
         reflection,
         createdAt: new Date().toISOString(),
-        validationStatus: (validationResult?.isValid ? 'approved' : 'pending') as const,
+        validationStatus: validationResult?.isValid ? 'approved' as const : 'pending' as const,
         validationFeedback: validationResult?.feedback,
         validationConfidence: validationResult?.confidence
       };
@@ -211,7 +211,7 @@ export default function ValidateTaskScreen() {
       if (validationResult?.confidence === 'high') {
         xpBonus = Math.floor(task.xpValue * 0.2); // 20% bonus for high confidence
       }
-      await addXp(task.xpValue + xpBonus);
+      await addXP(task.xpValue + xpBonus);
       
       // Update streak if it's a habit
       if (task.isHabit) {
