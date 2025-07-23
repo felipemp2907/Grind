@@ -20,6 +20,7 @@ import {
   Zap,
   AlertCircle
 } from 'lucide-react-native';
+import uuid from 'react-native-uuid';
 import Colors from '@/constants/colors';
 import Button from './Button';
 import { parseTaskCommand } from '@/utils/aiUtils';
@@ -94,7 +95,7 @@ export default function ConversationalCommandCenter({
     try {
       if (lastCommand.action === 'create' && lastCommand.taskData) {
         const newTask = {
-          id: `task-${Date.now()}`,
+          id: uuid.v4() as string,
           title: lastCommand.taskData.title,
           description: lastCommand.taskData.description,
           date: lastCommand.taskData.date,

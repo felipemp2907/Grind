@@ -13,6 +13,7 @@ import {
   Alert
 } from 'react-native';
 import { X, Target, Clock, Flame } from 'lucide-react-native';
+import uuid from 'react-native-uuid';
 import Colors from '@/constants/colors';
 import Button from './Button';
 import { useGoalStore } from '@/store/goalStore';
@@ -64,7 +65,7 @@ export default function CreateTaskModal({ visible, onClose, date, goalId }: Crea
     
     // Create new task
     const newTask = {
-      id: `task-${Date.now()}`,
+      id: uuid.v4() as string,
       title,
       description: description || title,
       date,
