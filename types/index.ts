@@ -68,6 +68,8 @@ export interface JournalEntry {
   validationStatus?: 'pending' | 'approved' | 'rejected';
   validationFeedback?: string;
   validationConfidence?: 'high' | 'medium' | 'low';
+  mood?: 'happy' | 'neutral' | 'sad' | 'excited' | 'anxious' | 'grateful';
+  tags?: string[];
 }
 
 export interface UserProfile {
