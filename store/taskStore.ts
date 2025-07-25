@@ -42,7 +42,7 @@ interface TaskState {
   isGeneratingAgenda: boolean;
   
   // Task management
-  addTask: (task: Task) => Promise<void>;
+  addTask: (task: Omit<Task, 'id'>) => Promise<void>;
   updateTask: (id: string, updates: Partial<Task>) => Promise<void>;
   completeTask: (id: string, journalEntryId: string) => Promise<void>;
   getTasks: (date: string) => Task[];
@@ -88,7 +88,7 @@ export const useTaskStore = create<TaskState>()(
       
       setIsGenerating: (isGenerating) => set({ isGenerating }),
       
-      addTask: async (task) => {
+      addTask: async (task: Omit<Task, 'id'>) => {
         // Save to Supabase first to get the proper UUID
         try {
           const { user } = useAuthStore.getState();
@@ -111,21 +111,26 @@ export const useTaskStore = create<TaskState>()(
             throw new Error(`Failed to create user profile: ${profileResult.error}`);
           }
           
+          // Explicitly exclude the id field to let Supabase generate it
+          const insertData = {
+            user_id: user.id,
+            goal_id: task.goalId || null,
+            title: task.title,
+            description: task.description,
+            completed: task.completed,
+            due_date: task.date ? new Date(task.date).toISOString() : null,
+            priority: task.priority || 'medium',
+            xp_value: task.xpValue || 30,
+            is_habit: task.isHabit || false,
+            streak: task.streak || 0,
+            completed_at: task.completedAt ? new Date(task.completedAt).toISOString() : null
+          };
+          
+          console.log('Inserting task data:', insertData);
+          
           const { data, error } = await supabase
             .from('tasks')
-            .insert({
-              user_id: user.id,
-              goal_id: task.goalId || null,
-              title: task.title,
-              description: task.description,
-              completed: task.completed,
-              due_date: task.date ? new Date(task.date).toISOString() : null,
-              priority: task.priority || 'medium',
-              xp_value: task.xpValue || 30,
-              is_habit: task.isHabit || false,
-              streak: task.streak || 0,
-              completed_at: task.completedAt ? new Date(task.completedAt).toISOString() : null
-            })
+            .insert(insertData)
             .select()
             .single();
             
@@ -384,8 +389,7 @@ export const useTaskStore = create<TaskState>()(
         if (!activeGoal) return;
         
         // Convert agenda tasks to actual tasks (limit to 3)
-        const newTasks: Task[] = agenda.tasks.slice(0, 3).map((agendaTask, index) => ({
-          id: randomUUID(),
+        const newTasks: Omit<Task, 'id'>[] = agenda.tasks.slice(0, 3).map((agendaTask, index) => ({
           title: agendaTask.title,
           description: agendaTask.description,
           date,
@@ -476,14 +480,16 @@ export const useTaskStore = create<TaskState>()(
           if (habitTasks.length > 0 && existingHabitTasks.length < 3) {
             // Create copies of habit tasks for today (up to 3 total)
             const tasksToAdd = Math.min(3 - existingHabitTasks.length, habitTasks.length);
-            const newHabitTasks = habitTasks.slice(0, tasksToAdd).map(habitTask => ({
-              ...habitTask,
-              id: randomUUID(),
-              date,
-              completed: false,
-              completedAt: undefined,
-              journalEntryId: undefined
-            }));
+            const newHabitTasks = habitTasks.slice(0, tasksToAdd).map(habitTask => {
+              const { id, ...taskWithoutId } = habitTask;
+              return {
+                ...taskWithoutId,
+                date,
+                completed: false,
+                completedAt: undefined,
+                journalEntryId: undefined
+              };
+            });
             
             // Add only the habit tasks
             for (const task of newHabitTasks) {
@@ -562,8 +568,7 @@ export const useTaskStore = create<TaskState>()(
           const limitedTasks = [...todayTasks, ...habitTasks];
           
           // Create task objects from AI response
-          const newTasks: Task[] = limitedTasks.map((aiTask: AIGeneratedTask, index: number) => ({
-            id: randomUUID(),
+          const newTasks: Omit<Task, 'id'>[] = limitedTasks.map((aiTask: AIGeneratedTask, index: number) => ({
             title: aiTask.title,
             description: aiTask.description,
             date,
@@ -585,9 +590,8 @@ export const useTaskStore = create<TaskState>()(
           console.error('Error generating tasks for goal:', error);
           
           // Create fallback tasks if AI fails (limited to 3 today + 3 habits)
-          const fallbackTasks: Task[] = [
+          const fallbackTasks: Omit<Task, 'id'>[] = [
             {
-              id: randomUUID(),
               title: `Work on ${goal.title} - ${new Date(date).toLocaleDateString('en-US', {month: 'short', day: 'numeric'})}`,
               description: `Make progress on your goal: ${goal.description.substring(0, 50)}...`,
               date,
@@ -600,7 +604,6 @@ export const useTaskStore = create<TaskState>()(
               requiresValidation: true
             },
             {
-              id: randomUUID(),
               title: `Research for ${goal.title}`,
               description: "Gather information and resources to help you progress",
               date,
@@ -613,7 +616,6 @@ export const useTaskStore = create<TaskState>()(
               requiresValidation: true
             },
             {
-              id: randomUUID(),
               title: `Plan next steps for ${goal.title}`,
               description: "Create a detailed action plan for tomorrow",
               date,
@@ -626,7 +628,6 @@ export const useTaskStore = create<TaskState>()(
               requiresValidation: true
             },
             {
-              id: randomUUID(),
               title: `Daily habit for ${goal.title}`,
               description: "Maintain your daily practice",
               date,
@@ -782,8 +783,7 @@ export const useTaskStore = create<TaskState>()(
           }
           
           // Create task objects from AI suggestions
-          const newTasks: Task[] = tasksToAdd.map((aiTask: AIGeneratedTask, index: number) => ({
-            id: randomUUID(),
+          const newTasks: Omit<Task, 'id'>[] = tasksToAdd.map((aiTask: AIGeneratedTask, index: number) => ({
             title: aiTask.title,
             description: aiTask.description,
             date,
