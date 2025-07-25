@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Redirect } from 'expo-router';
 import { useGoalStore } from '@/store/goalStore';
 import { useAuthStore } from '@/store/authStore';
@@ -11,6 +11,7 @@ export default function Index() {
   const { isOnboarded } = useGoalStore();
   const { isAuthenticated, isLoading: authLoading } = useAuthStore();
   const { fetchProfile, isLoading: profileLoading, needsDatabaseSetup, checkDatabaseSetup } = useUserStore();
+  const [loadingTimeout, setLoadingTimeout] = useState(false);
   
   // Fetch user profile if authenticated
   useEffect(() => {
@@ -21,8 +22,20 @@ export default function Index() {
     }
   }, [isAuthenticated]);
   
-  // Show loading indicator while checking auth state
-  if (authLoading || profileLoading) {
+  // Set a timeout to prevent eternal loading
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      if (authLoading || profileLoading) {
+        console.log('Loading timeout reached, proceeding with current state');
+        setLoadingTimeout(true);
+      }
+    }, 10000); // 10 second timeout
+    
+    return () => clearTimeout(timeout);
+  }, [authLoading, profileLoading]);
+  
+  // Show loading indicator while checking auth state (with timeout)
+  if ((authLoading || profileLoading) && !loadingTimeout) {
     return (
       <View style={styles.container}>
         <ActivityIndicator size="large" color={Colors.dark.primary} />
@@ -31,8 +44,8 @@ export default function Index() {
     );
   }
   
-  // First check if user is authenticated
-  if (!isAuthenticated) {
+  // First check if user is authenticated (or timeout reached)
+  if (!isAuthenticated || loadingTimeout) {
     return <Redirect href="/login" />;
   }
   

@@ -377,6 +377,8 @@ export const useAuthStore = create<AuthState>()(
               user: null,
               session: null,
               isAuthenticated: false,
+              isLoading: false,
+              error: null
             });
             return;
           }
@@ -392,6 +394,8 @@ export const useAuthStore = create<AuthState>()(
               },
               session: data.session,
               isAuthenticated: true,
+              isLoading: false,
+              error: null
             });
           } else {
             // No session found, clear auth state
@@ -399,6 +403,8 @@ export const useAuthStore = create<AuthState>()(
               user: null,
               session: null,
               isAuthenticated: false,
+              isLoading: false,
+              error: null
             });
           }
         } catch (error) {
@@ -408,6 +414,8 @@ export const useAuthStore = create<AuthState>()(
             user: null,
             session: null,
             isAuthenticated: false,
+            isLoading: false,
+            error: null
           });
         }
       },

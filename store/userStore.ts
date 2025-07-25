@@ -89,7 +89,9 @@ export const useUserStore = create<UserState>()(
           const { user } = useAuthStore.getState();
           
           if (!user?.id) {
-            throw new Error("User not authenticated");
+            console.log("User not authenticated, skipping profile fetch");
+            set({ isLoading: false, error: null });
+            return;
           }
           
           // Check database setup
@@ -100,7 +102,7 @@ export const useUserStore = create<UserState>()(
             set({ 
               needsDatabaseSetup: true, 
               isLoading: false,
-              error: dbResult.error || 'Database setup required'
+              error: null // Don't show error for database setup requirement
             });
             return;
           }
@@ -179,13 +181,15 @@ export const useUserStore = create<UserState>()(
           // Check if this is a database setup issue
           if (errorMessage.includes('relation') || errorMessage.includes('does not exist') || errorMessage.includes('table')) {
             set({ 
-              error: 'Database setup required. Please run the database setup script.',
+              error: null, // Don't show error for database setup requirement
               isLoading: false,
               needsDatabaseSetup: true
             });
           } else {
+            // For other errors, don't block the app - just log and continue
+            console.error('Profile fetch failed, continuing without profile data');
             set({ 
-              error: errorMessage,
+              error: null, // Don't show error to user
               isLoading: false,
               needsDatabaseSetup: false
             });

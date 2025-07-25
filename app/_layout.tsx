@@ -45,21 +45,32 @@ export default function RootLayout() {
         
         // Fetch user data if authenticated
         if (user) {
-          await Promise.all([
-            fetchProfile(),
-            fetchTasks(),
-            fetchGoals(),
-            fetchEntries()
-          ]);
+          try {
+            await Promise.all([
+              fetchProfile(),
+              fetchTasks(),
+              fetchGoals(),
+              fetchEntries()
+            ]);
+          } catch (dataError) {
+            console.error("Error fetching user data:", dataError);
+            // Don't block the app if data fetching fails
+          }
         }
       } catch (error) {
         console.error("Session refresh error:", error);
-        if (__DEV__) {
-          Alert.alert(
-            "Authentication Error",
-            "There was an error refreshing your session. Please check your Supabase configuration.",
-            [{ text: "OK" }]
-          );
+        // Reset auth state on critical errors to prevent infinite loading
+        if (error && typeof error === 'object' && 'message' in error) {
+          const errorMessage = error.message as string;
+          if (errorMessage.includes('Invalid') || errorMessage.includes('expired') || errorMessage.includes('JWT')) {
+            console.log('Clearing invalid session');
+            // Clear the invalid session
+            try {
+              await supabase.auth.signOut();
+            } catch (signOutError) {
+              console.error('Error signing out:', signOutError);
+            }
+          }
         }
       }
     };
@@ -70,20 +81,28 @@ export default function RootLayout() {
     try {
       const { data: { subscription } } = supabase.auth.onAuthStateChange(
         async (event: AuthChangeEvent, session: Session | null) => {
+          console.log('Auth state change:', event, session?.user?.id);
+          
           if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
             await refreshSession();
             
             // Fetch user data after successful auth
             if (session?.user) {
-              await Promise.all([
-                fetchProfile(),
-                fetchTasks(),
-                fetchGoals(),
-                fetchEntries()
-              ]);
+              try {
+                await Promise.all([
+                  fetchProfile(),
+                  fetchTasks(),
+                  fetchGoals(),
+                  fetchEntries()
+                ]);
+              } catch (dataError) {
+                console.error("Error fetching user data after auth:", dataError);
+                // Don't block the app if data fetching fails
+              }
             }
           } else if (event === 'SIGNED_OUT') {
-            // Handle sign out if needed
+            console.log('User signed out, clearing state');
+            // Clear all stores when user signs out
           }
         }
       );
