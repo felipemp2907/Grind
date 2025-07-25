@@ -83,6 +83,14 @@ export const useUserStore = create<UserState>()(
       needsDatabaseSetup: false,
       
       fetchProfile: async () => {
+        const currentState = get();
+        
+        // Prevent multiple simultaneous fetch attempts
+        if (currentState.isLoading) {
+          console.log('Profile fetch already in progress, skipping');
+          return;
+        }
+        
         set({ isLoading: true, error: null });
         
         try {
@@ -93,6 +101,8 @@ export const useUserStore = create<UserState>()(
             set({ isLoading: false, error: null });
             return;
           }
+          
+          console.log('Fetching profile for user:', user.id);
           
           // Check database setup
           const dbResult = await checkDatabaseSetup();
@@ -116,6 +126,7 @@ export const useUserStore = create<UserState>()(
           if (error) {
             // If profile doesn't exist, create one using upsert
             if (error.code === 'PGRST116') {
+              console.log('Profile not found, creating default profile');
               // Create default profile using upsert
               const defaultProfile = {
                 id: user.id,
@@ -137,6 +148,7 @@ export const useUserStore = create<UserState>()(
                 throw new Error(`Failed to create profile: ${serializeError(upsertError)}`);
               }
               
+              console.log('Default profile created successfully');
               set({
                 profile: {
                   name: defaultProfile.name,
@@ -146,7 +158,8 @@ export const useUserStore = create<UserState>()(
                   streakDays: defaultProfile.streak_days,
                   longestStreak: defaultProfile.longest_streak
                 },
-                isLoading: false
+                isLoading: false,
+                needsDatabaseSetup: false
               });
               
               return;
@@ -157,6 +170,7 @@ export const useUserStore = create<UserState>()(
           }
           
           if (data) {
+            console.log('Profile fetched successfully');
             const xpToNextLevel = data.level < XP_LEVELS.length - 1 
               ? XP_LEVELS[data.level] - data.xp 
               : 999999;
@@ -171,7 +185,8 @@ export const useUserStore = create<UserState>()(
                 longestStreak: data.longest_streak || 0,
                 avatarUrl: data.avatar_url || undefined
               },
-              isLoading: false
+              isLoading: false,
+              needsDatabaseSetup: false
             });
           }
         } catch (error: any) {
@@ -180,6 +195,7 @@ export const useUserStore = create<UserState>()(
           
           // Check if this is a database setup issue
           if (errorMessage.includes('relation') || errorMessage.includes('does not exist') || errorMessage.includes('table')) {
+            console.log('Database setup issue detected');
             set({ 
               error: null, // Don't show error for database setup requirement
               isLoading: false,

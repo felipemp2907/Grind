@@ -367,7 +367,18 @@ export const useAuthStore = create<AuthState>()(
       },
       
       refreshSession: async () => {
+        const currentState = get();
+        
+        // Prevent multiple simultaneous refresh attempts
+        if (currentState.isLoading) {
+          console.log('Session refresh already in progress, skipping');
+          return;
+        }
+        
+        set({ isLoading: true });
+        
         try {
+          console.log('Refreshing session...');
           const { data, error } = await supabase.auth.getSession();
           
           if (error) {
@@ -385,6 +396,7 @@ export const useAuthStore = create<AuthState>()(
           
           if (data?.session) {
             const { user } = data.session;
+            console.log('Session refreshed successfully for user:', user.id);
             
             set({
               user: {
@@ -398,6 +410,7 @@ export const useAuthStore = create<AuthState>()(
               error: null
             });
           } else {
+            console.log('No session found during refresh');
             // No session found, clear auth state
             set({
               user: null,

@@ -39,12 +39,21 @@ export default function RootLayout() {
   
   // Check for existing session on app load
   useEffect(() => {
+    let isMounted = true;
+    
     const checkSession = async () => {
       try {
+        console.log('Checking session...');
         await refreshSession();
         
+        if (!isMounted) return;
+        
+        // Get the latest user state after refresh
+        const { user: currentUser } = useAuthStore.getState();
+        
         // Fetch user data if authenticated
-        if (user) {
+        if (currentUser) {
+          console.log('User authenticated, fetching data...');
           try {
             await Promise.all([
               fetchProfile(),
@@ -52,13 +61,18 @@ export default function RootLayout() {
               fetchGoals(),
               fetchEntries()
             ]);
+            console.log('User data fetched successfully');
           } catch (dataError) {
             console.error("Error fetching user data:", dataError);
             // Don't block the app if data fetching fails
           }
+        } else {
+          console.log('No user found after session refresh');
         }
       } catch (error) {
         console.error("Session refresh error:", error);
+        if (!isMounted) return;
+        
         // Reset auth state on critical errors to prevent infinite loading
         if (error && typeof error === 'object' && 'message' in error) {
           const errorMessage = error.message as string;
@@ -78,16 +92,19 @@ export default function RootLayout() {
     checkSession();
     
     // Set up auth state change listener
+    let subscription: any;
     try {
-      const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      const { data } = supabase.auth.onAuthStateChange(
         async (event: AuthChangeEvent, session: Session | null) => {
+          if (!isMounted) return;
+          
           console.log('Auth state change:', event, session?.user?.id);
           
           if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
             await refreshSession();
             
             // Fetch user data after successful auth
-            if (session?.user) {
+            if (session?.user && isMounted) {
               try {
                 await Promise.all([
                   fetchProfile(),
@@ -106,13 +123,17 @@ export default function RootLayout() {
           }
         }
       );
-      
-      return () => {
-        subscription.unsubscribe();
-      };
+      subscription = data.subscription;
     } catch (error) {
       console.error("Auth state change error:", error);
     }
+    
+    return () => {
+      isMounted = false;
+      if (subscription) {
+        subscription.unsubscribe();
+      }
+    };
   }, []);
   
   useEffect(() => {
