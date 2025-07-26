@@ -37,7 +37,7 @@ export const useJournalStore = create<JournalState>()(
             return null;
           }
           
-          // First, try to create the entry with all fields including media_uri
+          // Create the entry with all required fields
           const insertData = {
             user_id: user.id,
             title: entry.title,
@@ -55,13 +55,14 @@ export const useJournalStore = create<JournalState>()(
           console.log('Creating journal entry:', {
             user_id: insertData.user_id,
             title: insertData.title,
+            has_task_id: !!insertData.task_id,
             has_media_uri: !!insertData.media_uri,
             validation_status: insertData.validation_status
           });
           
           // Use a timeout to prevent hanging
           const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 5000);
+          const timeoutId = setTimeout(() => controller.abort(), 10000);
           
           try {
             const { data, error } = await supabase
@@ -75,52 +76,6 @@ export const useJournalStore = create<JournalState>()(
             
             if (error) {
               console.error('Error saving journal entry to Supabase:', serializeError(error));
-              
-              // If it's a schema-related error, try without problematic columns as fallback
-              if (error.message?.includes('media_uri') || error.message?.includes('reflection') || error.message?.includes('column') || error.message?.includes('does not exist')) {
-                console.log('Retrying without problematic columns due to schema issue...');
-                const fallbackData: any = {
-                  user_id: insertData.user_id,
-                  title: insertData.title,
-                  content: insertData.content,
-                  task_id: insertData.task_id,
-                  validation_status: insertData.validation_status,
-                  validation_feedback: insertData.validation_feedback,
-                  validation_confidence: insertData.validation_confidence,
-                  mood: insertData.mood,
-                  tags: insertData.tags
-                };
-                
-                const { data: fallbackResult, error: fallbackError } = await supabase
-                  .from('journal_entries')
-                  .insert(fallbackData)
-                  .select()
-                  .single();
-                  
-                if (fallbackError) {
-                  console.error('Fallback journal entry creation also failed:', serializeError(fallbackError));
-                  return null;
-                }
-                
-                if (fallbackResult) {
-                  console.log('Journal entry created successfully without problematic columns');
-                  const entryWithUUID = {
-                    ...entry,
-                    id: fallbackResult.id,
-                    mediaUri: undefined, // Clear media URI since it wasn't saved
-                    reflection: undefined, // Clear reflection since it wasn't saved
-                    createdAt: fallbackResult.created_at,
-                    updatedAt: fallbackResult.updated_at
-                  };
-                  
-                  set((state) => ({ 
-                    entries: [...state.entries, entryWithUUID] 
-                  }));
-                  
-                  return entryWithUUID;
-                }
-              }
-              
               return null;
             }
             
@@ -141,11 +96,12 @@ export const useJournalStore = create<JournalState>()(
               return entryWithUUID;
             }
             
+            console.error('Journal entry creation returned null');
             return null;
           } catch (insertError: any) {
             clearTimeout(timeoutId);
             if (insertError.name === 'AbortError') {
-              console.log('Journal entry creation timed out');
+              console.error('Journal entry creation timed out');
               return null;
             }
             throw insertError;
@@ -197,27 +153,6 @@ export const useJournalStore = create<JournalState>()(
             
           if (error) {
             console.error('Error updating journal entry in Supabase:', serializeError(error));
-            
-            // If it's a schema-related error with problematic columns, try without them
-            if ((error.message?.includes('media_uri') || error.message?.includes('reflection') || error.message?.includes('column')) && 
-                (supabaseUpdates.media_uri !== undefined || supabaseUpdates.reflection !== undefined)) {
-              console.log('Retrying update without problematic columns due to schema issue...');
-              const fallbackUpdates: any = { ...supabaseUpdates };
-              delete fallbackUpdates.media_uri;
-              delete fallbackUpdates.reflection;
-              
-              const { error: fallbackError } = await supabase
-                .from('journal_entries')
-                .update(fallbackUpdates)
-                .eq('id', id)
-                .eq('user_id', user.id);
-                
-              if (fallbackError) {
-                console.error('Fallback journal entry update also failed:', serializeError(fallbackError));
-              } else {
-                console.log('Journal entry updated successfully without problematic columns');
-              }
-            }
           } else {
             console.log('Journal entry updated successfully');
           }
