@@ -75,7 +75,7 @@ export default function CalendarScreen() {
   const regularTasks = selectedTasks.filter(task => !task.isHabit);
   
   // Get goal deadlines in this month
-  const goalDeadlines = goals.map(goal => {
+  const goalDeadlines = goals.filter(goal => goal.deadline).map(goal => {
     const deadlineDate = new Date(goal.deadline);
     return {
       id: goal.id,
@@ -264,6 +264,15 @@ export default function CalendarScreen() {
   const selectedDateDeadlines = goalDeadlines.filter(
     deadline => deadline.date === selectedDate
   );
+  
+  // Debug logs
+  if (selectedDateDeadlines.length > 0) {
+    console.log('Found deadlines for selected date:', selectedDateDeadlines);
+  }
+  if (goalDeadlines.length > 0) {
+    console.log('All deadlines in current month:', goalDeadlines);
+    console.log('Selected date:', selectedDate);
+  }
   
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
