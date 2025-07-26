@@ -54,7 +54,7 @@ export default function RootLayout() {
             const { resetAuth } = useAuthStore.getState();
             resetAuth();
           }
-        }, 10000); // 10 second timeout
+        }, 8000); // Reduced to 8 seconds
         
         await refreshSession();
         
@@ -69,12 +69,19 @@ export default function RootLayout() {
         if (currentUser) {
           console.log('User authenticated, fetching data...');
           try {
-            await Promise.all([
+            // Add timeout to data fetching as well
+            const dataFetchPromise = Promise.all([
               fetchProfile(),
               fetchTasks(),
               fetchGoals(),
               fetchEntries()
             ]);
+            
+            const dataTimeout = new Promise((_, reject) => {
+              setTimeout(() => reject(new Error('Data fetch timeout')), 5000);
+            });
+            
+            await Promise.race([dataFetchPromise, dataTimeout]);
             console.log('User data fetched successfully');
           } catch (dataError) {
             console.error("Error fetching user data:", dataError);
@@ -111,7 +118,7 @@ export default function RootLayout() {
     
     checkSession();
     
-    // Set up auth state change listener
+    // Set up auth state change listener with error handling
     let subscription: any;
     try {
       const { data } = supabase.auth.onAuthStateChange(
@@ -120,39 +127,54 @@ export default function RootLayout() {
           
           console.log('Auth state change:', event, session?.user?.id);
           
-          if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-            await refreshSession();
-            
-            // Fetch user data after successful auth
-            if (session?.user && isMounted) {
-              try {
-                await Promise.all([
-                  fetchProfile(),
-                  fetchTasks(),
-                  fetchGoals(),
-                  fetchEntries()
-                ]);
-              } catch (dataError) {
-                console.error("Error fetching user data after auth:", dataError);
-                // Don't block the app if data fetching fails
+          try {
+            if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+              await refreshSession();
+              
+              // Fetch user data after successful auth
+              if (session?.user && isMounted) {
+                try {
+                  const dataFetchPromise = Promise.all([
+                    fetchProfile(),
+                    fetchTasks(),
+                    fetchGoals(),
+                    fetchEntries()
+                  ]);
+                  
+                  const dataTimeout = new Promise((_, reject) => {
+                    setTimeout(() => reject(new Error('Data fetch timeout')), 5000);
+                  });
+                  
+                  await Promise.race([dataFetchPromise, dataTimeout]);
+                } catch (dataError) {
+                  console.error("Error fetching user data after auth:", dataError);
+                  // Don't block the app if data fetching fails
+                }
               }
+            } else if (event === 'SIGNED_OUT') {
+              console.log('User signed out, clearing state');
+              // Clear all stores when user signs out
             }
-          } else if (event === 'SIGNED_OUT') {
-            console.log('User signed out, clearing state');
-            // Clear all stores when user signs out
+          } catch (authError) {
+            console.error('Error handling auth state change:', authError);
+            // Don't crash the app on auth state change errors
           }
         }
       );
       subscription = data.subscription;
     } catch (error) {
-      console.error("Auth state change error:", error);
+      console.error("Auth state change setup error:", error);
     }
     
     return () => {
       isMounted = false;
       if (timeoutId) clearTimeout(timeoutId);
       if (subscription) {
-        subscription.unsubscribe();
+        try {
+          subscription.unsubscribe();
+        } catch (error) {
+          console.error('Error unsubscribing from auth changes:', error);
+        }
       }
     };
   }, []);

@@ -75,7 +75,7 @@ export default function Button({
   
   const getTextStyle = () => {
     const baseStyle: TextStyle = {
-      ...styles.text,
+      fontWeight: '600',
     };
     
     // Size styles
@@ -96,16 +96,10 @@ export default function Button({
         baseStyle.color = Colors.dark.primary;
         break;
       case 'primary':
-        baseStyle.color = '#FFFFFF'; // White text on primary background
-        break;
       case 'secondary':
-        baseStyle.color = '#FFFFFF'; // White text on secondary background
-        break;
       case 'danger':
-        baseStyle.color = '#FFFFFF'; // White text on danger background
-        break;
       default:
-        baseStyle.color = '#FFFFFF'; // Default to white for contrast
+        baseStyle.color = '#FFFFFF'; // Always white text for filled buttons
     }
     
     return baseStyle;
@@ -141,9 +135,5 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 8,
-  },
-  text: {
-    color: Colors.dark.text,
-    fontWeight: '600',
   },
 });

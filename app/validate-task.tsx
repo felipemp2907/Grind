@@ -680,7 +680,6 @@ const styles = StyleSheet.create({
   },
   validateButton: {
     marginBottom: 24,
-    backgroundColor: Colors.dark.primary,
   },
   feedbackContainer: {
     padding: 16,

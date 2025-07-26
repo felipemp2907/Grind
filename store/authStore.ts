@@ -377,9 +377,16 @@ export const useAuthStore = create<AuthState>()(
         
         set({ isLoading: true });
         
+        // Set a timeout to prevent hanging
+        const timeoutPromise = new Promise((_, reject) => {
+          setTimeout(() => reject(new Error('Session refresh timeout')), 8000);
+        });
+        
         try {
           console.log('Refreshing session...');
-          const { data, error } = await supabase.auth.getSession();
+          
+          const sessionPromise = supabase.auth.getSession();
+          const { data, error } = await Promise.race([sessionPromise, timeoutPromise]) as any;
           
           if (error) {
             console.error("Session refresh error:", serializeError(error));
