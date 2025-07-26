@@ -124,7 +124,7 @@ export default function AgendaCard({
             onPress={onRegenerate}
             variant="outline"
             size="small"
-            icon={<RefreshCw size={16} color={Colors.dark.primary} />}
+            icon={<RefreshCw size={16} />}
             style={styles.actionButton}
             disabled={isGenerating}
             loading={isGenerating}
@@ -133,7 +133,7 @@ export default function AgendaCard({
             title="Accept & Start"
             onPress={onAccept}
             size="small"
-            icon={<CheckCircle size={16} color={Colors.dark.text} />}
+            icon={<CheckCircle size={16} />}
             style={styles.actionButton}
             disabled={isGenerating}
           />

@@ -107,6 +107,27 @@ export default function Button({
     return baseStyle;
   };
   
+  // Clone icon with proper color for white buttons
+  const getIconWithColor = () => {
+    if (!icon) return null;
+    
+    const iconColor = variant === 'outline' 
+      ? Colors.dark.primary 
+      : (variant === 'primary' || variant === 'secondary') 
+        ? '#000000' 
+        : '#FFFFFF';
+    
+    // Check if icon is a React element and has color prop
+    if (React.isValidElement(icon) && typeof icon.props === 'object') {
+      return React.cloneElement(icon as React.ReactElement<any>, {
+        ...icon.props,
+        color: iconColor
+      });
+    }
+    
+    return icon;
+  };
+  
   return (
     <TouchableOpacity
       style={[getButtonStyle(), style]}
@@ -121,7 +142,7 @@ export default function Button({
         />
       ) : (
         <>
-          {icon && icon}
+          {getIconWithColor()}
           <Text style={[getTextStyle(), icon ? { marginLeft: 8 } : {}, textStyle]}>
             {title}
           </Text>

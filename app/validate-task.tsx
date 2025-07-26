@@ -431,7 +431,7 @@ export default function ValidateTaskScreen() {
               onPress={validateImage}
               disabled={validating}
               loading={validating}
-              icon={<Eye size={16} color="#000000" />}
+              icon={<Eye size={16} />}
               style={styles.validateButton}
             />
           )}
@@ -501,7 +501,7 @@ export default function ValidateTaskScreen() {
             onPress={handleSubmit}
             disabled={!mediaUri || loading || (task.requiresValidation && (!validationResult || !validationResult.isValid))}
             loading={loading}
-            icon={<CheckCircle size={16} color="#000000" />}
+            icon={<CheckCircle size={16} />}
             style={styles.submitButton}
           />
           

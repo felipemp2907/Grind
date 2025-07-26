@@ -449,13 +449,13 @@ export default function DashboardScreen() {
             title="Add Journal Entry"
             onPress={() => router.push('/journal')}
             variant="outline"
-            icon={<BookOpen size={16} color={Colors.dark.primary} />}
+            icon={<BookOpen size={16} />}
             style={styles.actionButton}
           />
           <Button
             title="Validate Task"
             onPress={() => router.push('/tasks')}
-            icon={<Camera size={16} color={Colors.dark.text} />}
+            icon={<Camera size={16} />}
             style={styles.actionButton}
           />
         </View>
