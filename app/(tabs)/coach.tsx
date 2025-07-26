@@ -152,7 +152,6 @@ export default function CoachScreen() {
           case 'create':
             if (commandResult.taskData && goal) {
               const newTask = {
-                id: `task-${Date.now()}-${Math.random().toString(36).substring(7)}`,
                 title: commandResult.taskData.title,
                 description: commandResult.taskData.description || commandResult.taskData.title,
                 date: commandResult.taskData.date,
@@ -508,7 +507,6 @@ export default function CoachScreen() {
               // Add generated tasks
               result.tasks.forEach((taskData, index) => {
                 const newTask = {
-                  id: `smart-task-${Date.now()}-${index}`,
                   title: taskData.title,
                   description: taskData.description,
                   date: getTodayDate(),

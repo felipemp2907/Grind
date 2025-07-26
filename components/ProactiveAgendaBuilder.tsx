@@ -19,7 +19,7 @@ import {
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import Button from './Button';
-import { generateProactiveDailyAgenda } from '@/utils/aiUtils';
+import { generateDailyAgenda } from '@/utils/aiUtils';
 import { useTaskStore } from '@/store/taskStore';
 import { useGoalStore } from '@/store/goalStore';
 import { useUserStore } from '@/store/userStore';
@@ -70,13 +70,12 @@ export default function ProactiveAgendaBuilder({
         type: t.isHabit ? 'streak' : 'today'
       }));
 
-      const result = await generateProactiveDailyAgenda(
+      const result = await generateDailyAgenda(
         activeGoal.title,
         activeGoal.description,
         recentTasks,
         currentDate,
-        coachSettings.preferredTone,
-        existingTasks
+        coachSettings.preferredTone
       );
 
       setAgenda(result);
@@ -116,7 +115,6 @@ export default function ProactiveAgendaBuilder({
 
     try {
       const newTasks = agenda.agenda.map((agendaTask: any) => ({
-        id: `task-${Date.now()}-${Math.random()}`,
         title: agendaTask.title,
         description: agendaTask.description,
         date: currentDate,
@@ -132,7 +130,7 @@ export default function ProactiveAgendaBuilder({
       }));
 
       // Add tasks to store
-      newTasks.forEach(task => addTask(task));
+      newTasks.forEach((task: any) => addTask(task));
       
       // Call parent callback
       onAcceptAgenda(newTasks);

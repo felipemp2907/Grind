@@ -144,7 +144,6 @@ export default function CoachScreen() {
           case 'create':
             if (commandResult.taskData && goal) {
               const newTask = {
-                id: `task-${Date.now()}-${Math.random().toString(36).substring(7)}`,
                 title: commandResult.taskData.title,
                 description: commandResult.taskData.description || commandResult.taskData.title,
                 date: commandResult.taskData.date,

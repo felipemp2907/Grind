@@ -94,7 +94,6 @@ export default function CreateGoalScreen() {
           // Add today tasks (limit to 3)
           breakdown.todayTasks.slice(0, 3).forEach((task, index) => {
             const newTask = {
-              id: `task-${Date.now()}-${index}`,
               title: task.title,
               description: task.description,
               date: todayDate,
@@ -119,7 +118,6 @@ export default function CreateGoalScreen() {
           // Add streak habits (limit to 3)
           breakdown.streakHabits.slice(0, 3).forEach((habit, index) => {
             const newTask = {
-              id: `habit-${Date.now()}-${index}`,
               title: habit.title,
               description: habit.description,
               date: todayDate,
