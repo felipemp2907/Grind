@@ -701,7 +701,7 @@ export const useTaskStore = create<TaskState>()(
                 isHabit: task.is_habit || false,
                 streak: task.streak || 0,
                 isUserCreated: true,
-                requiresValidation: false,
+                requiresValidation: true,
                 priority: task.priority as 'high' | 'medium' | 'low' || 'medium',
                 completedAt: task.completed_at || undefined
               }));

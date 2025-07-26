@@ -170,8 +170,54 @@ export default function ValidateTaskScreen() {
   const handleSubmit = async () => {
     if (!task || !mediaUri) return;
     
-    // Check validation requirements
-    if (task.requiresValidation && (!validationResult || !validationResult.isValid)) {
+    // If image is uploaded but not validated yet, validate it first
+    if (mediaBase64 && !validationResult) {
+      console.log('Image uploaded but not validated, running validation first...');
+      setValidating(true);
+      
+      try {
+        const result = await validateTaskImageWithFeedback(
+          task.title,
+          task.description,
+          `data:image/jpeg;base64,${mediaBase64}`
+        );
+        
+        setValidationResult(result);
+        setValidating(false);
+        
+        // If validation fails, show error and return
+        if (!result.isValid) {
+          Alert.alert(
+            "Task Validation Failed",
+            result.suggestions?.length 
+              ? `The uploaded image doesn't clearly show task completion. Please address these suggestions:\n\n${result.suggestions.join('\n')}`
+              : "The uploaded image doesn't clearly show task completion. Please upload a different image that clearly demonstrates you completed the task.",
+            [{ text: "OK" }]
+          );
+          return;
+        }
+        
+        // If validation passes, continue with task completion
+        console.log('Image validation passed, proceeding with task completion...');
+      } catch (error) {
+        console.error('Error during automatic validation:', error);
+        setValidating(false);
+        
+        // On validation error, show warning but allow completion
+        Alert.alert(
+          "Validation Error",
+          "I couldn't analyze the image properly, but I'll trust that you completed the task. Proceeding with task completion.",
+          [
+            { text: "Cancel", style: "cancel" },
+            { text: "Continue", onPress: () => proceedWithCompletion() }
+          ]
+        );
+        return;
+      }
+    }
+    
+    // Check validation requirements after automatic validation
+    if (validationResult && !validationResult.isValid) {
       Alert.alert(
         "Validation Required",
         validationResult?.suggestions?.length 
@@ -181,6 +227,12 @@ export default function ValidateTaskScreen() {
       );
       return;
     }
+    
+    await proceedWithCompletion();
+  };
+  
+  const proceedWithCompletion = async () => {
+    if (!task || !mediaUri) return;
     
     setLoading(true);
     
@@ -386,7 +438,7 @@ export default function ValidateTaskScreen() {
           
           <Text style={styles.sectionTitle}>Upload Proof</Text>
           <Text style={styles.sectionDescription}>
-            Take a photo or upload an image to validate your task completion.
+            Take a photo or upload an image to validate your task completion. All images will be automatically analyzed by AI to ensure they show valid proof of task completion.
             {task.isHabit ? ' Maintaining your streak requires valid proof.' : ''}
           </Text>
           
@@ -439,7 +491,7 @@ export default function ValidateTaskScreen() {
             </View>
           )}
           
-          {mediaUri && task.requiresValidation && !validationResult && (
+          {mediaUri && !validationResult && (
             <Button
               title={validating ? "Analyzing..." : "Validate with AI Vision"}
               onPress={validateImage}
@@ -511,10 +563,10 @@ export default function ValidateTaskScreen() {
           />
           
           <Button
-            title="Complete Task"
+            title={validating ? "Validating Image..." : "Complete Task"}
             onPress={handleSubmit}
-            disabled={!mediaUri || loading || (task.requiresValidation && (!validationResult || !validationResult.isValid))}
-            loading={loading}
+            disabled={!mediaUri || loading || validating}
+            loading={loading || validating}
             icon={<CheckCircle size={16} />}
             style={styles.submitButton}
           />
