@@ -93,6 +93,11 @@ export const useUserStore = create<UserState>()(
         
         set({ isLoading: true, error: null });
         
+        // Set a timeout to prevent hanging
+        const timeoutPromise = new Promise((_, reject) => {
+          setTimeout(() => reject(new Error('Profile fetch timeout')), 8000);
+        });
+        
         try {
           const { user } = useAuthStore.getState();
           
@@ -104,8 +109,9 @@ export const useUserStore = create<UserState>()(
           
           console.log('Fetching profile for user:', user.id);
           
-          // Check database setup
-          const dbResult = await checkDatabaseSetup();
+          // Check database setup with timeout
+          const dbCheckPromise = checkDatabaseSetup();
+          const dbResult = await Promise.race([dbCheckPromise, timeoutPromise]) as any;
           
           if (!dbResult.isSetup) {
             console.log('Database setup required:', dbResult.error);
@@ -117,11 +123,13 @@ export const useUserStore = create<UserState>()(
             return;
           }
           
-          const { data, error } = await supabase
+          const profilePromise = supabase
             .from('profiles')
             .select('*')
             .eq('id', user.id)
             .single();
+            
+          const { data, error } = await Promise.race([profilePromise, timeoutPromise]) as any;
             
           if (error) {
             // If profile doesn't exist, create one using upsert
@@ -192,6 +200,17 @@ export const useUserStore = create<UserState>()(
         } catch (error: any) {
           const errorMessage = serializeError(error);
           console.error("Error fetching profile:", errorMessage);
+          
+          // Check if this is a timeout error
+          if (errorMessage.includes('timeout')) {
+            console.log('Profile fetch timed out, continuing without profile data');
+            set({ 
+              error: null, // Don't show timeout error to user
+              isLoading: false,
+              needsDatabaseSetup: false
+            });
+            return;
+          }
           
           // Check if this is a database setup issue
           if (errorMessage.includes('relation') || errorMessage.includes('does not exist') || errorMessage.includes('table')) {

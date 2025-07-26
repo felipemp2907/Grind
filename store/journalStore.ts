@@ -169,21 +169,32 @@ export const useJournalStore = create<JournalState>()(
       },
       
       fetchEntries: async () => {
+        // Set a timeout to prevent hanging
+        const timeoutPromise = new Promise((_, reject) => {
+          setTimeout(() => reject(new Error('Journal entries fetch timeout')), 8000);
+        });
+        
         try {
           const { user } = useAuthStore.getState();
-          if (!user?.id) return;
+          if (!user?.id) {
+            console.log('User not authenticated, skipping journal entries fetch');
+            return;
+          }
           
-          const dbResult = await setupDatabase();
+          const dbCheckPromise = setupDatabase();
+          const dbResult = await Promise.race([dbCheckPromise, timeoutPromise]) as any;
           if (!dbResult.success) {
             console.error('Database not set up:', dbResult.error);
             return;
           }
           
-          const { data, error } = await supabase
+          const entriesPromise = supabase
             .from('journal_entries')
             .select('*')
             .eq('user_id', user.id)
             .order('created_at', { ascending: false });
+            
+          const { data, error } = await Promise.race([entriesPromise, timeoutPromise]) as any;
             
           if (error) {
             console.error('Error fetching journal entries:', serializeError(error));
@@ -191,7 +202,7 @@ export const useJournalStore = create<JournalState>()(
           }
           
           if (data) {
-            const entries: JournalEntry[] = data.map(entry => ({
+            const entries: JournalEntry[] = data.map((entry: any) => ({
               id: entry.id,
               title: entry.title,
               content: entry.content,
@@ -211,7 +222,14 @@ export const useJournalStore = create<JournalState>()(
             set({ entries });
           }
         } catch (error) {
-          console.error('Error fetching journal entries:', serializeError(error));
+          const errorMessage = serializeError(error);
+          console.error('Error fetching journal entries:', errorMessage);
+          
+          // If it's a timeout error, don't block the app
+          if (errorMessage.includes('timeout')) {
+            console.log('Journal entries fetch timed out, continuing without entries data');
+            return;
+          }
         }
       },
       

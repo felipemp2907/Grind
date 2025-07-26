@@ -78,14 +78,15 @@ export default function RootLayout() {
             ]);
             
             const dataTimeout = new Promise((_, reject) => {
-              setTimeout(() => reject(new Error('Data fetch timeout')), 5000);
+              setTimeout(() => reject(new Error('Data fetch timeout')), 10000);
             });
             
             await Promise.race([dataFetchPromise, dataTimeout]);
             console.log('User data fetched successfully');
           } catch (dataError) {
-            console.error("Error fetching user data:", dataError);
-            // Don't block the app if data fetching fails
+            console.error("Error fetching user data after auth:", dataError);
+            // Don't block the app if data fetching fails - continue with authentication
+            // The individual stores will handle their own error states
           }
         } else {
           console.log('No user found after session refresh');
@@ -142,13 +143,14 @@ export default function RootLayout() {
                   ]);
                   
                   const dataTimeout = new Promise((_, reject) => {
-                    setTimeout(() => reject(new Error('Data fetch timeout')), 5000);
+                    setTimeout(() => reject(new Error('Data fetch timeout')), 10000);
                   });
                   
                   await Promise.race([dataFetchPromise, dataTimeout]);
                 } catch (dataError) {
                   console.error("Error fetching user data after auth:", dataError);
-                  // Don't block the app if data fetching fails
+                  // Don't block the app if data fetching fails - continue with authentication
+                  // The individual stores will handle their own error states
                 }
               }
             } else if (event === 'SIGNED_OUT') {

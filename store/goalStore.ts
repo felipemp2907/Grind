@@ -526,21 +526,33 @@ export const useGoalStore = create<GoalState>()(
       setOnboarded: (value) => set({ isOnboarded: value }),
       
       fetchGoals: async () => {
+        // Set a timeout to prevent hanging
+        const timeoutPromise = new Promise((_, reject) => {
+          setTimeout(() => reject(new Error('Goals fetch timeout')), 8000);
+        });
+        
         try {
-          const { user: currentUser, error: userError } = await getCurrentUser();
-          if (userError || !currentUser) return;
+          const userPromise = getCurrentUser();
+          const { user: currentUser, error: userError } = await Promise.race([userPromise, timeoutPromise]) as any;
+          if (userError || !currentUser) {
+            console.log('User not authenticated, skipping goals fetch');
+            return;
+          }
           
-          const dbResult = await setupDatabase();
+          const dbCheckPromise = setupDatabase();
+          const dbResult = await Promise.race([dbCheckPromise, timeoutPromise]) as any;
           if (!dbResult.success) {
             console.error('Database not set up:', dbResult.error);
             return;
           }
           
-          const { data, error } = await supabase
+          const goalsPromise = supabase
             .from('goals')
             .select('*')
             .eq('user_id', currentUser.id)
             .order('created_at', { ascending: false });
+            
+          const { data, error } = await Promise.race([goalsPromise, timeoutPromise]) as any;
             
           if (error) {
             console.error('Error fetching goals:', serializeError(error));
@@ -548,7 +560,7 @@ export const useGoalStore = create<GoalState>()(
           }
           
           if (data) {
-            const goals: Goal[] = data.map(goal => ({
+            const goals: Goal[] = data.map((goal: any) => ({
               id: goal.id,
               title: goal.title,
               description: goal.description || '',
@@ -571,7 +583,14 @@ export const useGoalStore = create<GoalState>()(
             });
           }
         } catch (error) {
-          console.error('Error fetching goals:', serializeError(error));
+          const errorMessage = serializeError(error);
+          console.error('Error fetching goals:', errorMessage);
+          
+          // If it's a timeout error, don't block the app
+          if (errorMessage.includes('timeout')) {
+            console.log('Goals fetch timed out, continuing without goals data');
+            return;
+          }
         }
       },
 

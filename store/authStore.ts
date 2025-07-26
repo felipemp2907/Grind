@@ -379,7 +379,7 @@ export const useAuthStore = create<AuthState>()(
         
         // Set a timeout to prevent hanging
         const timeoutPromise = new Promise((_, reject) => {
-          setTimeout(() => reject(new Error('Session refresh timeout')), 8000);
+          setTimeout(() => reject(new Error('Session refresh timeout')), 10000);
         });
         
         try {
@@ -428,8 +428,17 @@ export const useAuthStore = create<AuthState>()(
             });
           }
         } catch (error) {
-          console.error("Session refresh error:", serializeError(error));
-          // Clear auth state on error and stop loading
+          const errorMessage = serializeError(error);
+          console.error("Session refresh error:", errorMessage);
+          
+          // If it's a timeout error, don't clear auth state - just stop loading
+          if (errorMessage.includes('timeout')) {
+            console.log('Session refresh timed out, stopping loading but keeping current state');
+            set({ isLoading: false, error: null });
+            return;
+          }
+          
+          // Clear auth state on other errors and stop loading
           set({
             user: null,
             session: null,

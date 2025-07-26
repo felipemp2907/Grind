@@ -650,21 +650,32 @@ export const useTaskStore = create<TaskState>()(
       },
       
       fetchTasks: async () => {
+        // Set a timeout to prevent hanging
+        const timeoutPromise = new Promise((_, reject) => {
+          setTimeout(() => reject(new Error('Tasks fetch timeout')), 8000);
+        });
+        
         try {
           const { user } = useAuthStore.getState();
-          if (!user?.id) return;
+          if (!user?.id) {
+            console.log('User not authenticated, skipping tasks fetch');
+            return;
+          }
           
-          const dbResult = await setupDatabase();
+          const dbCheckPromise = setupDatabase();
+          const dbResult = await Promise.race([dbCheckPromise, timeoutPromise]) as any;
           if (!dbResult.success) {
             console.error('Database not set up:', dbResult.error);
             return;
           }
           
-          const { data, error } = await supabase
+          const tasksPromise = supabase
             .from('tasks')
             .select('*')
             .eq('user_id', user.id)
             .order('created_at', { ascending: false });
+            
+          const { data, error } = await Promise.race([tasksPromise, timeoutPromise]) as any;
             
           if (error) {
             console.error('Error fetching tasks:', serializeError(error));
@@ -672,7 +683,7 @@ export const useTaskStore = create<TaskState>()(
           }
           
           if (data) {
-            const tasks: Task[] = data.map(task => ({
+            const tasks: Task[] = data.map((task: any) => ({
               id: task.id,
               title: task.title,
               description: task.description || '',
@@ -691,7 +702,14 @@ export const useTaskStore = create<TaskState>()(
             set({ tasks });
           }
         } catch (error) {
-          console.error('Error fetching tasks:', serializeError(error));
+          const errorMessage = serializeError(error);
+          console.error('Error fetching tasks:', errorMessage);
+          
+          // If it's a timeout error, don't block the app
+          if (errorMessage.includes('timeout')) {
+            console.log('Tasks fetch timed out, continuing without tasks data');
+            return;
+          }
         }
       },
       
