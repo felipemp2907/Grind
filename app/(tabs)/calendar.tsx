@@ -86,14 +86,18 @@ export default function CalendarScreen() {
   // Get goal deadlines in this month (memoized for performance)
   const goalDeadlines = useMemo(() => {
     return goals.filter(goal => goal.deadline).map(goal => {
+      // Parse the deadline date properly
       const deadlineDate = new Date(goal.deadline);
+      // Ensure we're working with local date, not UTC
+      const localDeadlineDate = new Date(deadlineDate.getFullYear(), deadlineDate.getMonth(), deadlineDate.getDate());
+      
       return {
         id: goal.id,
         title: goal.title,
-        date: formatDate(deadlineDate),
-        day: deadlineDate.getDate(),
-        month: deadlineDate.getMonth(),
-        year: deadlineDate.getFullYear()
+        date: formatDate(localDeadlineDate),
+        day: localDeadlineDate.getDate(),
+        month: localDeadlineDate.getMonth(),
+        year: localDeadlineDate.getFullYear()
       };
     }).filter(deadline => 
       deadline.month === currentMonth && deadline.year === currentYear
@@ -277,13 +281,11 @@ export default function CalendarScreen() {
     [goalDeadlines, selectedDate]
   );
   
-  // Debug logs
-  if (selectedDateDeadlines.length > 0) {
-    console.log('Found deadlines for selected date:', selectedDateDeadlines);
-  }
+  // Debug logs for deadline functionality
   if (goalDeadlines.length > 0) {
-    console.log('All deadlines in current month:', goalDeadlines);
+    console.log('Goal deadlines in current month:', goalDeadlines);
     console.log('Selected date:', selectedDate);
+    console.log('Selected date deadlines:', selectedDateDeadlines);
   }
   
   return (

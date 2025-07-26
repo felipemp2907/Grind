@@ -300,7 +300,7 @@ export default function TasksScreen() {
               style={styles.addButton}
               onPress={handleAddTask}
             >
-              <Plus size={20} color={Colors.dark.text} />
+              <Plus size={20} color="#000000" />
             </TouchableOpacity>
           )}
         </View>

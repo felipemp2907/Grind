@@ -157,7 +157,7 @@ export default function CreateTaskModal({ visible, onClose, date, goalId }: Crea
                   ]}
                   onPress={() => setSelectedGoalId(goal.id)}
                 >
-                  <Target size={16} color={selectedGoalId === goal.id ? Colors.dark.text : Colors.dark.primary} />
+                  <Target size={16} color={selectedGoalId === goal.id ? '#000000' : Colors.dark.primary} />
                   <Text 
                     style={[
                       styles.goalText,
@@ -324,7 +324,7 @@ const styles = StyleSheet.create({
     maxWidth: 120,
   },
   selectedGoalText: {
-    color: Colors.dark.text,
+    color: '#000000',
     fontWeight: '600',
   },
   timeContainer: {
@@ -391,7 +391,7 @@ const styles = StyleSheet.create({
     color: Colors.dark.primary,
   },
   selectedXpText: {
-    color: Colors.dark.text,
+    color: '#000000',
     fontWeight: '600',
   },
   createButton: {
