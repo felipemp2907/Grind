@@ -93,9 +93,9 @@ export const useUserStore = create<UserState>()(
         
         set({ isLoading: true, error: null });
         
-        // Set a timeout to prevent hanging
+        // Set a shorter timeout to prevent hanging
         const timeoutPromise = new Promise((_, reject) => {
-          setTimeout(() => reject(new Error('Profile fetch timeout')), 8000);
+          setTimeout(() => reject(new Error('Profile fetch timeout')), 5000);
         });
         
         try {
@@ -114,7 +114,7 @@ export const useUserStore = create<UserState>()(
           const dbResult = await Promise.race([dbCheckPromise, timeoutPromise]) as any;
           
           if (!dbResult.isSetup) {
-            console.log('Database setup required:', dbResult.error);
+            console.log('Database not ready, skipping profile fetch:', dbResult.error);
             set({ 
               needsDatabaseSetup: true, 
               isLoading: false,
@@ -132,49 +132,14 @@ export const useUserStore = create<UserState>()(
           const { data, error } = await Promise.race([profilePromise, timeoutPromise]) as any;
             
           if (error) {
-            // If profile doesn't exist, create one using upsert
-            if (error.code === 'PGRST116') {
-              console.log('Profile not found, creating default profile');
-              // Create default profile using upsert
-              const defaultProfile = {
-                id: user.id,
-                name: user.name || 'User',
-                level: 1,
-                xp: 0,
-                streak_days: 0,
-                longest_streak: 0
-              };
-              
-              const { error: upsertError } = await supabase
-                .from('profiles')
-                .upsert([defaultProfile], {
-                  onConflict: 'id'
-                });
-                
-              if (upsertError) {
-                console.error("Error creating profile:", upsertError.message);
-                throw new Error(`Failed to create profile: ${serializeError(upsertError)}`);
-              }
-              
-              console.log('Default profile created successfully');
-              set({
-                profile: {
-                  name: defaultProfile.name,
-                  level: defaultProfile.level,
-                  xp: defaultProfile.xp,
-                  xpToNextLevel: XP_LEVELS[1],
-                  streakDays: defaultProfile.streak_days,
-                  longestStreak: defaultProfile.longest_streak
-                },
-                isLoading: false,
-                needsDatabaseSetup: false
-              });
-              
-              return;
-            } else {
-              console.error("Error fetching profile:", error.message);
-              throw new Error(`Failed to fetch profile: ${serializeError(error)}`);
-            }
+            console.log('Error fetching profile, continuing without data:', serializeError(error));
+            // Don't throw error - just continue without profile data
+            set({ 
+              isLoading: false,
+              error: null,
+              needsDatabaseSetup: false
+            });
+            return;
           }
           
           if (data) {

@@ -379,7 +379,7 @@ export const useAuthStore = create<AuthState>()(
         
         // Set a timeout to prevent hanging
         const timeoutPromise = new Promise((_, reject) => {
-          setTimeout(() => reject(new Error('Session refresh timeout')), 10000);
+          setTimeout(() => reject(new Error('Session refresh timeout')), 5000);
         });
         
         try {

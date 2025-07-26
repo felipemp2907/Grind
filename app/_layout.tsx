@@ -54,7 +54,7 @@ export default function RootLayout() {
             const { resetAuth } = useAuthStore.getState();
             resetAuth();
           }
-        }, 8000); // Reduced to 8 seconds
+        }, 5000); // Reduced to 5 seconds
         
         await refreshSession();
         
@@ -70,7 +70,7 @@ export default function RootLayout() {
           console.log('User authenticated, fetching data...');
           try {
             // Add timeout to data fetching as well
-            const dataFetchPromise = Promise.all([
+            const dataFetchPromise = Promise.allSettled([
               fetchProfile(),
               fetchTasks(),
               fetchGoals(),
@@ -78,10 +78,22 @@ export default function RootLayout() {
             ]);
             
             const dataTimeout = new Promise((_, reject) => {
-              setTimeout(() => reject(new Error('Data fetch timeout')), 10000);
+              setTimeout(() => reject(new Error('Data fetch timeout')), 6000);
             });
             
-            await Promise.race([dataFetchPromise, dataTimeout]);
+            const results = await Promise.race([dataFetchPromise, dataTimeout]);
+            
+            // Log results if it's from Promise.allSettled
+            if (Array.isArray(results)) {
+              results.forEach((result, index) => {
+                const names = ['profile', 'tasks', 'goals', 'entries'];
+                if (result.status === 'rejected') {
+                  console.log(`${names[index]} fetch failed:`, result.reason);
+                } else {
+                  console.log(`${names[index]} fetch succeeded`);
+                }
+              });
+            }
             console.log('User data fetched successfully');
           } catch (dataError) {
             console.error("Error fetching user data after auth:", dataError);
@@ -135,7 +147,7 @@ export default function RootLayout() {
               // Fetch user data after successful auth
               if (session?.user && isMounted) {
                 try {
-                  const dataFetchPromise = Promise.all([
+                  const dataFetchPromise = Promise.allSettled([
                     fetchProfile(),
                     fetchTasks(),
                     fetchGoals(),
@@ -143,12 +155,24 @@ export default function RootLayout() {
                   ]);
                   
                   const dataTimeout = new Promise((_, reject) => {
-                    setTimeout(() => reject(new Error('Data fetch timeout')), 10000);
+                    setTimeout(() => reject(new Error('Data fetch timeout')), 6000);
                   });
                   
-                  await Promise.race([dataFetchPromise, dataTimeout]);
+                  const results = await Promise.race([dataFetchPromise, dataTimeout]);
+                  
+                  // Log results if it's from Promise.allSettled
+                  if (Array.isArray(results)) {
+                    results.forEach((result, index) => {
+                      const names = ['profile', 'tasks', 'goals', 'entries'];
+                      if (result.status === 'rejected') {
+                        console.log(`${names[index]} fetch failed:`, result.reason);
+                      } else {
+                        console.log(`${names[index]} fetch succeeded`);
+                      }
+                    });
+                  }
                 } catch (dataError) {
-                  console.error("Error fetching user data after auth:", dataError);
+                  console.log("Data fetch timeout or error, continuing with app:", dataError);
                   // Don't block the app if data fetching fails - continue with authentication
                   // The individual stores will handle their own error states
                 }

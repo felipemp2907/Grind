@@ -526,9 +526,9 @@ export const useGoalStore = create<GoalState>()(
       setOnboarded: (value) => set({ isOnboarded: value }),
       
       fetchGoals: async () => {
-        // Set a timeout to prevent hanging
+        // Set a shorter timeout to prevent hanging
         const timeoutPromise = new Promise((_, reject) => {
-          setTimeout(() => reject(new Error('Goals fetch timeout')), 8000);
+          setTimeout(() => reject(new Error('Goals fetch timeout')), 5000);
         });
         
         try {
@@ -542,7 +542,7 @@ export const useGoalStore = create<GoalState>()(
           const dbCheckPromise = setupDatabase();
           const dbResult = await Promise.race([dbCheckPromise, timeoutPromise]) as any;
           if (!dbResult.success) {
-            console.error('Database not set up:', dbResult.error);
+            console.log('Database not ready, skipping goals fetch:', dbResult.error);
             return;
           }
           
@@ -550,12 +550,13 @@ export const useGoalStore = create<GoalState>()(
             .from('goals')
             .select('*')
             .eq('user_id', currentUser.id)
-            .order('created_at', { ascending: false });
+            .order('created_at', { ascending: false })
+            .limit(10); // Limit results to improve performance
             
           const { data, error } = await Promise.race([goalsPromise, timeoutPromise]) as any;
             
           if (error) {
-            console.error('Error fetching goals:', serializeError(error));
+            console.log('Error fetching goals, continuing without data:', serializeError(error));
             return;
           }
           
@@ -581,16 +582,14 @@ export const useGoalStore = create<GoalState>()(
               goals,
               activeGoalId: goals.length > 0 && !get().activeGoalId ? goals[0].id : get().activeGoalId
             });
+            console.log(`Successfully fetched ${goals.length} goals`);
           }
         } catch (error) {
           const errorMessage = serializeError(error);
-          console.error('Error fetching goals:', errorMessage);
+          console.log('Goals fetch failed, continuing without data:', errorMessage);
           
-          // If it's a timeout error, don't block the app
-          if (errorMessage.includes('timeout')) {
-            console.log('Goals fetch timed out, continuing without goals data');
-            return;
-          }
+          // Always continue without blocking the app
+          return;
         }
       },
 
