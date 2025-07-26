@@ -46,27 +46,36 @@ export default function RootLayout() {
       try {
         console.log('Checking session...');
         
-        // Set a timeout to prevent hanging
+        // Set a more aggressive timeout to prevent hanging
         timeoutId = setTimeout(() => {
           if (isMounted) {
-            console.log('Session check timeout, proceeding without auth');
+            console.log('Session check timeout, clearing auth state');
             // Force stop loading if session check takes too long
             const { resetAuth } = useAuthStore.getState();
             resetAuth();
           }
-        }, 5000); // Reduced to 5 seconds
+        }, 3000); // Reduced to 3 seconds
         
-        await refreshSession();
+        // Try to refresh session with timeout protection
+        try {
+          await refreshSession();
+        } catch (refreshError) {
+          console.error('Session refresh failed:', refreshError);
+          // Clear auth state on refresh failure
+          const { resetAuth } = useAuthStore.getState();
+          resetAuth();
+          return;
+        }
         
         if (timeoutId) clearTimeout(timeoutId);
         
         if (!isMounted) return;
         
         // Get the latest user state after refresh
-        const { user: currentUser } = useAuthStore.getState();
+        const { user: currentUser, isAuthenticated } = useAuthStore.getState();
         
-        // Fetch user data if authenticated
-        if (currentUser) {
+        // Only fetch user data if authenticated and user exists
+        if (currentUser && isAuthenticated) {
           console.log('User authenticated, fetching data...');
           try {
             // Add timeout to data fetching as well
@@ -78,7 +87,7 @@ export default function RootLayout() {
             ]);
             
             const dataTimeout = new Promise((_, reject) => {
-              setTimeout(() => reject(new Error('Data fetch timeout')), 6000);
+              setTimeout(() => reject(new Error('Data fetch timeout')), 4000); // Reduced timeout
             });
             
             const results = await Promise.race([dataFetchPromise, dataTimeout]);
@@ -96,7 +105,7 @@ export default function RootLayout() {
             }
             console.log('User data fetched successfully');
           } catch (dataError) {
-            console.error("Error fetching user data after auth:", dataError);
+            console.log("Data fetch timeout, continuing without data:", dataError);
             // Don't block the app if data fetching fails - continue with authentication
             // The individual stores will handle their own error states
           }
@@ -104,32 +113,30 @@ export default function RootLayout() {
           console.log('No user found after session refresh');
         }
       } catch (error) {
-        console.error("Session refresh error:", error);
+        console.error("Session check error:", error);
         if (timeoutId) clearTimeout(timeoutId);
         
         if (!isMounted) return;
         
-        // Reset auth state on critical errors to prevent infinite loading
-        if (error && typeof error === 'object' && 'message' in error) {
-          const errorMessage = error.message as string;
-          if (errorMessage.includes('Invalid') || errorMessage.includes('expired') || errorMessage.includes('JWT')) {
-            console.log('Clearing invalid session');
-            // Clear the invalid session
-            try {
-              await supabase.auth.signOut();
-            } catch (signOutError) {
-              console.error('Error signing out:', signOutError);
-            }
-          }
-        }
-        
-        // Force reset auth state to prevent loading loop
+        // Always reset auth state on errors to prevent infinite loading
+        console.log('Resetting auth state due to session check error');
         const { resetAuth } = useAuthStore.getState();
         resetAuth();
       }
     };
     
-    checkSession();
+    // Add a safety timeout for the entire session check process
+    const safetyTimeout = setTimeout(() => {
+      if (isMounted) {
+        console.log('Safety timeout triggered, clearing auth state');
+        const { resetAuth } = useAuthStore.getState();
+        resetAuth();
+      }
+    }, 5000);
+    
+    checkSession().finally(() => {
+      clearTimeout(safetyTimeout);
+    });
     
     // Set up auth state change listener with error handling
     let subscription: any;
@@ -142,44 +149,59 @@ export default function RootLayout() {
           
           try {
             if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-              await refreshSession();
-              
-              // Fetch user data after successful auth
-              if (session?.user && isMounted) {
-                try {
-                  const dataFetchPromise = Promise.allSettled([
-                    fetchProfile(),
-                    fetchTasks(),
-                    fetchGoals(),
-                    fetchEntries()
-                  ]);
-                  
-                  const dataTimeout = new Promise((_, reject) => {
-                    setTimeout(() => reject(new Error('Data fetch timeout')), 6000);
-                  });
-                  
-                  const results = await Promise.race([dataFetchPromise, dataTimeout]);
-                  
-                  // Log results if it's from Promise.allSettled
-                  if (Array.isArray(results)) {
-                    results.forEach((result, index) => {
-                      const names = ['profile', 'tasks', 'goals', 'entries'];
-                      if (result.status === 'rejected') {
-                        console.log(`${names[index]} fetch failed:`, result.reason);
-                      } else {
-                        console.log(`${names[index]} fetch succeeded`);
-                      }
+              // Don't call refreshSession here as it's already handled by the auth state change
+              // Just update the store directly with the session data
+              if (session?.user) {
+                const { user } = session;
+                const authStore = useAuthStore.getState();
+                authStore.user = {
+                  id: user.id,
+                  email: user.email || '',
+                  name: user.user_metadata?.name || 'User',
+                };
+                authStore.session = session;
+                authStore.isAuthenticated = true;
+                authStore.isLoading = false;
+                
+                // Fetch user data after successful auth with timeout
+                if (isMounted) {
+                  try {
+                    const dataFetchPromise = Promise.allSettled([
+                      fetchProfile(),
+                      fetchTasks(),
+                      fetchGoals(),
+                      fetchEntries()
+                    ]);
+                    
+                    const dataTimeout = new Promise((_, reject) => {
+                      setTimeout(() => reject(new Error('Data fetch timeout')), 4000);
                     });
+                    
+                    const results = await Promise.race([dataFetchPromise, dataTimeout]);
+                    
+                    // Log results if it's from Promise.allSettled
+                    if (Array.isArray(results)) {
+                      results.forEach((result, index) => {
+                        const names = ['profile', 'tasks', 'goals', 'entries'];
+                        if (result.status === 'rejected') {
+                          console.log(`${names[index]} fetch failed:`, result.reason);
+                        } else {
+                          console.log(`${names[index]} fetch succeeded`);
+                        }
+                      });
+                    }
+                  } catch (dataError) {
+                    console.log("Data fetch timeout, continuing with app:", dataError);
+                    // Don't block the app if data fetching fails - continue with authentication
+                    // The individual stores will handle their own error states
                   }
-                } catch (dataError) {
-                  console.log("Data fetch timeout or error, continuing with app:", dataError);
-                  // Don't block the app if data fetching fails - continue with authentication
-                  // The individual stores will handle their own error states
                 }
               }
             } else if (event === 'SIGNED_OUT') {
               console.log('User signed out, clearing state');
-              // Clear all stores when user signs out
+              // Clear auth state
+              const { resetAuth } = useAuthStore.getState();
+              resetAuth();
             }
           } catch (authError) {
             console.error('Error handling auth state change:', authError);

@@ -21,6 +21,19 @@ try {
       persistSession: true,
       detectSessionInUrl: false,
     },
+    global: {
+      headers: {
+        'X-Client-Info': 'grind-app',
+      },
+    },
+    db: {
+      schema: 'public',
+    },
+    realtime: {
+      params: {
+        eventsPerSecond: 10,
+      },
+    },
   });
   
   console.log('Supabase client initialized successfully');

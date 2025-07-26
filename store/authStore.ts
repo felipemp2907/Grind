@@ -377,68 +377,81 @@ export const useAuthStore = create<AuthState>()(
         
         set({ isLoading: true });
         
-        // Set a timeout to prevent hanging
-        const timeoutPromise = new Promise((_, reject) => {
-          setTimeout(() => reject(new Error('Session refresh timeout')), 5000);
-        });
-        
         try {
           console.log('Refreshing session...');
           
-          const sessionPromise = supabase.auth.getSession();
-          const { data, error } = await Promise.race([sessionPromise, timeoutPromise]) as any;
+          // Create a more robust timeout mechanism
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => {
+            controller.abort();
+          }, 3000); // Reduced to 3 seconds for faster response
           
-          if (error) {
-            console.error("Session refresh error:", serializeError(error));
-            // Clear invalid session and stop loading
-            set({
-              user: null,
-              session: null,
-              isAuthenticated: false,
-              isLoading: false,
-              error: null
-            });
-            return;
-          }
-          
-          if (data?.session) {
-            const { user } = data.session;
-            console.log('Session refreshed successfully for user:', user.id);
+          try {
+            const { data, error } = await supabase.auth.getSession();
+            clearTimeout(timeoutId);
             
-            set({
-              user: {
-                id: user.id,
-                email: user.email || '',
-                name: user.user_metadata?.name || 'User',
-              },
-              session: data.session,
-              isAuthenticated: true,
-              isLoading: false,
-              error: null
-            });
-          } else {
-            console.log('No session found during refresh');
-            // No session found, clear auth state and stop loading
-            set({
-              user: null,
-              session: null,
-              isAuthenticated: false,
-              isLoading: false,
-              error: null
-            });
+            if (error) {
+              console.error("Session refresh error:", serializeError(error));
+              // Clear invalid session and stop loading
+              set({
+                user: null,
+                session: null,
+                isAuthenticated: false,
+                isLoading: false,
+                error: null
+              });
+              return;
+            }
+            
+            if (data?.session) {
+              const { user } = data.session;
+              console.log('Session refreshed successfully for user:', user.id);
+              
+              set({
+                user: {
+                  id: user.id,
+                  email: user.email || '',
+                  name: user.user_metadata?.name || 'User',
+                },
+                session: data.session,
+                isAuthenticated: true,
+                isLoading: false,
+                error: null
+              });
+            } else {
+              console.log('No session found during refresh');
+              // No session found, clear auth state and stop loading
+              set({
+                user: null,
+                session: null,
+                isAuthenticated: false,
+                isLoading: false,
+                error: null
+              });
+            }
+          } catch (sessionError) {
+            clearTimeout(timeoutId);
+            
+            // Check if it was aborted due to timeout
+            if (controller.signal.aborted) {
+              console.log('Session refresh timed out, clearing auth state');
+              set({
+                user: null,
+                session: null,
+                isAuthenticated: false,
+                isLoading: false,
+                error: null
+              });
+              return;
+            }
+            
+            throw sessionError;
           }
         } catch (error) {
           const errorMessage = serializeError(error);
           console.error("Session refresh error:", errorMessage);
           
-          // If it's a timeout error, don't clear auth state - just stop loading
-          if (errorMessage.includes('timeout')) {
-            console.log('Session refresh timed out, stopping loading but keeping current state');
-            set({ isLoading: false, error: null });
-            return;
-          }
-          
-          // Clear auth state on other errors and stop loading
+          // Always clear auth state on errors to prevent infinite loading
           set({
             user: null,
             session: null,
@@ -454,6 +467,7 @@ export const useAuthStore = create<AuthState>()(
       },
       
       resetAuth: () => {
+        console.log('Resetting auth state and clearing persisted data');
         set({
           user: null,
           session: null,
@@ -461,6 +475,13 @@ export const useAuthStore = create<AuthState>()(
           isLoading: false,
           error: null
         });
+        
+        // Also clear persisted storage to prevent loading stale data
+        try {
+          AsyncStorage.removeItem('grind-auth-storage');
+        } catch (error) {
+          console.error('Error clearing auth storage:', error);
+        }
       },
     }),
     {
