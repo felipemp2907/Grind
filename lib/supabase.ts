@@ -179,7 +179,14 @@ export const createUserProfile = async (userId: string, userData: { name?: strin
     }
     
     // Fallback to direct insert if RPC fails
-    console.log('RPC failed, trying direct upsert:', rpcError);
+    const errorMessage = rpcError ? serializeError(rpcError) : 'Unknown RPC error';
+    if (errorMessage.includes('Could not find the function') || 
+        errorMessage.includes('function public.ensure_user_profile') ||
+        errorMessage.includes('schema cache')) {
+      console.log('Function not found in schema cache, using direct upsert:', errorMessage);
+    } else {
+      console.log('RPC failed with other error, trying direct upsert:', errorMessage);
+    }
     
     const { data, error } = await supabase
       .from('profiles')
@@ -277,8 +284,15 @@ export const ensureUserProfile = async (userId: string, userData: { name?: strin
     if (rpcError) {
       console.error('RPC error ensuring profile:', serializeError(rpcError));
       
-      // Fallback to direct upsert if RPC fails
-      console.log('Falling back to direct upsert...');
+      // Check if it's a function not found error
+      const errorMessage = serializeError(rpcError);
+      if (errorMessage.includes('Could not find the function') || 
+          errorMessage.includes('function public.ensure_user_profile') ||
+          errorMessage.includes('schema cache')) {
+        console.log('Function not found in schema cache, using direct upsert...');
+      } else {
+        console.log('RPC failed with other error, falling back to direct upsert...');
+      }
       
       const profileData = {
         id: userId,
@@ -297,7 +311,7 @@ export const ensureUserProfile = async (userId: string, userData: { name?: strin
       
       if (upsertError) {
         console.error('Error in fallback upsert:', serializeError(upsertError));
-        return { success: false, error: serializeError(upsertError) };
+        return { success: false, error: `Database function not available. Please run the database setup script. Error: ${serializeError(upsertError)}` };
       }
       
       console.log('Profile ensured via fallback upsert');
