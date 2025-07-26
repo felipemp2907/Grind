@@ -76,11 +76,20 @@ export const useJournalStore = create<JournalState>()(
             if (error) {
               console.error('Error saving journal entry to Supabase:', serializeError(error));
               
-              // If it's a schema-related error, try without media_uri as fallback
-              if (error.message?.includes('media_uri') || error.message?.includes('column') || error.message?.includes('does not exist')) {
-                console.log('Retrying without media_uri due to schema issue...');
-                const fallbackData: any = { ...insertData };
-                delete fallbackData.media_uri;
+              // If it's a schema-related error, try without problematic columns as fallback
+              if (error.message?.includes('media_uri') || error.message?.includes('reflection') || error.message?.includes('column') || error.message?.includes('does not exist')) {
+                console.log('Retrying without problematic columns due to schema issue...');
+                const fallbackData: any = {
+                  user_id: insertData.user_id,
+                  title: insertData.title,
+                  content: insertData.content,
+                  task_id: insertData.task_id,
+                  validation_status: insertData.validation_status,
+                  validation_feedback: insertData.validation_feedback,
+                  validation_confidence: insertData.validation_confidence,
+                  mood: insertData.mood,
+                  tags: insertData.tags
+                };
                 
                 const { data: fallbackResult, error: fallbackError } = await supabase
                   .from('journal_entries')
@@ -94,11 +103,12 @@ export const useJournalStore = create<JournalState>()(
                 }
                 
                 if (fallbackResult) {
-                  console.log('Journal entry created successfully without media_uri');
+                  console.log('Journal entry created successfully without problematic columns');
                   const entryWithUUID = {
                     ...entry,
                     id: fallbackResult.id,
                     mediaUri: undefined, // Clear media URI since it wasn't saved
+                    reflection: undefined, // Clear reflection since it wasn't saved
                     createdAt: fallbackResult.created_at,
                     updatedAt: fallbackResult.updated_at
                   };
@@ -188,11 +198,13 @@ export const useJournalStore = create<JournalState>()(
           if (error) {
             console.error('Error updating journal entry in Supabase:', serializeError(error));
             
-            // If it's a schema-related error with media_uri, try without it
-            if (error.message?.includes('media_uri') && supabaseUpdates.media_uri !== undefined) {
-              console.log('Retrying update without media_uri due to schema issue...');
+            // If it's a schema-related error with problematic columns, try without them
+            if ((error.message?.includes('media_uri') || error.message?.includes('reflection') || error.message?.includes('column')) && 
+                (supabaseUpdates.media_uri !== undefined || supabaseUpdates.reflection !== undefined)) {
+              console.log('Retrying update without problematic columns due to schema issue...');
               const fallbackUpdates: any = { ...supabaseUpdates };
               delete fallbackUpdates.media_uri;
+              delete fallbackUpdates.reflection;
               
               const { error: fallbackError } = await supabase
                 .from('journal_entries')
@@ -203,7 +215,7 @@ export const useJournalStore = create<JournalState>()(
               if (fallbackError) {
                 console.error('Fallback journal entry update also failed:', serializeError(fallbackError));
               } else {
-                console.log('Journal entry updated successfully without media_uri');
+                console.log('Journal entry updated successfully without problematic columns');
               }
             }
           } else {
