@@ -97,9 +97,11 @@ export default function Button({
         break;
       case 'primary':
       case 'secondary':
+        baseStyle.color = '#000000'; // Black text for white buttons
+        break;
       case 'danger':
       default:
-        baseStyle.color = '#FFFFFF'; // Always white text for filled buttons
+        baseStyle.color = '#FFFFFF'; // White text for colored buttons
     }
     
     return baseStyle;
@@ -114,7 +116,7 @@ export default function Button({
     >
       {loading ? (
         <ActivityIndicator 
-          color={variant === 'outline' ? Colors.dark.primary : '#FFFFFF'} 
+          color={variant === 'outline' ? Colors.dark.primary : (variant === 'primary' || variant === 'secondary') ? '#000000' : '#FFFFFF'} 
           size="small" 
         />
       ) : (
