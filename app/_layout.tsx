@@ -40,11 +40,25 @@ export default function RootLayout() {
   // Check for existing session on app load
   useEffect(() => {
     let isMounted = true;
+    let timeoutId: ReturnType<typeof setTimeout>;
     
     const checkSession = async () => {
       try {
         console.log('Checking session...');
+        
+        // Set a timeout to prevent hanging
+        timeoutId = setTimeout(() => {
+          if (isMounted) {
+            console.log('Session check timeout, proceeding without auth');
+            // Force stop loading if session check takes too long
+            const { resetAuth } = useAuthStore.getState();
+            resetAuth();
+          }
+        }, 10000); // 10 second timeout
+        
         await refreshSession();
+        
+        if (timeoutId) clearTimeout(timeoutId);
         
         if (!isMounted) return;
         
@@ -71,6 +85,8 @@ export default function RootLayout() {
         }
       } catch (error) {
         console.error("Session refresh error:", error);
+        if (timeoutId) clearTimeout(timeoutId);
+        
         if (!isMounted) return;
         
         // Reset auth state on critical errors to prevent infinite loading
@@ -86,6 +102,10 @@ export default function RootLayout() {
             }
           }
         }
+        
+        // Force reset auth state to prevent loading loop
+        const { resetAuth } = useAuthStore.getState();
+        resetAuth();
       }
     };
     
@@ -130,6 +150,7 @@ export default function RootLayout() {
     
     return () => {
       isMounted = false;
+      if (timeoutId) clearTimeout(timeoutId);
       if (subscription) {
         subscription.unsubscribe();
       }

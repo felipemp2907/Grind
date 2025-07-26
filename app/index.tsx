@@ -51,7 +51,7 @@ export default function Index() {
       console.log('Loading timeout reached, proceeding with current state');
       setLoadingTimeout(true);
       setInitialCheckComplete(true);
-    }, 8000); // 8 second timeout
+    }, 5000); // 5 second timeout
     
     return () => clearTimeout(timeout);
   }, []);

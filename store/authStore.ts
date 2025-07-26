@@ -383,7 +383,7 @@ export const useAuthStore = create<AuthState>()(
           
           if (error) {
             console.error("Session refresh error:", serializeError(error));
-            // Clear invalid session
+            // Clear invalid session and stop loading
             set({
               user: null,
               session: null,
@@ -411,7 +411,7 @@ export const useAuthStore = create<AuthState>()(
             });
           } else {
             console.log('No session found during refresh');
-            // No session found, clear auth state
+            // No session found, clear auth state and stop loading
             set({
               user: null,
               session: null,
@@ -422,7 +422,7 @@ export const useAuthStore = create<AuthState>()(
           }
         } catch (error) {
           console.error("Session refresh error:", serializeError(error));
-          // Clear auth state on error
+          // Clear auth state on error and stop loading
           set({
             user: null,
             session: null,

@@ -90,12 +90,22 @@ export default function Button({
         baseStyle.fontSize = 16;
     }
     
-    // Variant styles
-    if (variant === 'outline') {
-      baseStyle.color = Colors.dark.primary;
-    } else if (variant === 'primary') {
-      // Primary button should have white text for contrast
-      baseStyle.color = '#FFFFFF';
+    // Variant styles - ensure proper contrast
+    switch (variant) {
+      case 'outline':
+        baseStyle.color = Colors.dark.primary;
+        break;
+      case 'primary':
+        baseStyle.color = '#FFFFFF'; // White text on primary background
+        break;
+      case 'secondary':
+        baseStyle.color = '#FFFFFF'; // White text on secondary background
+        break;
+      case 'danger':
+        baseStyle.color = '#FFFFFF'; // White text on danger background
+        break;
+      default:
+        baseStyle.color = '#FFFFFF'; // Default to white for contrast
     }
     
     return baseStyle;
@@ -110,7 +120,7 @@ export default function Button({
     >
       {loading ? (
         <ActivityIndicator 
-          color={variant === 'outline' ? Colors.dark.primary : variant === 'primary' ? '#FFFFFF' : Colors.dark.text} 
+          color={variant === 'outline' ? Colors.dark.primary : '#FFFFFF'} 
           size="small" 
         />
       ) : (

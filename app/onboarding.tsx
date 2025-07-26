@@ -115,7 +115,7 @@ export default function OnboardingScreen() {
           <View style={styles.stepContainer}>
             <Text style={styles.stepTitle}>Set Your Ultimate Goal</Text>
             <Text style={styles.stepDescription}>
-              What's the big goal you want to achieve? Be specific and ambitious.
+              What&apos;s the big goal you want to achieve? Be specific and ambitious.
               You can add more goals later.
             </Text>
             <TextInput
@@ -237,7 +237,7 @@ export default function OnboardingScreen() {
               onPress={handleNext}
               disabled={isNextDisabled()}
               loading={step === 2 && (isCompleting || isGenerating)}
-              icon={!isCompleting && !isGenerating ? <ArrowRight size={16} color={Colors.dark.text} /> : undefined}
+              icon={!isCompleting && !isGenerating ? <ArrowRight size={16} color="#FFFFFF" /> : undefined}
             />
             
             <TouchableOpacity 
