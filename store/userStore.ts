@@ -93,11 +93,6 @@ export const useUserStore = create<UserState>()(
         
         set({ isLoading: true, error: null });
         
-        // Set a shorter timeout to prevent hanging
-        const timeoutPromise = new Promise((_, reject) => {
-          setTimeout(() => reject(new Error('Profile fetch timeout')), 5000);
-        });
-        
         try {
           const { user } = useAuthStore.getState();
           
@@ -109,31 +104,20 @@ export const useUserStore = create<UserState>()(
           
           console.log('Fetching profile for user:', user.id);
           
-          // Check database setup with timeout
-          const dbCheckPromise = checkDatabaseSetup();
-          const dbResult = await Promise.race([dbCheckPromise, timeoutPromise]) as any;
-          
-          if (!dbResult.isSetup) {
-            console.log('Database not ready, skipping profile fetch:', dbResult.error);
-            set({ 
-              needsDatabaseSetup: true, 
-              isLoading: false,
-              error: null // Don't show error for database setup requirement
-            });
-            return;
-          }
-          
-          const profilePromise = supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', user.id)
-            .single();
-            
-          const { data, error } = await Promise.race([profilePromise, timeoutPromise]) as any;
-            
-          if (error) {
-            console.log('Error fetching profile, continuing without data:', serializeError(error));
-            // Don't throw error - just continue without profile data
+          // Quick database check without timeout to avoid hanging
+          try {
+            const dbResult = await checkDatabaseSetup();
+            if (!dbResult.isSetup) {
+              console.log('Database not ready, skipping profile fetch:', dbResult.error);
+              set({ 
+                needsDatabaseSetup: true, 
+                isLoading: false,
+                error: null
+              });
+              return;
+            }
+          } catch (dbError) {
+            console.log('Database check failed, continuing without profile:', serializeError(dbError));
             set({ 
               isLoading: false,
               error: null,
@@ -142,58 +126,71 @@ export const useUserStore = create<UserState>()(
             return;
           }
           
-          if (data) {
-            console.log('Profile fetched successfully');
-            const xpToNextLevel = data.level < XP_LEVELS.length - 1 
-              ? XP_LEVELS[data.level] - data.xp 
-              : 999999;
+          // Fetch profile with a very short timeout
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 3000); // 3 second timeout
+          
+          try {
+            const { data, error } = await supabase
+              .from('profiles')
+              .select('*')
+              .eq('id', user.id)
+              .abortSignal(controller.signal)
+              .single();
               
-            set({
-              profile: {
-                name: data.name || '',
-                level: data.level || 1,
-                xp: data.xp || 0,
-                xpToNextLevel,
-                streakDays: data.streak_days || 0,
-                longestStreak: data.longest_streak || 0,
-                avatarUrl: data.avatar_url || undefined
-              },
+            clearTimeout(timeoutId);
+            
+            if (error) {
+              console.log('Error fetching profile, continuing without data:', serializeError(error));
+              set({ 
+                isLoading: false,
+                error: null,
+                needsDatabaseSetup: false
+              });
+              return;
+            }
+            
+            if (data) {
+              console.log('Profile fetched successfully');
+              const xpToNextLevel = data.level < XP_LEVELS.length - 1 
+                ? XP_LEVELS[data.level] - data.xp 
+                : 999999;
+                
+              set({
+                profile: {
+                  name: data.name || '',
+                  level: data.level || 1,
+                  xp: data.xp || 0,
+                  xpToNextLevel,
+                  streakDays: data.streak_days || 0,
+                  longestStreak: data.longest_streak || 0,
+                  avatarUrl: data.avatar_url || undefined
+                },
+                isLoading: false,
+                needsDatabaseSetup: false
+              });
+            }
+          } catch (fetchError: any) {
+            clearTimeout(timeoutId);
+            if (fetchError.name === 'AbortError') {
+              console.log('Profile fetch timed out, continuing without profile data');
+            } else {
+              console.log('Profile fetch failed:', serializeError(fetchError));
+            }
+            set({ 
+              error: null,
               isLoading: false,
               needsDatabaseSetup: false
             });
           }
         } catch (error: any) {
           const errorMessage = serializeError(error);
-          console.error("Error fetching profile:", errorMessage);
-          
-          // Check if this is a timeout error
-          if (errorMessage.includes('timeout')) {
-            console.log('Profile fetch timed out, continuing without profile data');
-            set({ 
-              error: null, // Don't show timeout error to user
-              isLoading: false,
-              needsDatabaseSetup: false
-            });
-            return;
-          }
-          
-          // Check if this is a database setup issue
-          if (errorMessage.includes('relation') || errorMessage.includes('does not exist') || errorMessage.includes('table')) {
-            console.log('Database setup issue detected');
-            set({ 
-              error: null, // Don't show error for database setup requirement
-              isLoading: false,
-              needsDatabaseSetup: true
-            });
-          } else {
-            // For other errors, don't block the app - just log and continue
-            console.error('Profile fetch failed, continuing without profile data');
-            set({ 
-              error: null, // Don't show error to user
-              isLoading: false,
-              needsDatabaseSetup: false
-            });
-          }
+          console.log('Profile fetch error, continuing without profile data:', errorMessage);
+          set({ 
+            error: null,
+            isLoading: false,
+            needsDatabaseSetup: false
+          });
         }
       },
       

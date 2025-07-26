@@ -650,11 +650,6 @@ export const useTaskStore = create<TaskState>()(
       },
       
       fetchTasks: async () => {
-        // Set a shorter timeout to prevent hanging
-        const timeoutPromise = new Promise((_, reject) => {
-          setTimeout(() => reject(new Error('Tasks fetch timeout')), 5000);
-        });
-        
         try {
           const { user } = useAuthStore.getState();
           if (!user?.id) {
@@ -662,55 +657,69 @@ export const useTaskStore = create<TaskState>()(
             return;
           }
           
-          // Quick database check with timeout
-          const dbCheckPromise = setupDatabase();
-          const dbResult = await Promise.race([dbCheckPromise, timeoutPromise]) as any;
-          if (!dbResult.success) {
-            console.log('Database not ready, skipping tasks fetch:', dbResult.error);
+          // Quick database check without timeout to avoid hanging
+          try {
+            const dbResult = await setupDatabase();
+            if (!dbResult.success) {
+              console.log('Database not ready, skipping tasks fetch:', dbResult.error);
+              return;
+            }
+          } catch (dbError) {
+            console.log('Database check failed, continuing without tasks:', serializeError(dbError));
             return;
           }
           
-          // Fetch tasks with timeout
-          const tasksPromise = supabase
-            .from('tasks')
-            .select('*')
-            .eq('user_id', user.id)
-            .order('created_at', { ascending: false })
-            .limit(100); // Limit results to improve performance
-            
-          const { data, error } = await Promise.race([tasksPromise, timeoutPromise]) as any;
-            
-          if (error) {
-            console.log('Error fetching tasks, continuing without data:', serializeError(error));
-            return;
-          }
+          // Fetch tasks with abort controller for timeout
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 3000); // 3 second timeout
           
-          if (data) {
-            const tasks: Task[] = data.map((task: any) => ({
-              id: task.id,
-              title: task.title,
-              description: task.description || '',
-              date: task.due_date ? task.due_date.split('T')[0] : new Date().toISOString().split('T')[0],
-              goalId: task.goal_id || '',
-              completed: task.completed || false,
-              xpValue: task.xp_value || 30,
-              isHabit: task.is_habit || false,
-              streak: task.streak || 0,
-              isUserCreated: true,
-              requiresValidation: false,
-              priority: task.priority as 'high' | 'medium' | 'low' || 'medium',
-              completedAt: task.completed_at || undefined
-            }));
+          try {
+            const { data, error } = await supabase
+              .from('tasks')
+              .select('*')
+              .eq('user_id', user.id)
+              .order('created_at', { ascending: false })
+              .limit(100) // Limit results to improve performance
+              .abortSignal(controller.signal);
+              
+            clearTimeout(timeoutId);
             
-            set({ tasks });
-            console.log(`Successfully fetched ${tasks.length} tasks`);
+            if (error) {
+              console.log('Error fetching tasks, continuing without data:', serializeError(error));
+              return;
+            }
+            
+            if (data) {
+              const tasks: Task[] = data.map((task: any) => ({
+                id: task.id,
+                title: task.title,
+                description: task.description || '',
+                date: task.due_date ? task.due_date.split('T')[0] : new Date().toISOString().split('T')[0],
+                goalId: task.goal_id || '',
+                completed: task.completed || false,
+                xpValue: task.xp_value || 30,
+                isHabit: task.is_habit || false,
+                streak: task.streak || 0,
+                isUserCreated: true,
+                requiresValidation: false,
+                priority: task.priority as 'high' | 'medium' | 'low' || 'medium',
+                completedAt: task.completed_at || undefined
+              }));
+              
+              set({ tasks });
+              console.log(`Successfully fetched ${tasks.length} tasks`);
+            }
+          } catch (fetchError: any) {
+            clearTimeout(timeoutId);
+            if (fetchError.name === 'AbortError') {
+              console.log('Tasks fetch timed out, continuing without data');
+            } else {
+              console.log('Tasks fetch failed:', serializeError(fetchError));
+            }
           }
         } catch (error) {
           const errorMessage = serializeError(error);
-          console.log('Tasks fetch failed, continuing without data:', errorMessage);
-          
-          // Always continue without blocking the app
-          return;
+          console.log('Tasks fetch error, continuing without data:', errorMessage);
         }
       },
       

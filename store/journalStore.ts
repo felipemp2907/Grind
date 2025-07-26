@@ -37,7 +37,7 @@ export const useJournalStore = create<JournalState>()(
             return null;
           }
           
-          // Prepare the data for insertion with proper field mapping
+          // First, try to create the entry with all fields including media_uri
           const insertData = {
             user_id: user.id,
             title: entry.title,
@@ -52,78 +52,94 @@ export const useJournalStore = create<JournalState>()(
             tags: entry.tags || []
           };
           
-          console.log('Attempting to insert journal entry:', {
+          console.log('Creating journal entry:', {
             user_id: insertData.user_id,
             title: insertData.title,
             has_media_uri: !!insertData.media_uri,
             validation_status: insertData.validation_status
           });
           
-          const { data, error } = await supabase
-            .from('journal_entries')
-            .insert(insertData)
-            .select()
-            .single();
-            
-          if (error) {
-            console.error('Error saving journal entry to Supabase:', serializeError(error));
-            
-            // If it's a schema-related error, try without media_uri as fallback
-            if (error.message?.includes('media_uri') || error.message?.includes('column')) {
-              console.log('Retrying without media_uri due to schema issue...');
-              const fallbackData: any = { ...insertData };
-              delete fallbackData.media_uri;
+          // Use a timeout to prevent hanging
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 5000);
+          
+          try {
+            const { data, error } = await supabase
+              .from('journal_entries')
+              .insert(insertData)
+              .select()
+              .abortSignal(controller.signal)
+              .single();
               
-              const { data: fallbackResult, error: fallbackError } = await supabase
-                .from('journal_entries')
-                .insert(fallbackData)
-                .select()
-                .single();
+            clearTimeout(timeoutId);
+            
+            if (error) {
+              console.error('Error saving journal entry to Supabase:', serializeError(error));
+              
+              // If it's a schema-related error, try without media_uri as fallback
+              if (error.message?.includes('media_uri') || error.message?.includes('column') || error.message?.includes('does not exist')) {
+                console.log('Retrying without media_uri due to schema issue...');
+                const fallbackData: any = { ...insertData };
+                delete fallbackData.media_uri;
                 
-              if (fallbackError) {
-                console.error('Fallback journal entry creation also failed:', serializeError(fallbackError));
-                return null;
+                const { data: fallbackResult, error: fallbackError } = await supabase
+                  .from('journal_entries')
+                  .insert(fallbackData)
+                  .select()
+                  .single();
+                  
+                if (fallbackError) {
+                  console.error('Fallback journal entry creation also failed:', serializeError(fallbackError));
+                  return null;
+                }
+                
+                if (fallbackResult) {
+                  console.log('Journal entry created successfully without media_uri');
+                  const entryWithUUID = {
+                    ...entry,
+                    id: fallbackResult.id,
+                    mediaUri: undefined, // Clear media URI since it wasn't saved
+                    createdAt: fallbackResult.created_at,
+                    updatedAt: fallbackResult.updated_at
+                  };
+                  
+                  set((state) => ({ 
+                    entries: [...state.entries, entryWithUUID] 
+                  }));
+                  
+                  return entryWithUUID;
+                }
               }
               
-              if (fallbackResult) {
-                console.log('Journal entry created successfully without media_uri');
-                const entryWithUUID = {
-                  ...entry,
-                  id: fallbackResult.id,
-                  mediaUri: undefined, // Clear media URI since it wasn't saved
-                  createdAt: fallbackResult.created_at,
-                  updatedAt: fallbackResult.updated_at
-                };
-                
-                set((state) => ({ 
-                  entries: [...state.entries, entryWithUUID] 
-                }));
-                
-                return entryWithUUID;
-              }
+              return null;
+            }
+            
+            // Add to local state with the UUID from database
+            if (data) {
+              console.log('Journal entry created successfully with ID:', data.id);
+              const entryWithUUID = {
+                ...entry,
+                id: data.id,
+                createdAt: data.created_at,
+                updatedAt: data.updated_at
+              };
+              
+              set((state) => ({ 
+                entries: [...state.entries, entryWithUUID] 
+              }));
+              
+              return entryWithUUID;
             }
             
             return null;
+          } catch (insertError: any) {
+            clearTimeout(timeoutId);
+            if (insertError.name === 'AbortError') {
+              console.log('Journal entry creation timed out');
+              return null;
+            }
+            throw insertError;
           }
-          
-          // Add to local state with the UUID from database
-          if (data) {
-            console.log('Journal entry created successfully with ID:', data.id);
-            const entryWithUUID = {
-              ...entry,
-              id: data.id,
-              createdAt: data.created_at,
-              updatedAt: data.updated_at
-            };
-            
-            set((state) => ({ 
-              entries: [...state.entries, entryWithUUID] 
-            }));
-            
-            return entryWithUUID;
-          }
-          
-          return null;
         } catch (error) {
           console.error('Error saving journal entry:', serializeError(error));
           return null;

@@ -199,14 +199,20 @@ export default function ValidateTaskScreen() {
         validationConfidence: validationResult?.confidence
       };
       
+      console.log('Creating journal entry for task completion...');
+      
       // Add journal entry and get the created entry with UUID
       const journalEntry = await addEntry(journalEntryData);
       
       if (!journalEntry) {
+        console.error('Journal entry creation returned null');
         throw new Error('Failed to create journal entry');
       }
       
+      console.log('Journal entry created successfully:', journalEntry.id);
+      
       // Mark task as completed
+      console.log('Marking task as completed...');
       await completeTask(task.id, journalEntry.id);
       
       // Add XP with bonus for high confidence validation
@@ -214,10 +220,13 @@ export default function ValidateTaskScreen() {
       if (validationResult?.confidence === 'high') {
         xpBonus = Math.floor(task.xpValue * 0.2); // 20% bonus for high confidence
       }
+      
+      console.log('Adding XP:', task.xpValue + xpBonus);
       await addXP(task.xpValue + xpBonus);
       
       // Update streak if it's a habit
       if (task.isHabit) {
+        console.log('Updating user streak for habit task');
         await updateUserStreak(true);
       }
       
@@ -231,19 +240,24 @@ export default function ValidateTaskScreen() {
         Alert.alert(
           "Excellent Work!",
           `Task completed with high confidence! You earned ${task.xpValue} XP + ${xpBonus} bonus XP for clear proof.`,
-          [{ text: "Awesome!" }]
+          [{ text: "Awesome!", onPress: () => router.back() }]
         );
+      } else {
+        // Navigate back immediately if no bonus message
+        router.back();
       }
       
-      // Navigate back immediately instead of using setTimeout
       setLoading(false);
-      router.back();
     } catch (error) {
       console.error('Error completing task:', error);
       setLoading(false);
+      
+      // More specific error handling
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      
       Alert.alert(
         "Error",
-        "There was an error completing your task. Please try again.",
+        `There was an error completing your task: ${errorMessage}. Please try again.`,
         [
           { 
             text: "Go Back", 
