@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { 
   View, 
   Text, 
@@ -69,42 +69,53 @@ export default function CalendarScreen() {
   const daysInMonth = getDaysInMonth(currentYear, currentMonth);
   const firstDayOfMonth = getFirstDayOfMonth(currentYear, currentMonth);
   
-  // Get tasks for selected date
-  const selectedTasks = tasks.filter(task => task.date === selectedDate);
-  const habitTasks = selectedTasks.filter(task => task.isHabit);
-  const regularTasks = selectedTasks.filter(task => !task.isHabit);
-  
-  // Get goal deadlines in this month
-  const goalDeadlines = goals.filter(goal => goal.deadline).map(goal => {
-    const deadlineDate = new Date(goal.deadline);
-    return {
-      id: goal.id,
-      title: goal.title,
-      date: formatDate(deadlineDate),
-      day: deadlineDate.getDate(),
-      month: deadlineDate.getMonth(),
-      year: deadlineDate.getFullYear()
-    };
-  }).filter(deadline => 
-    deadline.month === currentMonth && deadline.year === currentYear
+  // Get tasks for selected date (memoized for performance)
+  const selectedTasks = useMemo(() => 
+    tasks.filter(task => task.date === selectedDate), 
+    [tasks, selectedDate]
+  );
+  const habitTasks = useMemo(() => 
+    selectedTasks.filter(task => task.isHabit), 
+    [selectedTasks]
+  );
+  const regularTasks = useMemo(() => 
+    selectedTasks.filter(task => !task.isHabit), 
+    [selectedTasks]
   );
   
-  // Check if a day has tasks
-  const dayHasTasks = (day: number) => {
+  // Get goal deadlines in this month (memoized for performance)
+  const goalDeadlines = useMemo(() => {
+    return goals.filter(goal => goal.deadline).map(goal => {
+      const deadlineDate = new Date(goal.deadline);
+      return {
+        id: goal.id,
+        title: goal.title,
+        date: formatDate(deadlineDate),
+        day: deadlineDate.getDate(),
+        month: deadlineDate.getMonth(),
+        year: deadlineDate.getFullYear()
+      };
+    }).filter(deadline => 
+      deadline.month === currentMonth && deadline.year === currentYear
+    );
+  }, [goals, currentMonth, currentYear]);
+  
+  // Check if a day has tasks (memoized for performance)
+  const dayHasTasks = useCallback((day: number) => {
     const dateString = formatDate(new Date(currentYear, currentMonth, day));
     return tasks.some(task => task.date === dateString);
-  };
+  }, [tasks, currentYear, currentMonth]);
   
-  // Check if a day has a habit task
-  const dayHasHabit = (day: number) => {
+  // Check if a day has a habit task (memoized for performance)
+  const dayHasHabit = useCallback((day: number) => {
     const dateString = formatDate(new Date(currentYear, currentMonth, day));
     return tasks.some(task => task.date === dateString && task.isHabit);
-  };
+  }, [tasks, currentYear, currentMonth]);
   
-  // Check if a day has a goal deadline
-  const dayHasDeadline = (day: number) => {
+  // Check if a day has a goal deadline (memoized for performance)
+  const dayHasDeadline = useCallback((day: number) => {
     return goalDeadlines.some(deadline => deadline.day === day);
-  };
+  }, [goalDeadlines]);
   
   const goToPreviousMonth = () => {
     if (currentMonth === 0) {
@@ -124,16 +135,16 @@ export default function CalendarScreen() {
     }
   };
   
-  const handleDayPress = (day: number) => {
+  const handleDayPress = useCallback((day: number) => {
     const dateString = formatDate(new Date(currentYear, currentMonth, day));
     setSelectedDate(dateString);
-  };
+  }, [currentYear, currentMonth]);
   
-  const handleAddTask = () => {
+  const handleAddTask = useCallback(() => {
     setShowCreateTaskModal(true);
-  };
+  }, []);
   
-  const handleGenerateTasks = async () => {
+  const handleGenerateTasks = useCallback(async () => {
     // Find goals that don't have tasks for this date
     const goalsWithoutTasks = goals.filter(goal => {
       return !tasks.some(task => 
@@ -145,7 +156,7 @@ export default function CalendarScreen() {
     for (const goal of goalsWithoutTasks) {
       await generateTasksForGoal(selectedDate, goal.id);
     }
-  };
+  }, [goals, tasks, selectedDate, generateTasksForGoal]);
   
   const renderCalendarDay = (day: number) => {
     const dateString = formatDate(new Date(currentYear, currentMonth, day));
@@ -260,9 +271,10 @@ export default function CalendarScreen() {
     );
   };
   
-  // Get deadlines for selected date
-  const selectedDateDeadlines = goalDeadlines.filter(
-    deadline => deadline.date === selectedDate
+  // Get deadlines for selected date (memoized for performance)
+  const selectedDateDeadlines = useMemo(() => 
+    goalDeadlines.filter(deadline => deadline.date === selectedDate),
+    [goalDeadlines, selectedDate]
   );
   
   // Debug logs

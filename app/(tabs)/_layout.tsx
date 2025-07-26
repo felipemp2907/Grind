@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo } from 'react';
 import { Tabs } from 'expo-router';
 import { LayoutAnimation, Platform } from 'react-native';
 import { 
@@ -11,7 +11,7 @@ import {
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 
-export default function TabLayout() {
+const TabLayout = memo(function TabLayout() {
   // Enable layout animations for smooth transitions
   if (Platform.OS !== 'web') {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
@@ -83,4 +83,6 @@ export default function TabLayout() {
       />
     </Tabs>
   );
-}
+});
+
+export default TabLayout;
