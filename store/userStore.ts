@@ -386,9 +386,12 @@ export const useUserStore = create<UserState>()(
         const { profile } = get();
         const { user } = useAuthStore.getState();
         
-        if (!user?.id) return;
+        if (!user?.id) {
+          console.error('No authenticated user found');
+          throw new Error('User not authenticated');
+        }
         
-        // Update local state
+        // Update local state first
         set({
           profile: {
             ...profile,
@@ -401,19 +404,24 @@ export const useUserStore = create<UserState>()(
           const dbResult = await setupDatabase();
           if (!dbResult.success) {
             console.error("Database not set up:", dbResult.error);
-            return;
+            throw new Error(`Database not set up: ${dbResult.error}`);
           }
           
-          // Convert to snake_case for Supabase
-          const supabaseUpdates: any = {};
-          if (updates.name !== undefined) supabaseUpdates.name = updates.name;
-          if (updates.level !== undefined) supabaseUpdates.level = updates.level;
-          if (updates.xp !== undefined) supabaseUpdates.xp = updates.xp;
-          if (updates.streakDays !== undefined) supabaseUpdates.streak_days = updates.streakDays;
-          if (updates.longestStreak !== undefined) supabaseUpdates.longest_streak = updates.longestStreak;
-          if (updates.avatarUrl !== undefined) supabaseUpdates.avatar_url = updates.avatarUrl;
+          // First, ensure the user profile exists using the RPC function
+          const { data: ensureResult, error: ensureError } = await supabase.rpc('ensure_user_profile', {
+            user_id: user.id,
+            user_name: updates.name || profile.name || user.email?.split('@')[0] || 'User'
+          });
           
-          // Update in Supabase using upsert
+          if (ensureError) {
+            console.error('Error ensuring profile exists:', serializeError(ensureError));
+            // Continue with upsert as fallback
+          } else if (!ensureResult) {
+            console.error('User does not exist in auth.users table');
+            throw new Error('User authentication error. Please sign out and sign in again.');
+          }
+          
+          // Now update the profile with all the data
           const profileData = {
             id: user.id,
             name: updates.name !== undefined ? updates.name : profile.name || 'User',
@@ -424,6 +432,8 @@ export const useUserStore = create<UserState>()(
             avatar_url: updates.avatarUrl !== undefined ? updates.avatarUrl : profile.avatarUrl
           };
           
+          console.log('Updating profile with data:', profileData);
+          
           const { error } = await supabase
             .from('profiles')
             .upsert(profileData, {
@@ -431,10 +441,15 @@ export const useUserStore = create<UserState>()(
             });
             
           if (error) {
-            console.error("Error updating profile:", serializeError(error));
+            console.error("Error saving profile:", serializeError(error));
+            throw new Error(`Failed to save profile: ${serializeError(error)}`);
           }
+          
+          console.log('Profile updated successfully');
         } catch (error) {
-          console.error("Error updating profile:", serializeError(error));
+          const errorMessage = serializeError(error);
+          console.error("Error updating profile:", errorMessage);
+          throw new Error(errorMessage);
         }
       },
       

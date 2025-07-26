@@ -241,7 +241,7 @@ export const getCurrentUser = async (): Promise<{ user: any | null; error?: stri
   }
 };
 
-// Helper function to ensure user profile exists
+// Helper function to ensure user profile exists using RPC
 export const ensureUserProfile = async (userId: string, userData: { name?: string; email?: string } = {}): Promise<{ success: boolean; error?: string }> => {
   try {
     // First check if user exists in auth.users
@@ -251,49 +251,52 @@ export const ensureUserProfile = async (userId: string, userData: { name?: strin
       return { success: false, error: 'User not authenticated or user ID mismatch' };
     }
     
-    // Check if profile already exists
-    const { data: existingProfile, error: selectError } = await supabase
-      .from('profiles')
-      .select('id')
-      .eq('id', userId)
-      .single();
+    // Use the RPC function to ensure profile exists
+    const userName = userData.name || userData.email?.split('@')[0] || user.user_metadata?.name || user.email || 'User';
     
-    if (existingProfile) {
-      // Profile already exists
-      console.log('Profile already exists for user:', userId);
+    console.log('Ensuring profile exists for user:', userId, 'with name:', userName);
+    
+    const { data: rpcResult, error: rpcError } = await supabase.rpc('ensure_user_profile', {
+      user_id: userId,
+      user_name: userName
+    });
+    
+    if (rpcError) {
+      console.error('RPC error ensuring profile:', serializeError(rpcError));
+      
+      // Fallback to direct upsert if RPC fails
+      console.log('Falling back to direct upsert...');
+      
+      const profileData = {
+        id: userId,
+        name: userName,
+        level: 1,
+        xp: 0,
+        streak_days: 0,
+        longest_streak: 0
+      };
+      
+      const { error: upsertError } = await supabase
+        .from('profiles')
+        .upsert(profileData, {
+          onConflict: 'id'
+        });
+      
+      if (upsertError) {
+        console.error('Error in fallback upsert:', serializeError(upsertError));
+        return { success: false, error: serializeError(upsertError) };
+      }
+      
+      console.log('Profile ensured via fallback upsert');
       return { success: true };
     }
     
-    // Profile doesn't exist, create it
-    const profileData = {
-      id: userId,
-      name: userData.name || userData.email?.split('@')[0] || user.user_metadata?.name || 'User',
-      level: 1,
-      xp: 0,
-      streak_days: 0,
-      longest_streak: 0
-    };
-    
-    console.log('Creating profile for user:', userId, 'with data:', profileData);
-    
-    const { data: insertedProfile, error: insertError } = await supabase
-      .from('profiles')
-      .insert(profileData)
-      .select()
-      .single();
-    
-    if (insertError) {
-      // If it's a duplicate key error, that's actually fine - profile exists
-      if (insertError.code === '23505') {
-        console.log('Profile already exists (duplicate key), continuing...');
-        return { success: true };
-      }
-      
-      console.error('Error creating user profile:', insertError);
-      return { success: false, error: serializeError(insertError) };
+    if (!rpcResult) {
+      console.error('User does not exist in auth.users table');
+      return { success: false, error: 'User authentication error. Please sign out and sign in again.' };
     }
     
-    console.log('User profile created successfully:', insertedProfile);
+    console.log('Profile ensured successfully via RPC');
     return { success: true };
   } catch (error) {
     console.error('Error in ensureUserProfile:', error);

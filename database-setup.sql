@@ -233,13 +233,34 @@ CREATE POLICY "Users can delete their own journal entries"
 
 -- 16. Create function to automatically create profile on user signup
 CREATE OR REPLACE FUNCTION public.handle_new_user()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER AS $
 BEGIN
   INSERT INTO public.profiles (id, name)
-  VALUES (NEW.id, NEW.raw_user_meta_data->>'name');
+  VALUES (NEW.id, COALESCE(NEW.raw_user_meta_data->>'name', NEW.raw_user_meta_data->>'full_name', 'User'))
+  ON CONFLICT (id) DO NOTHING;
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- 16b. Create function to ensure user profile exists (for manual profile creation)
+CREATE OR REPLACE FUNCTION public.ensure_user_profile(user_id UUID, user_name TEXT DEFAULT 'User')
+RETURNS BOOLEAN AS $
+BEGIN
+  -- Check if user exists in auth.users
+  IF NOT EXISTS (SELECT 1 FROM auth.users WHERE id = user_id) THEN
+    RETURN FALSE;
+  END IF;
+  
+  -- Insert or update profile
+  INSERT INTO public.profiles (id, name, level, xp, streak_days, longest_streak)
+  VALUES (user_id, user_name, 1, 0, 0, 0)
+  ON CONFLICT (id) DO UPDATE SET
+    name = COALESCE(EXCLUDED.name, profiles.name),
+    updated_at = CURRENT_TIMESTAMP;
+  
+  RETURN TRUE;
+END;
+$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- 17. Create trigger to call the function on user signup
 DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;

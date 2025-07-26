@@ -251,44 +251,19 @@ export default function EditProfileScreen() {
         }
       }
       
-      // Update or create profile in Supabase using upsert
+      // Update profile using the store method which handles RLS properly
       if (user?.id) {
-        const { error } = await supabase
-          .from('profiles')
-          .upsert({
-            id: user.id,
-            name: name.trim(),
-            avatar_url: avatarUrlToSave,
-            level: profile?.level || 1,
-            xp: profile?.xp || 0,
-            streak_days: profile?.streakDays || 0,
-            longest_streak: profile?.longestStreak || 0
-          }, {
-            onConflict: 'id'
-          });
-          
-        if (error) {
-          console.error("Error saving profile:", serializeError(error));
-          Toast.show({
-            type: 'error',
-            text1: 'Profile Save Failed',
-            text2: `Failed to save profile: ${serializeError(error)}`
-          });
-          throw new Error(`Failed to save profile: ${serializeError(error)}`);
-        } else {
-          Toast.show({
-            type: 'success',
-            text1: 'Profile Saved',
-            text2: 'Your profile has been updated successfully'
-          });
-        }
+        await updateProfile({ 
+          name: name.trim(),
+          avatarUrl: avatarUrlToSave || undefined
+        });
+        
+        Toast.show({
+          type: 'success',
+          text1: 'Profile Saved',
+          text2: 'Your profile has been updated successfully'
+        });
       }
-      
-      // Update local state
-      await updateProfile({ 
-        name: name.trim(),
-        avatarUrl: avatarUrlToSave || undefined
-      });
       
       router.back();
     } catch (error) {
