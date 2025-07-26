@@ -26,7 +26,10 @@ export const useJournalStore = create<JournalState>()(
         // Save to Supabase first to get the generated UUID
         try {
           const { user } = useAuthStore.getState();
-          if (!user?.id) return null;
+          if (!user?.id) {
+            console.error('User not authenticated for journal entry creation');
+            return null;
+          }
           
           const dbResult = await setupDatabase();
           if (!dbResult.success) {
@@ -34,31 +37,78 @@ export const useJournalStore = create<JournalState>()(
             return null;
           }
           
+          // Prepare the data for insertion with proper field mapping
+          const insertData = {
+            user_id: user.id,
+            title: entry.title,
+            content: entry.content,
+            task_id: entry.taskId || null,
+            media_uri: entry.mediaUri || null,
+            reflection: entry.reflection || null,
+            validation_status: entry.validationStatus || null,
+            validation_feedback: entry.validationFeedback || null,
+            validation_confidence: entry.validationConfidence || null,
+            mood: entry.mood || null,
+            tags: entry.tags || []
+          };
+          
+          console.log('Attempting to insert journal entry:', {
+            user_id: insertData.user_id,
+            title: insertData.title,
+            has_media_uri: !!insertData.media_uri,
+            validation_status: insertData.validation_status
+          });
+          
           const { data, error } = await supabase
             .from('journal_entries')
-            .insert({
-              user_id: user.id,
-              title: entry.title,
-              content: entry.content,
-              task_id: entry.taskId || null,
-              media_uri: entry.mediaUri || null,
-              reflection: entry.reflection || null,
-              validation_status: entry.validationStatus || null,
-              validation_feedback: entry.validationFeedback || null,
-              validation_confidence: entry.validationConfidence || null,
-              mood: entry.mood || null,
-              tags: entry.tags || []
-            })
+            .insert(insertData)
             .select()
             .single();
             
           if (error) {
             console.error('Error saving journal entry to Supabase:', serializeError(error));
+            
+            // If it's a schema-related error, try without media_uri as fallback
+            if (error.message?.includes('media_uri') || error.message?.includes('column')) {
+              console.log('Retrying without media_uri due to schema issue...');
+              const fallbackData: any = { ...insertData };
+              delete fallbackData.media_uri;
+              
+              const { data: fallbackResult, error: fallbackError } = await supabase
+                .from('journal_entries')
+                .insert(fallbackData)
+                .select()
+                .single();
+                
+              if (fallbackError) {
+                console.error('Fallback journal entry creation also failed:', serializeError(fallbackError));
+                return null;
+              }
+              
+              if (fallbackResult) {
+                console.log('Journal entry created successfully without media_uri');
+                const entryWithUUID = {
+                  ...entry,
+                  id: fallbackResult.id,
+                  mediaUri: undefined, // Clear media URI since it wasn't saved
+                  createdAt: fallbackResult.created_at,
+                  updatedAt: fallbackResult.updated_at
+                };
+                
+                set((state) => ({ 
+                  entries: [...state.entries, entryWithUUID] 
+                }));
+                
+                return entryWithUUID;
+              }
+            }
+            
             return null;
           }
           
           // Add to local state with the UUID from database
           if (data) {
+            console.log('Journal entry created successfully with ID:', data.id);
             const entryWithUUID = {
               ...entry,
               id: data.id,
@@ -111,6 +161,8 @@ export const useJournalStore = create<JournalState>()(
           if (updates.mood !== undefined) supabaseUpdates.mood = updates.mood;
           if (updates.tags !== undefined) supabaseUpdates.tags = updates.tags;
           
+          console.log('Updating journal entry:', { id, updates: Object.keys(supabaseUpdates) });
+          
           const { error } = await supabase
             .from('journal_entries')
             .update(supabaseUpdates)
@@ -119,6 +171,27 @@ export const useJournalStore = create<JournalState>()(
             
           if (error) {
             console.error('Error updating journal entry in Supabase:', serializeError(error));
+            
+            // If it's a schema-related error with media_uri, try without it
+            if (error.message?.includes('media_uri') && supabaseUpdates.media_uri !== undefined) {
+              console.log('Retrying update without media_uri due to schema issue...');
+              const fallbackUpdates: any = { ...supabaseUpdates };
+              delete fallbackUpdates.media_uri;
+              
+              const { error: fallbackError } = await supabase
+                .from('journal_entries')
+                .update(fallbackUpdates)
+                .eq('id', id)
+                .eq('user_id', user.id);
+                
+              if (fallbackError) {
+                console.error('Fallback journal entry update also failed:', serializeError(fallbackError));
+              } else {
+                console.log('Journal entry updated successfully without media_uri');
+              }
+            }
+          } else {
+            console.log('Journal entry updated successfully');
           }
         } catch (error) {
           console.error('Error updating journal entry:', serializeError(error));
@@ -211,7 +284,7 @@ export const useJournalStore = create<JournalState>()(
               content: entry.content,
               date: entry.created_at.split('T')[0], // Extract date from timestamp
               taskId: entry.task_id,
-              mediaUri: entry.media_uri,
+              mediaUri: entry.media_uri || undefined, // Handle null/undefined media_uri
               reflection: entry.reflection,
               validationStatus: entry.validation_status as 'pending' | 'approved' | 'rejected',
               validationFeedback: entry.validation_feedback,
