@@ -1,11 +1,9 @@
-import 'react-native-gesture-handler';
-import 'react-native-reanimated';
 import FontAwesome from "@expo/vector-icons/FontAwesome";
 import { useFonts } from "expo-font";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { useEffect, useCallback } from "react";
-import { Platform, StatusBar } from "react-native";
+import { Platform, StatusBar, Alert } from "react-native";
 import { useGoalStore } from "@/store/goalStore";
 import { useAuthStore } from "@/store/authStore";
 import { useUserStore } from "@/store/userStore";
