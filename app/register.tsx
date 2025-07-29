@@ -16,12 +16,12 @@ import { Link, useRouter } from 'expo-router';
 import { Target, Mail, Lock, Eye, EyeOff, User, AlertCircle } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import Button from '@/components/Button';
-import GoogleSignInButton from '@/components/GoogleSignInButton';
+
 import { useAuthStore } from '@/store/authStore';
 
 export default function RegisterScreen() {
   const router = useRouter();
-  const { register, loginWithGoogle, isLoading, error, clearError, isAuthenticated } = useAuthStore();
+  const { register, isLoading, error, clearError, isAuthenticated } = useAuthStore();
   
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');

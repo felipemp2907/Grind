@@ -4,7 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Alert, Platform } from 'react-native';
 import { router } from 'expo-router';
 import { supabase, createUserProfile, serializeError } from '@/lib/supabase';
-import { signInWithGoogleSupabase } from '@/lib/googleAuth';
+import { signInWithGoogle } from '@/lib/googleAuth';
 import { AuthUser, LoginCredentials, RegisterCredentials } from '@/types';
 import { AuthError, Session, User } from '@supabase/supabase-js';
 
@@ -99,39 +99,20 @@ export const useAuthStore = create<AuthState>()(
         set({ isLoading: true, error: null });
         
         try {
-          const result = await signInWithGoogleSupabase();
+          const result = await signInWithGoogle();
           
           if (!result.success) {
-            // If the mock Google auth fails, provide a helpful error message
             const errorMessage = result.error || 'Google authentication failed';
             console.error("Google login error:", errorMessage);
             
-            // Show the specific error message from the Google auth function
-            Alert.alert(
-              "Demo Google Authentication",
-              errorMessage,
-              [
-                { text: 'Use Email/Password', onPress: () => {
-                  // User can continue with regular login
-                }},
-                { text: 'OK', style: 'default' }
-              ]
-            );
-            
             set({ 
-              error: null, // Don't show the technical error to user
+              error: errorMessage,
               isLoading: false,
             });
             return;
           }
 
-          // For web, the redirect will handle the session
-          if (Platform.OS === 'web') {
-            set({ isLoading: false });
-            return;
-          }
-
-          // For mobile, handle the user data
+          // Handle successful authentication
           if (result.user) {
             // Ensure user profile exists
             try {
@@ -167,13 +148,6 @@ export const useAuthStore = create<AuthState>()(
               isLoading: false,
             });
             
-            // Show success message for demo
-            Alert.alert(
-              "Demo Login Successful",
-              "You've been signed in with a demo Google account for testing purposes. In production, this would use real Google OAuth.",
-              [{ text: 'OK' }]
-            );
-            
             router.replace('/(tabs)');
           } else {
             set({ isLoading: false });
@@ -182,15 +156,8 @@ export const useAuthStore = create<AuthState>()(
           const errorMessage = serializeError(error);
           console.error("Google login error:", errorMessage);
           
-          // Show user-friendly error for demo
-          Alert.alert(
-            "Demo Google Authentication Error",
-            `${errorMessage}\n\nThis is a development demo. In production, real Google OAuth would be used. You can try regular email/password login instead.`,
-            [{ text: 'OK' }]
-          );
-          
           set({ 
-            error: null, // Don't show technical error to user
+            error: errorMessage,
             isLoading: false,
           });
         }
