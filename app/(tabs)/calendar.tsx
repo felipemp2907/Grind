@@ -19,8 +19,6 @@ import {
   Plus as PlusIcon
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
-import { typography } from '@/constants/typography';
-import { RF, SP, HP, responsivePadding, responsiveMargin } from '@/utils/responsive';
 import { useGoalStore } from '@/store/goalStore';
 import { useTaskStore } from '@/store/taskStore';
 import { formatDate, getTodayDate } from '@/utils/dateUtils';
@@ -291,14 +289,14 @@ export default function CalendarScreen() {
   }
   
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+    <SafeAreaView style={styles.container} edges={['bottom']}>
       <View style={styles.calendarContainer}>
         <View style={styles.header}>
           <TouchableOpacity 
             style={styles.headerButton}
             onPress={goToPreviousMonth}
           >
-            <ChevronLeft size={RF(20)} color="#000000" />
+            <ChevronLeft size={24} color="#000000" />
           </TouchableOpacity>
           
           <Text style={styles.headerTitle}>
@@ -309,7 +307,7 @@ export default function CalendarScreen() {
             style={styles.headerButton}
             onPress={goToNextMonth}
           >
-            <ChevronRight size={RF(20)} color="#000000" />
+            <ChevronRight size={24} color="#000000" />
           </TouchableOpacity>
         </View>
         
@@ -432,47 +430,41 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: responsivePadding.md,
-    paddingVertical: HP(1.5),
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     backgroundColor: Colors.dark.primary,
-    minHeight: HP(8),
   },
   headerButton: {
-    padding: responsivePadding.sm,
-    borderRadius: SP(5),
+    padding: 8,
+    borderRadius: 20,
     backgroundColor: 'rgba(255, 255, 255, 0.15)',
-    minWidth: SP(10),
-    minHeight: SP(10),
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   headerTitle: {
-    ...typography.h3,
+    fontSize: 18,
+    fontWeight: 'bold',
     color: '#000000',
-    textAlign: 'center',
-    flex: 1,
   },
   weekdaysHeader: {
     flexDirection: 'row',
-    paddingVertical: responsivePadding.sm,
+    paddingVertical: 10,
     backgroundColor: 'rgba(108, 92, 231, 0.1)',
   },
   weekdayText: {
     flex: 1,
     textAlign: 'center',
-    ...typography.caption,
+    fontSize: 12,
     fontWeight: '600',
     color: Colors.dark.subtext,
   },
   calendarGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    padding: responsivePadding.xs,
+    padding: 8,
   },
   calendarDay: {
     width: '14.28%',
     aspectRatio: 1,
-    padding: SP(0.5),
+    padding: 2,
   },
   dayContainer: {
     flex: 1,
@@ -480,9 +472,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   calendarDayText: {
-    ...typography.bodySmall,
+    fontSize: 14,
     color: Colors.dark.text,
-    textAlign: 'center',
   },
   today: {
     backgroundColor: 'rgba(108, 92, 231, 0.15)',
@@ -494,9 +485,9 @@ const styles = StyleSheet.create({
   },
   selectedDayCircle: {
     backgroundColor: '#FFFFFF',
-    width: SP(8),
-    height: SP(8),
-    borderRadius: SP(4),
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -511,75 +502,75 @@ const styles = StyleSheet.create({
   indicatorContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
-    marginBottom: SP(0.5),
-    height: SP(1),
-    gap: SP(0.75),
+    marginBottom: 2,
+    height: 4,
+    gap: 3,
   },
   taskIndicator: {
-    width: SP(1),
-    height: SP(1),
-    borderRadius: SP(0.5),
+    width: 4,
+    height: 4,
+    borderRadius: 2,
     backgroundColor: Colors.dark.primary,
   },
   habitIndicator: {
-    width: SP(1),
-    height: SP(1),
-    borderRadius: SP(0.5),
+    width: 4,
+    height: 4,
+    borderRadius: 2,
     backgroundColor: Colors.dark.warning,
   },
   deadlineIndicator: {
-    width: SP(1),
-    height: SP(1),
-    borderRadius: SP(0.5),
+    width: 4,
+    height: 4,
+    borderRadius: 2,
     backgroundColor: Colors.dark.danger,
   },
   selectedDateHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: responsivePadding.md,
-    paddingVertical: responsivePadding.sm,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     backgroundColor: Colors.dark.card,
-    marginHorizontal: responsiveMargin.sm,
-    marginTop: responsiveMargin.sm,
-    borderRadius: SP(3),
+    marginHorizontal: 12,
+    marginTop: 12,
+    borderRadius: 12,
     ...Colors.common.shadow,
   },
   selectedDateIcon: {
-    marginRight: responsiveMargin.xs,
+    marginRight: 8,
     backgroundColor: 'rgba(108, 92, 231, 0.1)',
-    padding: responsivePadding.xs,
-    borderRadius: SP(5),
+    padding: 8,
+    borderRadius: 20,
   },
   selectedDateText: {
-    ...typography.body,
+    fontSize: 16,
     fontWeight: 'bold',
     color: Colors.dark.text,
     flex: 1,
   },
   addEventButton: {
     backgroundColor: Colors.dark.primary,
-    width: SP(8),
-    height: SP(8),
-    borderRadius: SP(4),
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
   },
   eventsContainer: {
     flex: 1,
-    padding: responsivePadding.md,
+    padding: 16,
   },
   sectionTitle: {
-    ...typography.body,
+    fontSize: 16,
     fontWeight: 'bold',
     color: Colors.dark.text,
-    marginBottom: responsiveMargin.xs,
-    marginTop: responsiveMargin.xs,
+    marginBottom: 8,
+    marginTop: 8,
   },
   taskItem: {
     backgroundColor: Colors.dark.card,
-    borderRadius: SP(3),
-    padding: responsivePadding.sm,
-    marginBottom: responsiveMargin.sm,
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 12,
     flexDirection: 'row',
     borderLeftWidth: 3,
     borderLeftColor: Colors.dark.primary,
@@ -591,13 +582,13 @@ const styles = StyleSheet.create({
   taskTime: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginRight: responsiveMargin.sm,
-    minWidth: SP(20),
+    marginRight: 12,
+    minWidth: 80,
   },
   taskTimeText: {
-    ...typography.caption,
+    fontSize: 12,
     color: Colors.dark.subtext,
-    marginLeft: SP(1),
+    marginLeft: 4,
   },
   habitTimeText: {
     color: Colors.dark.warning,
@@ -607,39 +598,39 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   taskTitle: {
-    ...typography.bodySmall,
+    fontSize: 14,
     fontWeight: '600',
     color: Colors.dark.text,
-    marginBottom: SP(1),
+    marginBottom: 4,
   },
   taskGoal: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   taskGoalText: {
-    ...typography.caption,
+    fontSize: 12,
     color: Colors.dark.primary,
-    marginLeft: SP(1),
+    marginLeft: 4,
   },
   completedBadge: {
     position: 'absolute',
     top: 0,
     right: 0,
     backgroundColor: 'rgba(0, 184, 148, 0.15)',
-    paddingVertical: SP(0.5),
-    paddingHorizontal: SP(1.5),
-    borderRadius: SP(2),
+    paddingVertical: 2,
+    paddingHorizontal: 6,
+    borderRadius: 8,
   },
   completedText: {
-    fontSize: RF(10),
+    fontSize: 10,
     fontWeight: '600',
     color: Colors.dark.success,
   },
   deadlineItem: {
     backgroundColor: 'rgba(255, 118, 117, 0.1)',
-    borderRadius: SP(3),
-    padding: responsivePadding.sm,
-    marginBottom: responsiveMargin.md,
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 16,
     flexDirection: 'row',
     alignItems: 'center',
     borderLeftWidth: 3,
@@ -647,22 +638,22 @@ const styles = StyleSheet.create({
     ...Colors.common.shadow,
   },
   deadlineIcon: {
-    marginRight: responsiveMargin.sm,
+    marginRight: 12,
     backgroundColor: 'rgba(255, 118, 117, 0.1)',
-    padding: responsivePadding.xs,
-    borderRadius: SP(5),
+    padding: 8,
+    borderRadius: 20,
   },
   deadlineContent: {
     flex: 1,
   },
   deadlineTitle: {
-    ...typography.bodySmall,
+    fontSize: 14,
     fontWeight: 'bold',
     color: Colors.dark.danger,
-    marginBottom: SP(1),
+    marginBottom: 4,
   },
   deadlineDate: {
-    ...typography.caption,
+    fontSize: 12,
     color: Colors.dark.subtext,
   },
   loadingContainer: {
@@ -671,9 +662,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   loadingText: {
-    ...typography.body,
+    fontSize: 16,
     color: Colors.dark.subtext,
-    marginTop: responsiveMargin.md,
+    marginTop: 16,
   },
   emptyState: {
     flex: 1,
@@ -681,34 +672,36 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   emptyStateText: {
-    ...typography.body,
+    fontSize: 16,
     color: Colors.dark.subtext,
-    marginBottom: responsiveMargin.md,
+    marginBottom: 16,
   },
   emptyStateButtons: {
     flexDirection: 'row',
-    gap: responsiveMargin.sm,
+    gap: 12,
   },
   addTaskButton: {
     backgroundColor: Colors.dark.primary,
-    paddingVertical: responsivePadding.sm,
-    paddingHorizontal: responsivePadding.md,
-    borderRadius: SP(2),
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 8,
     ...Colors.common.shadow,
   },
   addTaskText: {
-    ...typography.buttonSmall,
+    fontSize: 14,
+    fontWeight: 'bold',
     color: '#000000',
   },
   generateTasksButton: {
     backgroundColor: 'rgba(108, 92, 231, 0.15)',
-    paddingVertical: responsivePadding.sm,
-    paddingHorizontal: responsivePadding.md,
-    borderRadius: SP(2),
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 8,
     ...Colors.common.shadow,
   },
   generateTasksText: {
-    ...typography.buttonSmall,
+    fontSize: 14,
+    fontWeight: 'bold',
     color: Colors.dark.primary,
   }
 });

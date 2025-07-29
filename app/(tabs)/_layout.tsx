@@ -1,52 +1,88 @@
-import React, { useState, useCallback, memo } from 'react';
-import { StyleSheet } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import React, { memo } from 'react';
+import { Tabs } from 'expo-router';
+import { LayoutAnimation, Platform } from 'react-native';
+import { 
+  Home, 
+  BookOpen, 
+  BarChart, 
+  Calendar,
+  Brain,
+  Settings
+} from 'lucide-react-native';
 import Colors from '@/constants/colors';
-import { AnimatedTabNavigator } from '@/components/transitions/AnimatedTabNavigator';
-import { CustomTabBar } from '@/components/transitions/CustomTabBar';
-
-// Import all tab screen components
-import DashboardScreen from './index';
-import TasksScreen from './tasks';
-import CalendarScreen from './calendar';
-import JournalScreen from './journal';
-import CoachScreen from './coach';
-import SettingsScreen from './settings';
-
-const routes = [
-  { key: 'index', component: DashboardScreen },
-  { key: 'tasks', component: TasksScreen },
-  { key: 'calendar', component: CalendarScreen },
-  { key: 'journal', component: JournalScreen },
-  { key: 'coach', component: CoachScreen },
-  { key: 'settings', component: SettingsScreen },
-];
 
 const TabLayout = memo(function TabLayout() {
-  const [activeTab, setActiveTab] = useState<string>('index');
-
-  const handleTabChange = useCallback((tabKey: string) => {
-    setActiveTab(tabKey);
-  }, []);
+  // Enable layout animations for smooth transitions
+  if (Platform.OS !== 'web') {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+  }
 
   return (
-    <SafeAreaView style={styles.container} edges={['bottom']}>
-      <AnimatedTabNavigator
-        routes={routes}
-        activeTab={activeTab}
-        onTabChange={handleTabChange}
-      >
-        <CustomTabBar activeTab={activeTab} />
-      </AnimatedTabNavigator>
-    </SafeAreaView>
+    <Tabs
+      screenOptions={{
+        tabBarActiveTintColor: Colors.dark.primary,
+        tabBarInactiveTintColor: Colors.dark.inactive,
+        tabBarStyle: {
+          backgroundColor: Colors.dark.card,
+          borderTopColor: Colors.dark.separator,
+        },
+        tabBarLabelStyle: {
+          fontSize: 12,
+        },
+        headerStyle: {
+          backgroundColor: Colors.dark.background,
+        },
+        headerTintColor: Colors.dark.text,
+        headerTitleStyle: {
+          fontWeight: 'bold',
+        },
+        headerShadowVisible: false,
+      }}
+    >
+      <Tabs.Screen
+        name="index"
+        options={{
+          title: "Home",
+          tabBarIcon: ({ color, size }) => <Home size={size} color={color} />
+        }}
+      />
+      <Tabs.Screen
+        name="tasks"
+        options={{
+          title: "Tasks",
+          tabBarIcon: ({ color, size }) => <BarChart size={size} color={color} />
+        }}
+      />
+      <Tabs.Screen
+        name="calendar"
+        options={{
+          title: "Calendar",
+          tabBarIcon: ({ color, size }) => <Calendar size={size} color={color} />
+        }}
+      />
+      <Tabs.Screen
+        name="journal"
+        options={{
+          title: "Journal",
+          tabBarIcon: ({ color, size }) => <BookOpen size={size} color={color} />
+        }}
+      />
+      <Tabs.Screen
+        name="coach"
+        options={{
+          title: "AI",
+          tabBarIcon: ({ color, size }) => <Brain size={size} color={color} />
+        }}
+      />
+      <Tabs.Screen
+        name="settings"
+        options={{
+          title: "Settings",
+          tabBarIcon: ({ color, size }) => <Settings size={size} color={color} />
+        }}
+      />
+    </Tabs>
   );
-});
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.dark.background,
-  },
 });
 
 export default TabLayout;

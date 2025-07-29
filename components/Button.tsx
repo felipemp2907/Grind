@@ -8,8 +8,6 @@ import {
   TextStyle
 } from 'react-native';
 import Colors from '@/constants/colors';
-import { typography } from '@/constants/typography';
-import { SP, HP, responsivePadding } from '@/utils/responsive';
 
 type ButtonProps = {
   title: string;
@@ -43,16 +41,16 @@ export default function Button({
     // Size styles
     switch (size) {
       case 'small':
-        baseStyle.paddingVertical = HP(1);
-        baseStyle.paddingHorizontal = responsivePadding.md;
+        baseStyle.paddingVertical = 8;
+        baseStyle.paddingHorizontal = 16;
         break;
       case 'large':
-        baseStyle.paddingVertical = HP(2);
-        baseStyle.paddingHorizontal = responsivePadding.lg;
+        baseStyle.paddingVertical = 16;
+        baseStyle.paddingHorizontal = 24;
         break;
       default: // medium
-        baseStyle.paddingVertical = HP(1.5);
-        baseStyle.paddingHorizontal = responsivePadding.lg;
+        baseStyle.paddingVertical = 12;
+        baseStyle.paddingHorizontal = 20;
     }
     
     // Variant styles
@@ -83,13 +81,13 @@ export default function Button({
     // Size styles
     switch (size) {
       case 'small':
-        Object.assign(baseStyle, typography.buttonSmall);
+        baseStyle.fontSize = 14;
         break;
       case 'large':
-        Object.assign(baseStyle, typography.h3);
+        baseStyle.fontSize = 18;
         break;
       default: // medium
-        Object.assign(baseStyle, typography.button);
+        baseStyle.fontSize = 16;
     }
     
     // Variant styles - ensure proper contrast
@@ -145,7 +143,7 @@ export default function Button({
       ) : (
         <>
           {getIconWithColor()}
-          <Text style={[getTextStyle(), icon ? { marginLeft: SP(2) } : {}, textStyle]}>
+          <Text style={[getTextStyle(), icon ? { marginLeft: 8 } : {}, textStyle]}>
             {title}
           </Text>
         </>
@@ -159,6 +157,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: SP(2),
+    borderRadius: 8,
   },
 });
