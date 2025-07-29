@@ -25,6 +25,8 @@ import {
   Zap
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
+import { typography } from '@/constants/typography';
+import { RF, SP, HP, responsivePadding, responsiveMargin } from '@/utils/responsive';
 import { useGoalStore } from '@/store/goalStore';
 import { useTaskStore } from '@/store/taskStore';
 import { useUserStore } from '@/store/userStore';
@@ -242,7 +244,7 @@ export default function DashboardScreen() {
   };
   
   return (
-    <SafeAreaView style={styles.container} edges={['bottom']}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <View style={styles.header}>
         <View>
           <Text style={styles.date}>{formatDateForDisplay(todayDate)}</Text>
@@ -525,47 +527,46 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingHorizontal: responsivePadding.md,
+    paddingVertical: responsivePadding.sm,
     borderBottomWidth: 1,
     borderBottomColor: Colors.dark.separator,
   },
   settingsButton: {
-    padding: 8,
+    padding: responsivePadding.sm,
   },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
-    padding: 16,
-    paddingBottom: 32,
+    padding: responsivePadding.md,
+    paddingBottom: responsivePadding.xl,
   },
   date: {
-    fontSize: 14,
+    ...typography.caption,
     color: Colors.dark.subtext,
-    marginBottom: 4,
+    marginBottom: SP(1),
   },
   greeting: {
-    fontSize: 24,
-    fontWeight: 'bold',
+    ...typography.h2,
     color: Colors.dark.text,
   },
   priorityContainer: {
     backgroundColor: 'rgba(108, 92, 231, 0.1)',
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 16,
+    borderRadius: SP(3),
+    padding: responsivePadding.sm,
+    marginBottom: responsiveMargin.md,
     borderLeftWidth: 3,
     borderLeftColor: Colors.dark.primary,
   },
   priorityText: {
-    fontSize: 14,
+    ...typography.bodySmall,
     fontWeight: 'bold',
     color: Colors.dark.text,
-    marginBottom: 4,
+    marginBottom: SP(1),
   },
   priorityTasks: {
-    fontSize: 14,
+    ...typography.bodySmall,
     color: Colors.dark.primary,
     fontWeight: '500',
   },
@@ -573,99 +574,93 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
-    marginTop: 16,
+    marginBottom: responsiveMargin.sm,
+    marginTop: responsiveMargin.md,
   },
   sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
+    ...typography.h3,
     color: Colors.dark.text,
     flexDirection: 'row',
     alignItems: 'center',
   },
   sectionIcon: {
-    marginRight: 6,
+    marginRight: SP(1.5),
   },
   addGoalButton: {
     backgroundColor: 'rgba(108, 92, 231, 0.15)',
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 16,
+    paddingVertical: SP(1.5),
+    paddingHorizontal: responsivePadding.sm,
+    borderRadius: SP(4),
   },
   addGoalText: {
-    fontSize: 14,
+    ...typography.buttonSmall,
     color: Colors.dark.primary,
-    fontWeight: '600',
   },
   goalsContainer: {
-    marginBottom: 24,
+    marginBottom: responsiveMargin.lg,
   },
   taskCount: {
-    fontSize: 14,
+    ...typography.buttonSmall,
     color: Colors.dark.primary,
-    fontWeight: '600',
   },
   streakCount: {
-    fontSize: 14,
+    ...typography.buttonSmall,
     color: Colors.dark.warning,
-    fontWeight: '600',
   },
   tasksContainer: {
-    marginBottom: 24,
+    marginBottom: responsiveMargin.lg,
   },
   viewAllButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 12,
+    paddingVertical: responsivePadding.sm,
   },
   viewAllText: {
-    fontSize: 14,
+    ...typography.buttonSmall,
     color: Colors.dark.primary,
-    fontWeight: '600',
-    marginRight: 4,
+    marginRight: SP(1),
   },
   loadingContainer: {
     backgroundColor: Colors.dark.card,
-    borderRadius: 12,
-    padding: 24,
+    borderRadius: SP(3),
+    padding: responsivePadding.lg,
     alignItems: 'center',
-    marginBottom: 24,
+    marginBottom: responsiveMargin.lg,
   },
   loadingText: {
-    fontSize: 14,
+    ...typography.bodySmall,
     color: Colors.dark.subtext,
-    marginTop: 12,
+    marginTop: responsiveMargin.sm,
     textAlign: 'center',
   },
   emptyState: {
     backgroundColor: Colors.dark.card,
-    borderRadius: 12,
-    padding: 24,
+    borderRadius: SP(3),
+    padding: responsivePadding.lg,
     alignItems: 'center',
-    marginBottom: 24,
+    marginBottom: responsiveMargin.lg,
   },
   emptyStateTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
+    ...typography.h3,
     color: Colors.dark.text,
-    marginTop: 12,
-    marginBottom: 8,
+    marginTop: responsiveMargin.sm,
+    marginBottom: responsiveMargin.xs,
   },
   emptyStateText: {
-    fontSize: 16,
+    ...typography.body,
     color: Colors.dark.subtext,
-    marginBottom: 16,
+    marginBottom: responsiveMargin.md,
     textAlign: 'center',
   },
   emptyStateButton: {
-    minWidth: 180,
+    minWidth: SP(45),
   },
   coachCard: {
     backgroundColor: Colors.dark.card,
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
+    borderRadius: SP(3),
+    padding: responsivePadding.md,
+    marginBottom: responsiveMargin.md,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -673,9 +668,9 @@ const styles = StyleSheet.create({
   },
   clarifyCard: {
     backgroundColor: Colors.dark.card,
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
+    borderRadius: SP(3),
+    padding: responsivePadding.md,
+    marginBottom: responsiveMargin.md,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -689,24 +684,24 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   coachTextContainer: {
-    marginLeft: 12,
+    marginLeft: responsiveMargin.sm,
     flex: 1,
   },
   coachTitle: {
-    fontSize: 16,
+    ...typography.body,
     fontWeight: 'bold',
     color: Colors.dark.text,
-    marginBottom: 4,
+    marginBottom: SP(1),
   },
   coachDescription: {
-    fontSize: 14,
+    ...typography.bodySmall,
     color: Colors.dark.subtext,
   },
   focusCard: {
     backgroundColor: Colors.dark.card,
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 16,
+    borderRadius: SP(3),
+    padding: responsivePadding.sm,
+    marginBottom: responsiveMargin.md,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -719,27 +714,27 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   focusTextContainer: {
-    marginLeft: 8,
+    marginLeft: responsiveMargin.xs,
     flex: 1,
   },
   focusTitle: {
-    fontSize: 14,
+    ...typography.bodySmall,
     fontWeight: 'bold',
     color: Colors.dark.text,
-    marginBottom: 2,
+    marginBottom: SP(0.5),
   },
   focusDescription: {
-    fontSize: 12,
+    ...typography.caption,
     color: Colors.dark.subtext,
   },
   quickActions: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 16,
+    marginBottom: responsiveMargin.md,
   },
   actionButton: {
     flex: 1,
-    marginHorizontal: 4,
+    marginHorizontal: SP(1),
   },
 
 });

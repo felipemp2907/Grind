@@ -4,6 +4,7 @@ import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { useEffect, useCallback } from "react";
 import { Platform, StatusBar, Alert } from "react-native";
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import 'react-native-reanimated';
 import { useGoalStore } from "@/store/goalStore";
 import { useAuthStore } from "@/store/authStore";
@@ -263,10 +264,11 @@ function RootLayoutNav() {
   }
 
   return (
-    <PerformanceOptimizer>
-      <trpc.Provider client={trpcClient} queryClient={queryClient}>
-        <QueryClientProvider client={queryClient}>
-          <StatusBar barStyle="light-content" backgroundColor={Colors.dark.background} />
+    <SafeAreaProvider>
+      <PerformanceOptimizer>
+        <trpc.Provider client={trpcClient} queryClient={queryClient}>
+          <QueryClientProvider client={queryClient}>
+            <StatusBar barStyle="light-content" backgroundColor={Colors.dark.background} />
           <Stack
             screenOptions={{
               headerStyle: {
@@ -346,9 +348,10 @@ function RootLayoutNav() {
               }} 
             />
           </Stack>
-          <Toast />
-        </QueryClientProvider>
-      </trpc.Provider>
-    </PerformanceOptimizer>
+            <Toast />
+          </QueryClientProvider>
+        </trpc.Provider>
+      </PerformanceOptimizer>
+    </SafeAreaProvider>
   );
 }

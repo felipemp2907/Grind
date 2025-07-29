@@ -1,5 +1,7 @@
 import React, { useState, useCallback, memo } from 'react';
-import { View, StyleSheet } from 'react-native';
+import { StyleSheet } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import Colors from '@/constants/colors';
 import { AnimatedTabNavigator } from '@/components/transitions/AnimatedTabNavigator';
 import { CustomTabBar } from '@/components/transitions/CustomTabBar';
 
@@ -28,7 +30,7 @@ const TabLayout = memo(function TabLayout() {
   }, []);
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['bottom']}>
       <AnimatedTabNavigator
         routes={routes}
         activeTab={activeTab}
@@ -36,13 +38,14 @@ const TabLayout = memo(function TabLayout() {
       >
         <CustomTabBar activeTab={activeTab} />
       </AnimatedTabNavigator>
-    </View>
+    </SafeAreaView>
   );
 });
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: Colors.dark.background,
   },
 });
 
