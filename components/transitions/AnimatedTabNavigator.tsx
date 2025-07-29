@@ -77,7 +77,7 @@ export const AnimatedTabNavigator: React.FC<AnimatedTabNavigatorProps> = memo(({
           {ActiveComponent && <ActiveComponent />}
         </View>
         <View style={styles.tabBar}>
-          {React.cloneElement(children as React.ReactElement, {
+          {React.cloneElement(children as React.ReactElement<any>, {
             onTabPress: handleTabChange,
           })}
         </View>
@@ -103,7 +103,7 @@ export const AnimatedTabNavigator: React.FC<AnimatedTabNavigatorProps> = memo(({
         })}
       </View>
       <View style={styles.tabBar}>
-        {React.cloneElement(children as React.ReactElement, {
+        {React.cloneElement(children as React.ReactElement<any>, {
           onTabPress: handleTabChange,
         })}
       </View>
