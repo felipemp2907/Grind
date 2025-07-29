@@ -171,6 +171,7 @@ function JournalScreen() {
 }
 
 export default JournalScreen;
+}
 
 const styles = StyleSheet.create({
   container: {
