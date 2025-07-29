@@ -20,7 +20,7 @@ const routes = [
   { key: 'settings', component: SettingsScreen },
 ];
 
-const TabLayout = memo(function TabLayout() {
+const AnimatedTabLayout = memo(function AnimatedTabLayout() {
   const [activeTab, setActiveTab] = useState<string>('index');
 
   const handleTabChange = useCallback((tabKey: string) => {
@@ -46,4 +46,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default TabLayout;
+export default AnimatedTabLayout;
