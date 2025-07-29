@@ -19,7 +19,10 @@ import {
   Settings,
   Flame,
   BookOpen,
-  Focus
+  Calendar,
+  Focus,
+
+  Zap
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { useGoalStore } from '@/store/goalStore';
@@ -35,7 +38,6 @@ import MotivationToast from '@/components/MotivationToast';
 import FocusModePrompt from '@/components/FocusModePrompt';
 import FocusShortcut from '@/components/FocusShortcut';
 import GoalClarifyWizard from '@/components/GoalClarifyWizard';
-import AnimatedTabScreen from '@/components/AnimatedTabScreen';
 import { generateMotivationMessage } from '@/utils/aiUtils';
 
 export default function DashboardScreen() {
@@ -240,8 +242,7 @@ export default function DashboardScreen() {
   };
   
   return (
-    <AnimatedTabScreen tabName="index">
-      <SafeAreaView style={styles.container} edges={['bottom']}>
+    <SafeAreaView style={styles.container} edges={['bottom']}>
       <View style={styles.header}>
         <View>
           <Text style={styles.date}>{formatDateForDisplay(todayDate)}</Text>
@@ -511,8 +512,7 @@ export default function DashboardScreen() {
           goalTitle={goals.find(g => g.id === selectedGoalForClarify)?.title || ''}
         />
       )}
-      </SafeAreaView>
-    </AnimatedTabScreen>
+    </SafeAreaView>
   );
 }
 
