@@ -1,6 +1,6 @@
 import React, { memo } from 'react';
 import { Tabs } from 'expo-router';
-import { LayoutAnimation, Platform } from 'react-native';
+import { Platform, LayoutAnimation } from 'react-native';
 import { 
   Home, 
   BookOpen, 
@@ -34,7 +34,7 @@ const TabLayout = memo(function TabLayout() {
         },
         headerTintColor: Colors.dark.text,
         headerTitleStyle: {
-          fontWeight: 'bold',
+          fontWeight: 'bold' as const,
         },
         headerShadowVisible: false,
       }}
