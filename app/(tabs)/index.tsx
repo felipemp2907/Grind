@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import AnimatedTabScreen from '@/components/AnimatedTabScreen';
 import { 
   Camera, 
   ChevronRight, 
@@ -242,7 +243,8 @@ export default function DashboardScreen() {
   };
   
   return (
-    <SafeAreaView style={styles.container} edges={['bottom']}>
+    <AnimatedTabScreen index={0}>
+      <SafeAreaView style={styles.container} edges={['bottom']}>
       <View style={styles.header}>
         <View>
           <Text style={styles.date}>{formatDateForDisplay(todayDate)}</Text>
@@ -512,7 +514,8 @@ export default function DashboardScreen() {
           goalTitle={goals.find(g => g.id === selectedGoalForClarify)?.title || ''}
         />
       )}
-    </SafeAreaView>
+      </SafeAreaView>
+    </AnimatedTabScreen>
   );
 }
 

@@ -1,6 +1,6 @@
-import React, { memo } from 'react';
+import React, { memo, useMemo } from 'react';
 import { Tabs } from 'expo-router';
-import { LayoutAnimation, Platform } from 'react-native';
+import { Platform } from 'react-native';
 import { 
   Home, 
   BookOpen, 
@@ -12,10 +12,15 @@ import {
 import Colors from '@/constants/colors';
 
 const TabLayout = memo(function TabLayout() {
-  // Enable layout animations for smooth transitions
-  if (Platform.OS !== 'web') {
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-  }
+  // Memoize tab icons for performance
+  const tabIcons = useMemo(() => ({
+    home: ({ color, size }: { color: string; size: number }) => <Home size={size} color={color} />,
+    tasks: ({ color, size }: { color: string; size: number }) => <BarChart size={size} color={color} />,
+    calendar: ({ color, size }: { color: string; size: number }) => <Calendar size={size} color={color} />,
+    journal: ({ color, size }: { color: string; size: number }) => <BookOpen size={size} color={color} />,
+    coach: ({ color, size }: { color: string; size: number }) => <Brain size={size} color={color} />,
+    settings: ({ color, size }: { color: string; size: number }) => <Settings size={size} color={color} />,
+  }), []);
 
   return (
     <Tabs
@@ -25,60 +30,69 @@ const TabLayout = memo(function TabLayout() {
         tabBarStyle: {
           backgroundColor: Colors.dark.card,
           borderTopColor: Colors.dark.separator,
+          paddingTop: 8,
+          paddingBottom: Platform.OS === 'ios' ? 20 : 8,
+          elevation: 0,
+          shadowOpacity: 0,
         },
         tabBarLabelStyle: {
           fontSize: 12,
+          fontWeight: '500' as const,
         },
         headerStyle: {
           backgroundColor: Colors.dark.background,
         },
         headerTintColor: Colors.dark.text,
         headerTitleStyle: {
-          fontWeight: 'bold',
+          fontWeight: 'bold' as const,
         },
         headerShadowVisible: false,
+        // Enable slide animations for native platforms
+        ...(Platform.OS !== 'web' && {
+          animation: 'slide_from_right',
+        }),
       }}
     >
       <Tabs.Screen
         name="index"
         options={{
           title: "Home",
-          tabBarIcon: ({ color, size }) => <Home size={size} color={color} />
+          tabBarIcon: tabIcons.home,
         }}
       />
       <Tabs.Screen
         name="tasks"
         options={{
           title: "Tasks",
-          tabBarIcon: ({ color, size }) => <BarChart size={size} color={color} />
+          tabBarIcon: tabIcons.tasks,
         }}
       />
       <Tabs.Screen
         name="calendar"
         options={{
           title: "Calendar",
-          tabBarIcon: ({ color, size }) => <Calendar size={size} color={color} />
+          tabBarIcon: tabIcons.calendar,
         }}
       />
       <Tabs.Screen
         name="journal"
         options={{
           title: "Journal",
-          tabBarIcon: ({ color, size }) => <BookOpen size={size} color={color} />
+          tabBarIcon: tabIcons.journal,
         }}
       />
       <Tabs.Screen
         name="coach"
         options={{
           title: "AI",
-          tabBarIcon: ({ color, size }) => <Brain size={size} color={color} />
+          tabBarIcon: tabIcons.coach,
         }}
       />
       <Tabs.Screen
         name="settings"
         options={{
           title: "Settings",
-          tabBarIcon: ({ color, size }) => <Settings size={size} color={color} />
+          tabBarIcon: tabIcons.settings,
         }}
       />
     </Tabs>
