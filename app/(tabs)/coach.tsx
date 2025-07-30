@@ -30,8 +30,9 @@ import { callAI, parseTaskCommand, generateTasksWithContext } from '@/utils/aiUt
 import GoalClarifyWizard from '@/components/GoalClarifyWizard';
 import { AIMessage } from '@/types';
 import { getTodayDate, formatDate } from '@/utils/dateUtils';
+import TabScreenAnimator from '@/components/TabScreenAnimator';
 
-export default function CoachScreen() {
+function CoachScreen() {
   const { goals, activeGoalId } = useGoalStore();
   const { tasks, getTasks, updateTask, addTask, rescheduleTask, generateAISuggestions, canAddMoreTasks, isGenerating } = useTaskStore();
   const { profile, coachSettings } = useUserStore();
@@ -425,7 +426,8 @@ export default function CoachScreen() {
   );
   
   return (
-    <View style={styles.container}>
+    <TabScreenAnimator>
+      <View style={styles.container}>
       <KeyboardAvoidingView
         style={styles.keyboardAvoid}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -549,9 +551,12 @@ export default function CoachScreen() {
         }}
         goalTitle={goal?.title || 'Your Goal'}
       />
-    </View>
+      </View>
+    </TabScreenAnimator>
   );
 }
+
+export default CoachScreen;
 
 const styles = StyleSheet.create({
   container: {

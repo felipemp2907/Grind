@@ -33,8 +33,9 @@ import {
 import TaskCard from '@/components/TaskCard';
 import Button from '@/components/Button';
 import CreateTaskModal from '@/components/CreateTaskModal';
+import TabScreenAnimator from '@/components/TabScreenAnimator';
 
-export default function TasksScreen() {
+function TasksScreen() {
   const router = useRouter();
   const { goals, activeGoalId, setActiveGoal } = useGoalStore();
   const { tasks, getTasks, getTasksByGoal, generateDailyTasks, generateTasksForGoal, isGenerating, generateAISuggestions, canAddMoreTasks } = useTaskStore();
@@ -135,7 +136,8 @@ export default function TasksScreen() {
   );
   
   return (
-    <SafeAreaView style={styles.container} edges={['bottom']}>
+    <TabScreenAnimator>
+      <SafeAreaView style={styles.container} edges={['bottom']}>
       <View style={styles.dateSelector}>
         <TouchableOpacity 
           style={styles.dateButton}
@@ -341,9 +343,12 @@ export default function TasksScreen() {
         date={selectedDate}
         goalId={filterByGoal || undefined}
       />
-    </SafeAreaView>
+      </SafeAreaView>
+    </TabScreenAnimator>
   );
 }
+
+export default TasksScreen;
 
 const styles = StyleSheet.create({
   container: {
