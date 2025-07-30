@@ -29,7 +29,7 @@ import { useGoalStore } from '@/store/goalStore';
 import { useTaskStore } from '@/store/taskStore';
 import { useUserStore } from '@/store/userStore';
 import { AnimatedTabScreen } from '@/components/TabTransitionProvider';
-import Screen from '@/components/Screen';
+
 import { getTodayDate, formatDateForDisplay } from '@/utils/dateUtils';
 import TaskCard from '@/components/TaskCard';
 import ProfileHeader from '@/components/ProfileHeader';
@@ -245,18 +245,17 @@ export default function DashboardScreen() {
   };
   
   return (
-    <Screen>
-      <AnimatedTabScreen tabPath="/">
-        <View style={styles.container}>
+    <AnimatedTabScreen tabPath="/">
+      <View style={styles.container}>
         <View style={styles.header}>
-        <View>
-          <Text style={styles.date}>{formatDateForDisplay(todayDate)}</Text>
-          <Text style={styles.greeting}>Hello, {profile.name || 'Achiever'}</Text>
+          <View>
+            <Text style={styles.date}>{formatDateForDisplay(todayDate)}</Text>
+            <Text style={styles.greeting}>Hello, {profile.name || 'Achiever'}</Text>
+          </View>
+          <TouchableOpacity onPress={handleSettingsPress} style={styles.settingsButton}>
+            <Settings size={24} color={Colors.dark.text} />
+          </TouchableOpacity>
         </View>
-        <TouchableOpacity onPress={handleSettingsPress} style={styles.settingsButton}>
-          <Settings size={24} color={Colors.dark.text} />
-        </TouchableOpacity>
-      </View>
       
       <ScrollView 
         style={styles.scrollView}
@@ -518,9 +517,8 @@ export default function DashboardScreen() {
           goalTitle={goals.find(g => g.id === selectedGoalForClarify)?.title || ''}
         />
       )}
-        </View>
-      </AnimatedTabScreen>
-    </Screen>
+      </View>
+    </AnimatedTabScreen>
   );
 }
 
@@ -546,7 +544,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: 16,
-    paddingBottom: 16,
+    paddingBottom: 100,
   },
   date: {
     fontSize: 14,

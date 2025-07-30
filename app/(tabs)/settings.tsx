@@ -8,7 +8,7 @@ import {
   Switch,
   Alert
 } from 'react-native';
-import Screen from '@/components/Screen';
+
 import { 
   User, 
   Bell, 
@@ -178,7 +178,7 @@ export default function SettingsScreen() {
   };
   
   return (
-    <Screen>
+    <View style={styles.container}>
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
         <View style={styles.header}>
           <SettingsIcon size={24} color={Colors.dark.primary} />
@@ -422,7 +422,7 @@ export default function SettingsScreen() {
           </Text>
         </View>
       </ScrollView>
-    </Screen>
+    </View>
   );
 }
 
@@ -436,7 +436,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: 16,
-    paddingBottom: 16,
+    paddingBottom: 100,
   },
   header: {
     flexDirection: 'row',
