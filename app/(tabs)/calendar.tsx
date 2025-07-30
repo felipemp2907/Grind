@@ -24,6 +24,7 @@ import { useTaskStore } from '@/store/taskStore';
 import { formatDate, getTodayDate } from '@/utils/dateUtils';
 import { Task } from '@/types';
 import CreateTaskModal from '@/components/CreateTaskModal';
+import Screen from '@/components/Screen';
 
 // Helper function to get days in a month
 const getDaysInMonth = (year: number, month: number) => {
@@ -289,7 +290,7 @@ export default function CalendarScreen() {
   }
   
   return (
-    <SafeAreaView style={styles.container} edges={['bottom']}>
+    <Screen>
       <View style={styles.calendarContainer}>
         <View style={styles.header}>
           <TouchableOpacity 
@@ -409,7 +410,7 @@ export default function CalendarScreen() {
         onClose={() => setShowCreateTaskModal(false)}
         date={selectedDate}
       />
-    </SafeAreaView>
+    </Screen>
   );
 }
 
@@ -558,6 +559,7 @@ const styles = StyleSheet.create({
   eventsContainer: {
     flex: 1,
     padding: 16,
+    paddingBottom: 16,
   },
   sectionTitle: {
     fontSize: 16,

@@ -33,6 +33,7 @@ import {
 import TaskCard from '@/components/TaskCard';
 import Button from '@/components/Button';
 import CreateTaskModal from '@/components/CreateTaskModal';
+import Screen from '@/components/Screen';
 
 export default function TasksScreen() {
   const router = useRouter();
@@ -135,7 +136,7 @@ export default function TasksScreen() {
   );
   
   return (
-    <SafeAreaView style={styles.container} edges={['bottom']}>
+    <Screen>
       <View style={styles.dateSelector}>
         <TouchableOpacity 
           style={styles.dateButton}
@@ -341,7 +342,7 @@ export default function TasksScreen() {
         date={selectedDate}
         goalId={filterByGoal || undefined}
       />
-    </SafeAreaView>
+    </Screen>
   );
 }
 
@@ -483,7 +484,7 @@ const styles = StyleSheet.create({
   },
   listContent: {
     padding: 16,
-    paddingBottom: 32,
+    paddingBottom: 16,
   },
   loadingContainer: {
     flex: 1,
