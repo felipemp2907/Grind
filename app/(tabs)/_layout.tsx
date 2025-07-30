@@ -1,6 +1,5 @@
-import React, { memo, useRef, useEffect } from 'react';
-import { Tabs, useSegments } from 'expo-router';
-import { Platform, Animated, Dimensions } from 'react-native';
+import React, { memo } from 'react';
+import { Tabs } from 'expo-router';
 import { 
   Home, 
   BookOpen, 
@@ -12,37 +11,6 @@ import {
 import Colors from '@/constants/colors';
 
 const TabLayout = memo(function TabLayout() {
-  const segments = useSegments();
-  const slideAnim = useRef(new Animated.Value(0)).current;
-  const previousTab = useRef<string | null>(null);
-  const screenWidth = Dimensions.get('window').width;
-  
-  // Tab order for determining slide direction
-  const tabOrder = ['index', 'tasks', 'calendar', 'journal', 'coach', 'settings'];
-  
-  useEffect(() => {
-    const currentTab = segments[1] || 'index'; // Get current tab from segments
-    
-    if (previousTab.current && previousTab.current !== currentTab) {
-      const prevIndex = tabOrder.indexOf(previousTab.current);
-      const currentIndex = tabOrder.indexOf(currentTab);
-      
-      // Determine slide direction
-      const slideDirection = currentIndex > prevIndex ? 1 : -1;
-      
-      // Start from opposite side
-      slideAnim.setValue(slideDirection * screenWidth);
-      
-      // Animate to center
-      Animated.timing(slideAnim, {
-        toValue: 0,
-        duration: 300,
-        useNativeDriver: true,
-      }).start();
-    }
-    
-    previousTab.current = currentTab;
-  }, [segments, screenWidth]);
 
   return (
     <Tabs
@@ -64,10 +32,6 @@ const TabLayout = memo(function TabLayout() {
           fontWeight: 'bold',
         },
         headerShadowVisible: false,
-        // Add animation wrapper to each screen
-        sceneContainerStyle: {
-          backgroundColor: 'transparent',
-        },
       }}
     >
       <Tabs.Screen
