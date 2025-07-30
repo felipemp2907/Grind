@@ -244,7 +244,7 @@ export default function DashboardScreen() {
   
   return (
     <AnimatedTabScreen tabPath="/">
-      <SafeAreaView style={styles.container} edges={['bottom']}>
+      <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
         <View>
           <Text style={styles.date}>{formatDateForDisplay(todayDate)}</Text>
@@ -541,7 +541,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: 16,
-    paddingBottom: 32,
+    paddingBottom: 100,
   },
   date: {
     fontSize: 14,
