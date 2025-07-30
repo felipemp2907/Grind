@@ -10,6 +10,7 @@ import {
   Settings
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
+import 'react-native-reanimated';
 
 const TabLayout = memo(function TabLayout() {
   // Enable layout animations for smooth transitions
@@ -37,6 +38,7 @@ const TabLayout = memo(function TabLayout() {
           fontWeight: 'bold',
         },
         headerShadowVisible: false,
+        animation: Platform.OS !== 'web' ? 'slide_from_right' : 'none',
       }}
     >
       <Tabs.Screen

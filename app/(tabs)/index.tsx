@@ -28,6 +28,7 @@ import Colors from '@/constants/colors';
 import { useGoalStore } from '@/store/goalStore';
 import { useTaskStore } from '@/store/taskStore';
 import { useUserStore } from '@/store/userStore';
+import { AnimatedTabScreen } from '@/components/TabTransitionProvider';
 import { getTodayDate, formatDateForDisplay } from '@/utils/dateUtils';
 import TaskCard from '@/components/TaskCard';
 import ProfileHeader from '@/components/ProfileHeader';
@@ -242,7 +243,8 @@ export default function DashboardScreen() {
   };
   
   return (
-    <SafeAreaView style={styles.container} edges={['bottom']}>
+    <AnimatedTabScreen tabPath="/">
+      <SafeAreaView style={styles.container} edges={['bottom']}>
       <View style={styles.header}>
         <View>
           <Text style={styles.date}>{formatDateForDisplay(todayDate)}</Text>
@@ -512,7 +514,8 @@ export default function DashboardScreen() {
           goalTitle={goals.find(g => g.id === selectedGoalForClarify)?.title || ''}
         />
       )}
-    </SafeAreaView>
+      </SafeAreaView>
+    </AnimatedTabScreen>
   );
 }
 

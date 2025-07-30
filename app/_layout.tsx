@@ -15,6 +15,8 @@ import { trpc, trpcClient } from "@/lib/trpc";
 import { supabase } from "@/lib/supabase";
 import { AuthChangeEvent, Session } from "@supabase/supabase-js";
 import Toast from 'react-native-toast-message';
+import { TabTransitionProvider } from '@/components/TabTransitionProvider';
+import 'react-native-reanimated';
 
 export const unstable_settings = {
   initialRouteName: "index",
@@ -263,8 +265,9 @@ function RootLayoutNav() {
   return (
     <trpc.Provider client={trpcClient} queryClient={queryClient}>
       <QueryClientProvider client={queryClient}>
-        <StatusBar barStyle="light-content" backgroundColor={Colors.dark.background} />
-        <Stack
+        <TabTransitionProvider>
+          <StatusBar barStyle="light-content" backgroundColor={Colors.dark.background} />
+          <Stack
           screenOptions={{
             headerStyle: {
               backgroundColor: Colors.dark.background,
@@ -342,8 +345,9 @@ function RootLayoutNav() {
               headerBackTitle: "Back",
             }} 
           />
-        </Stack>
-        <Toast />
+          </Stack>
+          <Toast />
+        </TabTransitionProvider>
       </QueryClientProvider>
     </trpc.Provider>
   );
