@@ -14,7 +14,7 @@ import Animated, {
   runOnJS,
   useAnimatedGestureHandler,
 } from 'react-native-reanimated';
-import { PanGestureHandler, GestureHandlerGestureEvent, PanGestureHandlerEventPayload } from 'react-native-gesture-handler';
+import { PanGestureHandler, PanGestureHandlerGestureEvent } from 'react-native-gesture-handler';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Colors from '@/constants/colors';
 
@@ -53,7 +53,7 @@ export default function AnimatedTabNavigator({ tabs, initialTab = 0 }: AnimatedT
     runOnJS(setActiveTab)(tabIndex);
   };
 
-  const gestureHandler = useAnimatedGestureHandler<GestureHandlerGestureEvent<PanGestureHandlerEventPayload>>(
+  const gestureHandler = useAnimatedGestureHandler<PanGestureHandlerGestureEvent>(
     {
       onStart: () => {
         gestureTranslateX.value = 0;
