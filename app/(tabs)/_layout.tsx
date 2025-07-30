@@ -53,15 +53,19 @@ const TabLayout = memo(function TabLayout() {
         options={{
           title: "Home",
           tabBarIcon: ({ color, size }) => <Home size={size} color={color} />,
-          tabBarButton: (props) => (
-            <TouchableOpacity
-              {...props}
-              onPress={(e) => {
-                handleTabPress();
-                props.onPress?.(e);
-              }}
-            />
-          )
+          tabBarButton: (props) => {
+            const { delayLongPress, ...touchableProps } = props;
+            return (
+              <TouchableOpacity
+                {...touchableProps}
+                delayLongPress={delayLongPress ?? undefined}
+                onPress={(e) => {
+                  handleTabPress();
+                  props.onPress?.(e);
+                }}
+              />
+            );
+          }
         }}
       />
       <Tabs.Screen
@@ -69,15 +73,19 @@ const TabLayout = memo(function TabLayout() {
         options={{
           title: "Tasks",
           tabBarIcon: ({ color, size }) => <BarChart size={size} color={color} />,
-          tabBarButton: (props) => (
-            <TouchableOpacity
-              {...props}
-              onPress={(e) => {
-                handleTabPress();
-                props.onPress?.(e);
-              }}
-            />
-          )
+          tabBarButton: (props) => {
+            const { delayLongPress, ...touchableProps } = props;
+            return (
+              <TouchableOpacity
+                {...touchableProps}
+                delayLongPress={delayLongPress ?? undefined}
+                onPress={(e) => {
+                  handleTabPress();
+                  props.onPress?.(e);
+                }}
+              />
+            );
+          }
         }}
       />
       <Tabs.Screen
@@ -85,15 +93,19 @@ const TabLayout = memo(function TabLayout() {
         options={{
           title: "Calendar",
           tabBarIcon: ({ color, size }) => <Calendar size={size} color={color} />,
-          tabBarButton: (props) => (
-            <TouchableOpacity
-              {...props}
-              onPress={(e) => {
-                handleTabPress();
-                props.onPress?.(e);
-              }}
-            />
-          )
+          tabBarButton: (props) => {
+            const { delayLongPress, ...touchableProps } = props;
+            return (
+              <TouchableOpacity
+                {...touchableProps}
+                delayLongPress={delayLongPress ?? undefined}
+                onPress={(e) => {
+                  handleTabPress();
+                  props.onPress?.(e);
+                }}
+              />
+            );
+          }
         }}
       />
       <Tabs.Screen
@@ -101,15 +113,19 @@ const TabLayout = memo(function TabLayout() {
         options={{
           title: "Journal",
           tabBarIcon: ({ color, size }) => <BookOpen size={size} color={color} />,
-          tabBarButton: (props) => (
-            <TouchableOpacity
-              {...props}
-              onPress={(e) => {
-                handleTabPress();
-                props.onPress?.(e);
-              }}
-            />
-          )
+          tabBarButton: (props) => {
+            const { delayLongPress, ...touchableProps } = props;
+            return (
+              <TouchableOpacity
+                {...touchableProps}
+                delayLongPress={delayLongPress ?? undefined}
+                onPress={(e) => {
+                  handleTabPress();
+                  props.onPress?.(e);
+                }}
+              />
+            );
+          }
         }}
       />
       <Tabs.Screen
@@ -117,15 +133,19 @@ const TabLayout = memo(function TabLayout() {
         options={{
           title: "AI",
           tabBarIcon: ({ color, size }) => <Brain size={size} color={color} />,
-          tabBarButton: (props) => (
-            <TouchableOpacity
-              {...props}
-              onPress={(e) => {
-                handleTabPress();
-                props.onPress?.(e);
-              }}
-            />
-          )
+          tabBarButton: (props) => {
+            const { delayLongPress, ...touchableProps } = props;
+            return (
+              <TouchableOpacity
+                {...touchableProps}
+                delayLongPress={delayLongPress ?? undefined}
+                onPress={(e) => {
+                  handleTabPress();
+                  props.onPress?.(e);
+                }}
+              />
+            );
+          }
         }}
       />
       <Tabs.Screen
@@ -133,15 +153,19 @@ const TabLayout = memo(function TabLayout() {
         options={{
           title: "Settings",
           tabBarIcon: ({ color, size }) => <Settings size={size} color={color} />,
-          tabBarButton: (props) => (
-            <TouchableOpacity
-              {...props}
-              onPress={(e) => {
-                handleTabPress();
-                props.onPress?.(e);
-              }}
-            />
-          )
+          tabBarButton: (props) => {
+            const { delayLongPress, ...touchableProps } = props;
+            return (
+              <TouchableOpacity
+                {...touchableProps}
+                delayLongPress={delayLongPress ?? undefined}
+                onPress={(e) => {
+                  handleTabPress();
+                  props.onPress?.(e);
+                }}
+              />
+            );
+          }
         }}
       />
     </Tabs>
