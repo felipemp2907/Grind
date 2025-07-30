@@ -1,6 +1,7 @@
 import React, { memo } from 'react';
 import { Tabs } from 'expo-router';
-import { LayoutAnimation, Platform } from 'react-native';
+import { LayoutAnimation, Platform, TouchableOpacity } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import { 
   Home, 
   BookOpen, 
@@ -17,6 +18,12 @@ const TabLayout = memo(function TabLayout() {
   if (Platform.OS !== 'web') {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
   }
+
+  const handleTabPress = () => {
+    if (Platform.OS !== 'web') {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+    }
+  };
 
   return (
     <Tabs
@@ -45,42 +52,96 @@ const TabLayout = memo(function TabLayout() {
         name="index"
         options={{
           title: "Home",
-          tabBarIcon: ({ color, size }) => <Home size={size} color={color} />
+          tabBarIcon: ({ color, size }) => <Home size={size} color={color} />,
+          tabBarButton: (props) => (
+            <TouchableOpacity
+              {...props}
+              onPress={(e) => {
+                handleTabPress();
+                props.onPress?.(e);
+              }}
+            />
+          )
         }}
       />
       <Tabs.Screen
         name="tasks"
         options={{
           title: "Tasks",
-          tabBarIcon: ({ color, size }) => <BarChart size={size} color={color} />
+          tabBarIcon: ({ color, size }) => <BarChart size={size} color={color} />,
+          tabBarButton: (props) => (
+            <TouchableOpacity
+              {...props}
+              onPress={(e) => {
+                handleTabPress();
+                props.onPress?.(e);
+              }}
+            />
+          )
         }}
       />
       <Tabs.Screen
         name="calendar"
         options={{
           title: "Calendar",
-          tabBarIcon: ({ color, size }) => <Calendar size={size} color={color} />
+          tabBarIcon: ({ color, size }) => <Calendar size={size} color={color} />,
+          tabBarButton: (props) => (
+            <TouchableOpacity
+              {...props}
+              onPress={(e) => {
+                handleTabPress();
+                props.onPress?.(e);
+              }}
+            />
+          )
         }}
       />
       <Tabs.Screen
         name="journal"
         options={{
           title: "Journal",
-          tabBarIcon: ({ color, size }) => <BookOpen size={size} color={color} />
+          tabBarIcon: ({ color, size }) => <BookOpen size={size} color={color} />,
+          tabBarButton: (props) => (
+            <TouchableOpacity
+              {...props}
+              onPress={(e) => {
+                handleTabPress();
+                props.onPress?.(e);
+              }}
+            />
+          )
         }}
       />
       <Tabs.Screen
         name="coach"
         options={{
           title: "AI",
-          tabBarIcon: ({ color, size }) => <Brain size={size} color={color} />
+          tabBarIcon: ({ color, size }) => <Brain size={size} color={color} />,
+          tabBarButton: (props) => (
+            <TouchableOpacity
+              {...props}
+              onPress={(e) => {
+                handleTabPress();
+                props.onPress?.(e);
+              }}
+            />
+          )
         }}
       />
       <Tabs.Screen
         name="settings"
         options={{
           title: "Settings",
-          tabBarIcon: ({ color, size }) => <Settings size={size} color={color} />
+          tabBarIcon: ({ color, size }) => <Settings size={size} color={color} />,
+          tabBarButton: (props) => (
+            <TouchableOpacity
+              {...props}
+              onPress={(e) => {
+                handleTabPress();
+                props.onPress?.(e);
+              }}
+            />
+          )
         }}
       />
     </Tabs>
