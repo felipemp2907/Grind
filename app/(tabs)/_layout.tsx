@@ -10,6 +10,15 @@ import {
   Settings
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
+import TabScreenAnimator from '@/components/TabScreenAnimator';
+
+// Import screen components
+import DashboardScreen from './index';
+import TasksScreen from './tasks';
+import CalendarScreen from './calendar';
+import JournalScreen from './journal';
+import CoachScreen from './coach';
+import SettingsScreen from './settings';
 
 const TabLayout = memo(function TabLayout() {
   // Enable layout animations for smooth transitions
@@ -45,42 +54,78 @@ const TabLayout = memo(function TabLayout() {
           title: "Home",
           tabBarIcon: ({ color, size }) => <Home size={size} color={color} />
         }}
-      />
+      >
+        {() => (
+          <TabScreenAnimator>
+            <DashboardScreen />
+          </TabScreenAnimator>
+        )}
+      </Tabs.Screen>
       <Tabs.Screen
         name="tasks"
         options={{
           title: "Tasks",
           tabBarIcon: ({ color, size }) => <BarChart size={size} color={color} />
         }}
-      />
+      >
+        {() => (
+          <TabScreenAnimator>
+            <TasksScreen />
+          </TabScreenAnimator>
+        )}
+      </Tabs.Screen>
       <Tabs.Screen
         name="calendar"
         options={{
           title: "Calendar",
           tabBarIcon: ({ color, size }) => <Calendar size={size} color={color} />
         }}
-      />
+      >
+        {() => (
+          <TabScreenAnimator>
+            <CalendarScreen />
+          </TabScreenAnimator>
+        )}
+      </Tabs.Screen>
       <Tabs.Screen
         name="journal"
         options={{
           title: "Journal",
           tabBarIcon: ({ color, size }) => <BookOpen size={size} color={color} />
         }}
-      />
+      >
+        {() => (
+          <TabScreenAnimator>
+            <JournalScreen />
+          </TabScreenAnimator>
+        )}
+      </Tabs.Screen>
       <Tabs.Screen
         name="coach"
         options={{
           title: "AI",
           tabBarIcon: ({ color, size }) => <Brain size={size} color={color} />
         }}
-      />
+      >
+        {() => (
+          <TabScreenAnimator>
+            <CoachScreen />
+          </TabScreenAnimator>
+        )}
+      </Tabs.Screen>
       <Tabs.Screen
         name="settings"
         options={{
           title: "Settings",
           tabBarIcon: ({ color, size }) => <Settings size={size} color={color} />
         }}
-      />
+      >
+        {() => (
+          <TabScreenAnimator>
+            <SettingsScreen />
+          </TabScreenAnimator>
+        )}
+      </Tabs.Screen>
     </Tabs>
   );
 });
