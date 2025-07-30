@@ -1,6 +1,4 @@
 import React, { memo } from 'react';
-import { Tabs } from 'expo-router';
-import { LayoutAnimation, Platform } from 'react-native';
 import { 
   Home, 
   BookOpen, 
@@ -9,80 +7,57 @@ import {
   Brain,
   Settings
 } from 'lucide-react-native';
-import Colors from '@/constants/colors';
+import AnimatedTabNavigator from '@/components/AnimatedTabNavigator';
+import {
+  HomeTabScreen,
+  TasksTabScreen,
+  CalendarTabScreen,
+  JournalTabScreen,
+  CoachTabScreen,
+  SettingsTabScreen,
+} from '@/components/TabScreens';
 
 const TabLayout = memo(function TabLayout() {
-  // Enable layout animations for smooth transitions
-  if (Platform.OS !== 'web') {
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-  }
+  const tabs = [
+    {
+      name: 'index',
+      title: 'Home',
+      icon: Home,
+      component: HomeTabScreen,
+    },
+    {
+      name: 'tasks',
+      title: 'Tasks',
+      icon: BarChart,
+      component: TasksTabScreen,
+    },
+    {
+      name: 'calendar',
+      title: 'Calendar',
+      icon: Calendar,
+      component: CalendarTabScreen,
+    },
+    {
+      name: 'journal',
+      title: 'Journal',
+      icon: BookOpen,
+      component: JournalTabScreen,
+    },
+    {
+      name: 'coach',
+      title: 'AI',
+      icon: Brain,
+      component: CoachTabScreen,
+    },
+    {
+      name: 'settings',
+      title: 'Settings',
+      icon: Settings,
+      component: SettingsTabScreen,
+    },
+  ];
 
-  return (
-    <Tabs
-      screenOptions={{
-        tabBarActiveTintColor: Colors.dark.primary,
-        tabBarInactiveTintColor: Colors.dark.inactive,
-        tabBarStyle: {
-          backgroundColor: Colors.dark.card,
-          borderTopColor: Colors.dark.separator,
-        },
-        tabBarLabelStyle: {
-          fontSize: 12,
-        },
-        headerStyle: {
-          backgroundColor: Colors.dark.background,
-        },
-        headerTintColor: Colors.dark.text,
-        headerTitleStyle: {
-          fontWeight: 'bold',
-        },
-        headerShadowVisible: false,
-      }}
-    >
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: "Home",
-          tabBarIcon: ({ color, size }) => <Home size={size} color={color} />
-        }}
-      />
-      <Tabs.Screen
-        name="tasks"
-        options={{
-          title: "Tasks",
-          tabBarIcon: ({ color, size }) => <BarChart size={size} color={color} />
-        }}
-      />
-      <Tabs.Screen
-        name="calendar"
-        options={{
-          title: "Calendar",
-          tabBarIcon: ({ color, size }) => <Calendar size={size} color={color} />
-        }}
-      />
-      <Tabs.Screen
-        name="journal"
-        options={{
-          title: "Journal",
-          tabBarIcon: ({ color, size }) => <BookOpen size={size} color={color} />
-        }}
-      />
-      <Tabs.Screen
-        name="coach"
-        options={{
-          title: "AI",
-          tabBarIcon: ({ color, size }) => <Brain size={size} color={color} />
-        }}
-      />
-      <Tabs.Screen
-        name="settings"
-        options={{
-          title: "Settings",
-          tabBarIcon: ({ color, size }) => <Settings size={size} color={color} />
-        }}
-      />
-    </Tabs>
-  );
+  return <AnimatedTabNavigator tabs={tabs} initialTab={0} />;
 });
 
 export default TabLayout;

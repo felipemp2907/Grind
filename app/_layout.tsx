@@ -4,6 +4,7 @@ import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { useEffect, useCallback } from "react";
 import { Platform, StatusBar, Alert } from "react-native";
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useGoalStore } from "@/store/goalStore";
 import { useAuthStore } from "@/store/authStore";
 import { useUserStore } from "@/store/userStore";
@@ -261,23 +262,24 @@ function RootLayoutNav() {
   }
 
   return (
-    <trpc.Provider client={trpcClient} queryClient={queryClient}>
-      <QueryClientProvider client={queryClient}>
-        <StatusBar barStyle="light-content" backgroundColor={Colors.dark.background} />
-        <Stack
-          screenOptions={{
-            headerStyle: {
-              backgroundColor: Colors.dark.background,
-            },
-            headerTintColor: Colors.dark.text,
-            headerTitleStyle: {
-              fontWeight: 'bold',
-            },
-            contentStyle: {
-              backgroundColor: Colors.dark.background,
-            },
-          }}
-        >
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <trpc.Provider client={trpcClient} queryClient={queryClient}>
+        <QueryClientProvider client={queryClient}>
+          <StatusBar barStyle="light-content" backgroundColor={Colors.dark.background} />
+          <Stack
+            screenOptions={{
+              headerStyle: {
+                backgroundColor: Colors.dark.background,
+              },
+              headerTintColor: Colors.dark.text,
+              headerTitleStyle: {
+                fontWeight: 'bold',
+              },
+              contentStyle: {
+                backgroundColor: Colors.dark.background,
+              },
+            }}
+          >
           <Stack.Screen name="index" options={{ headerShown: false }} />
           <Stack.Screen name="login" options={{ headerShown: false }} />
           <Stack.Screen name="register" options={{ headerShown: false }} />
@@ -342,9 +344,10 @@ function RootLayoutNav() {
               headerBackTitle: "Back",
             }} 
           />
-        </Stack>
-        <Toast />
-      </QueryClientProvider>
-    </trpc.Provider>
+          </Stack>
+          <Toast />
+        </QueryClientProvider>
+      </trpc.Provider>
+    </GestureHandlerRootView>
   );
 }

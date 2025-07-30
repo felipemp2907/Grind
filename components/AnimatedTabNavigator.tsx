@@ -1,70 +1,101 @@
-import React, { useState, useCallback, useMemo } from 'react';
-import { View, StyleSheet, Dimensions, Platform } from 'react-native';
+import React, { useState } from 'react';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  Dimensions,
+  Platform,
+} from 'react-native';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
-  withTiming,
-  interpolate,
+  withSpring,
   runOnJS,
+  useAnimatedGestureHandler,
 } from 'react-native-reanimated';
+import { PanGestureHandler, GestureHandlerGestureEvent, PanGestureHandlerEventPayload } from 'react-native-gesture-handler';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Colors from '@/constants/colors';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const { width: screenWidth } = Dimensions.get('window');
 
-interface TabScreen {
-  key: string;
+interface TabConfig {
+  name: string;
   title: string;
+  icon: React.ComponentType<{ size: number; color: string }>;
   component: React.ComponentType<any>;
-  icon: React.ComponentType<{ color: string; size: number }>;
 }
 
 interface AnimatedTabNavigatorProps {
-  screens: TabScreen[];
-  initialTab?: string;
+  tabs: TabConfig[];
+  initialTab?: number;
 }
 
-const AnimatedTabNavigator: React.FC<AnimatedTabNavigatorProps> = ({
-  screens,
-  initialTab,
-}) => {
+const SPRING_CONFIG = {
+  damping: 20,
+  stiffness: 90,
+  mass: 0.8,
+};
+
+const SWIPE_THRESHOLD = screenWidth * 0.25;
+const SWIPE_VELOCITY_THRESHOLD = 500;
+
+export default function AnimatedTabNavigator({ tabs, initialTab = 0 }: AnimatedTabNavigatorProps) {
+  const [activeTab, setActiveTab] = useState(initialTab);
+  const translateX = useSharedValue(-initialTab * screenWidth);
+  const gestureTranslateX = useSharedValue(0);
   const insets = useSafeAreaInsets();
-  const [activeTab, setActiveTab] = useState(initialTab || screens[0]?.key || '');
-  const translateX = useSharedValue(0);
-  const isAnimating = useSharedValue(false);
 
-  const activeIndex = useMemo(() => {
-    return screens.findIndex(screen => screen.key === activeTab);
-  }, [activeTab, screens]);
+  const animateToTab = (tabIndex: number) => {
+    'worklet';
+    translateX.value = withSpring(-tabIndex * screenWidth, SPRING_CONFIG);
+    runOnJS(setActiveTab)(tabIndex);
+  };
 
-  const switchTab = useCallback((tabKey: string) => {
-    if (tabKey === activeTab || isAnimating.value) return;
-
-    const newIndex = screens.findIndex(screen => screen.key === tabKey);
-    const currentIndex = activeIndex;
-    
-    if (newIndex === -1) return;
-
-    isAnimating.value = true;
-    
-    // Calculate direction and distance
-    const direction = newIndex > currentIndex ? -1 : 1;
-    const distance = Math.abs(newIndex - currentIndex) * SCREEN_WIDTH;
-    
-    translateX.value = withTiming(
-      direction * distance,
-      { duration: 300 },
-      (finished) => {
-        if (finished) {
-          runOnJS(() => {
-            setActiveTab(tabKey);
-            translateX.value = 0;
-            isAnimating.value = false;
-          })();
+  const gestureHandler = useAnimatedGestureHandler<GestureHandlerGestureEvent<PanGestureHandlerEventPayload>>(
+    {
+      onStart: () => {
+        gestureTranslateX.value = 0;
+      },
+      onActive: (event) => {
+        const { translationX } = event;
+        
+        // Limit the gesture to prevent over-scrolling
+        const maxTranslation = screenWidth * (tabs.length - 1);
+        const minTranslation = 0;
+        
+        const currentOffset = -activeTab * screenWidth;
+        const newTranslation = Math.max(
+          -maxTranslation,
+          Math.min(minTranslation, currentOffset + translationX)
+        );
+        
+        gestureTranslateX.value = translationX;
+        translateX.value = newTranslation;
+      },
+      onEnd: (event) => {
+        const { translationX, velocityX } = event;
+        
+        let targetTab = activeTab;
+        
+        // Determine target tab based on swipe distance and velocity
+        if (Math.abs(translationX) > SWIPE_THRESHOLD || Math.abs(velocityX) > SWIPE_VELOCITY_THRESHOLD) {
+          if (translationX > 0 && velocityX > -SWIPE_VELOCITY_THRESHOLD) {
+            // Swipe right - go to previous tab
+            targetTab = Math.max(0, activeTab - 1);
+          } else if (translationX < 0 && velocityX < SWIPE_VELOCITY_THRESHOLD) {
+            // Swipe left - go to next tab
+            targetTab = Math.min(tabs.length - 1, activeTab + 1);
+          }
         }
-      }
-    );
-  }, [activeTab, activeIndex, screens, translateX, isAnimating]);
+        
+        gestureTranslateX.value = 0;
+        animateToTab(targetTab);
+      },
+    },
+    [activeTab, tabs.length]
+  );
 
   const containerStyle = useAnimatedStyle(() => {
     return {
@@ -72,108 +103,92 @@ const AnimatedTabNavigator: React.FC<AnimatedTabNavigatorProps> = ({
     };
   });
 
-  const renderTabContent = () => {
-    return screens.map((screen, index) => {
-      const Screen = screen.component;
-      const isActive = screen.key === activeTab;
-      
-      return (
-        <View
-          key={screen.key}
-          style={[
-            styles.screenContainer,
-            { width: SCREEN_WIDTH },
-          ]}
-        >
-          {isActive && <Screen />}
-        </View>
-      );
-    });
+  const handleTabPress = (index: number) => {
+    if (index !== activeTab) {
+      animateToTab(index);
+    }
   };
 
-  const renderTabBar = () => {
-    return (
-      <View style={[styles.tabBar, { paddingBottom: insets.bottom }]}>
-        {screens.map((screen) => {
-          const isActive = screen.key === activeTab;
-          const Icon = screen.icon;
-          
-          return (
-            <Animated.View
-              key={screen.key}
-              style={[
-                styles.tabItem,
-                isActive && styles.activeTabItem,
-              ]}
-            >
-              <Animated.Pressable
-                style={styles.tabButton}
-                onPress={() => switchTab(screen.key)}
-              >
-                <Icon
-                  color={isActive ? Colors.dark.primary : Colors.dark.inactive}
-                  size={24}
-                />
-                <Animated.Text
-                  style={[
-                    styles.tabLabel,
-                    {
-                      color: isActive ? Colors.dark.primary : Colors.dark.inactive,
-                    },
-                  ]}
-                >
-                  {screen.title}
-                </Animated.Text>
-              </Animated.Pressable>
-            </Animated.View>
-          );
-        })}
-      </View>
-    );
+  // Web compatibility check
+  const TabContainer = Platform.OS === 'web' ? View : PanGestureHandler;
+  const tabContainerProps = Platform.OS === 'web' ? {} : {
+    onGestureEvent: gestureHandler,
   };
 
   return (
     <View style={styles.container}>
-      <Animated.View style={[styles.contentContainer, containerStyle]}>
-        {renderTabContent()}
-      </Animated.View>
-      {renderTabBar()}
+      <TabContainer {...tabContainerProps}>
+        <Animated.View style={[styles.tabContainer, containerStyle]}>
+          {tabs.map((tab, index) => {
+            const TabComponent = tab.component;
+            return (
+              <View key={tab.name} style={styles.tabContent}>
+                <TabComponent />
+              </View>
+            );
+          })}
+        </Animated.View>
+      </TabContainer>
+      
+      {/* Tab Bar */}
+      <View style={[styles.tabBar, { paddingBottom: insets.bottom }]}>
+        {tabs.map((tab, index) => {
+          const IconComponent = tab.icon;
+          const isActive = index === activeTab;
+          
+          return (
+            <TouchableOpacity
+              key={tab.name}
+              style={styles.tabButton}
+              onPress={() => handleTabPress(index)}
+              activeOpacity={0.7}
+            >
+              <IconComponent
+                size={24}
+                color={isActive ? Colors.dark.primary : Colors.dark.inactive}
+              />
+              <Text
+                style={[
+                  styles.tabLabel,
+                  { color: isActive ? Colors.dark.primary : Colors.dark.inactive }
+                ]}
+              >
+                {tab.title}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
     </View>
   );
-};
+}
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.dark.background,
   },
-  contentContainer: {
+  tabContainer: {
     flex: 1,
     flexDirection: 'row',
+    width: screenWidth * 6, // Assuming 6 tabs max
   },
-  screenContainer: {
+  tabContent: {
+    width: screenWidth,
     flex: 1,
   },
   tabBar: {
     flexDirection: 'row',
     backgroundColor: Colors.dark.card,
-    borderTopWidth: 1,
     borderTopColor: Colors.dark.separator,
+    borderTopWidth: StyleSheet.hairlineWidth,
     paddingTop: 8,
     paddingHorizontal: 16,
   },
-  tabItem: {
+  tabButton: {
     flex: 1,
     alignItems: 'center',
-  },
-  activeTabItem: {
-    // Add any active tab styling here
-  },
-  tabButton: {
-    alignItems: 'center',
-    justifyContent: 'center',
     paddingVertical: 8,
-    minHeight: 50,
   },
   tabLabel: {
     fontSize: 12,
@@ -181,5 +196,3 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
 });
-
-export default AnimatedTabNavigator;
