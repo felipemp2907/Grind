@@ -29,6 +29,7 @@ import { useGoalStore } from '@/store/goalStore';
 import { useTaskStore } from '@/store/taskStore';
 import { useUserStore } from '@/store/userStore';
 import { AnimatedTabScreen } from '@/components/TabTransitionProvider';
+import Screen from '@/components/Screen';
 import { getTodayDate, formatDateForDisplay } from '@/utils/dateUtils';
 import TaskCard from '@/components/TaskCard';
 import ProfileHeader from '@/components/ProfileHeader';
@@ -244,8 +245,9 @@ export default function DashboardScreen() {
   };
   
   return (
-    <AnimatedTabScreen tabPath="/">
-      <View style={styles.container}>
+    <Screen>
+      <AnimatedTabScreen tabPath="/">
+        <View style={styles.container}>
         <View style={styles.header}>
         <View>
           <Text style={styles.date}>{formatDateForDisplay(todayDate)}</Text>
@@ -516,8 +518,9 @@ export default function DashboardScreen() {
           goalTitle={goals.find(g => g.id === selectedGoalForClarify)?.title || ''}
         />
       )}
-      </View>
-    </AnimatedTabScreen>
+        </View>
+      </AnimatedTabScreen>
+    </Screen>
   );
 }
 
@@ -543,7 +546,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: 16,
-    paddingBottom: 100,
+    paddingBottom: 16,
   },
   date: {
     fontSize: 14,

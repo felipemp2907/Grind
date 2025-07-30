@@ -8,7 +8,7 @@ import {
   Switch,
   Alert
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import Screen from '@/components/Screen';
 import { 
   User, 
   Bell, 
@@ -178,7 +178,7 @@ export default function SettingsScreen() {
   };
   
   return (
-    <SafeAreaView style={styles.container} edges={['bottom']}>
+    <Screen>
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
         <View style={styles.header}>
           <SettingsIcon size={24} color={Colors.dark.primary} />
@@ -422,7 +422,7 @@ export default function SettingsScreen() {
           </Text>
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </Screen>
   );
 }
 
@@ -436,7 +436,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: 16,
-    paddingBottom: 32,
+    paddingBottom: 16,
   },
   header: {
     flexDirection: 'row',

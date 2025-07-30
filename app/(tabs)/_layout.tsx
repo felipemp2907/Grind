@@ -20,7 +20,6 @@ const TabLayout = memo(function TabLayout() {
 
   return (
     <Tabs
-      sceneContainerStyle={{ backgroundColor: Colors.dark.background }}
       screenOptions={{
         tabBarActiveTintColor: Colors.dark.primary,
         tabBarInactiveTintColor: Colors.dark.inactive,
