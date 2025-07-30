@@ -47,7 +47,7 @@ export const TabTransitionProvider: React.FC<TabTransitionProviderProps> = ({ ch
       // Reset transition state after animation completes
       const timer = setTimeout(() => {
         setIsTransitioning(false);
-      }, 200);
+      }, 300);
       
       return () => clearTimeout(timer);
     }
@@ -85,27 +85,27 @@ export const AnimatedTabScreen: React.FC<AnimatedTabScreenProps> = ({ children, 
 
     if (isTransitioning) {
       if (isCurrentTab) {
-        // Animate in from right with smoother transition
+        // Animate in from right
         const currentIndex = TAB_ORDER.indexOf(currentTab);
         const previousIndex = TAB_ORDER.indexOf(previousTab);
         const fromRight = currentIndex > previousIndex;
         
-        // Start from off-screen but keep opacity at 1 to prevent blank screen
         translateX.value = fromRight ? 100 : -100;
-        opacity.value = 1; // Keep opacity at 1 to prevent blank screen
+        opacity.value = 0;
         
-        translateX.value = withTiming(0, { duration: 250 }); // Slightly faster
+        translateX.value = withTiming(0, { duration: 300 });
+        opacity.value = withTiming(1, { duration: 300 });
       } else if (wasPreviousTab) {
         // Animate out to left
         const currentIndex = TAB_ORDER.indexOf(currentTab);
         const previousIndex = TAB_ORDER.indexOf(previousTab);
         const toLeft = currentIndex > previousIndex;
         
-        translateX.value = withTiming(toLeft ? -100 : 100, { duration: 250 });
-        opacity.value = withTiming(0.3, { duration: 250 }); // Don't fully hide
+        translateX.value = withTiming(toLeft ? -100 : 100, { duration: 300 });
+        opacity.value = withTiming(0, { duration: 300 });
       }
-    } else {
-      // Always ensure current tab is fully visible and positioned correctly
+    } else if (isCurrentTab) {
+      // Ensure current tab is visible
       translateX.value = 0;
       opacity.value = 1;
     }
@@ -114,17 +114,6 @@ export const AnimatedTabScreen: React.FC<AnimatedTabScreenProps> = ({ children, 
   const animatedStyle = useAnimatedStyle(() => {
     if (Platform.OS === 'web') {
       return {};
-    }
-
-    const normalizedPath = tabPath === '/index' ? '/' : tabPath;
-    const isCurrentTab = normalizedPath === currentTab;
-    
-    // Always show current tab without animation issues
-    if (isCurrentTab && !isTransitioning) {
-      return {
-        transform: [{ translateX: 0 }],
-        opacity: 1,
-      };
     }
 
     return {
