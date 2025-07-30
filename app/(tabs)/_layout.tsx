@@ -40,8 +40,6 @@ const TabLayout = memo(function TabLayout() {
         },
         headerShadowVisible: false,
         animation: Platform.OS !== 'web' ? 'shift' : 'none',
-        unmountOnBlur: false,
-        lazy: false,
       }}
     >
       <Tabs.Screen

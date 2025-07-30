@@ -40,7 +40,7 @@ import FocusModePrompt from '@/components/FocusModePrompt';
 import FocusShortcut from '@/components/FocusShortcut';
 import GoalClarifyWizard from '@/components/GoalClarifyWizard';
 import { generateMotivationMessage } from '@/utils/aiUtils';
-import Screen from '@/components/Screen';
+
 
 export default function DashboardScreen() {
   const router = useRouter();
@@ -245,7 +245,7 @@ export default function DashboardScreen() {
   
   return (
     <AnimatedTabScreen tabPath="/">
-      <Screen>
+      <View style={styles.container}>
         <View style={styles.header}>
         <View>
           <Text style={styles.date}>{formatDateForDisplay(todayDate)}</Text>
@@ -259,6 +259,7 @@ export default function DashboardScreen() {
       <ScrollView 
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl 
             refreshing={refreshing || isGenerating} 
@@ -515,7 +516,7 @@ export default function DashboardScreen() {
           goalTitle={goals.find(g => g.id === selectedGoalForClarify)?.title || ''}
         />
       )}
-      </Screen>
+      </View>
     </AnimatedTabScreen>
   );
 }
@@ -542,7 +543,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: 16,
-    paddingBottom: 16,
+    paddingBottom: 100,
   },
   date: {
     fontSize: 14,

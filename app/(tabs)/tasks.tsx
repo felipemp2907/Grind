@@ -33,7 +33,7 @@ import {
 import TaskCard from '@/components/TaskCard';
 import Button from '@/components/Button';
 import CreateTaskModal from '@/components/CreateTaskModal';
-import Screen from '@/components/Screen';
+
 
 export default function TasksScreen() {
   const router = useRouter();
@@ -136,7 +136,7 @@ export default function TasksScreen() {
   );
   
   return (
-    <Screen>
+    <View style={styles.container}>
       <View style={styles.dateSelector}>
         <TouchableOpacity 
           style={styles.dateButton}
@@ -342,7 +342,7 @@ export default function TasksScreen() {
         date={selectedDate}
         goalId={filterByGoal || undefined}
       />
-    </Screen>
+    </View>
   );
 }
 
