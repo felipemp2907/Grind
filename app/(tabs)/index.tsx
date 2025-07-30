@@ -28,7 +28,7 @@ import Colors from '@/constants/colors';
 import { useGoalStore } from '@/store/goalStore';
 import { useTaskStore } from '@/store/taskStore';
 import { useUserStore } from '@/store/userStore';
-import { AnimatedTabScreen } from '@/components/TabTransitionProvider';
+
 
 import { getTodayDate, formatDateForDisplay } from '@/utils/dateUtils';
 import TaskCard from '@/components/TaskCard';
@@ -245,7 +245,6 @@ export default function DashboardScreen() {
   };
   
   return (
-    <AnimatedTabScreen tabPath="/">
       <View style={styles.container}>
         <View style={styles.header}>
           <View>
@@ -518,7 +517,6 @@ export default function DashboardScreen() {
         />
       )}
       </View>
-    </AnimatedTabScreen>
   );
 }
 

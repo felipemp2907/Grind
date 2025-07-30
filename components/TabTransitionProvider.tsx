@@ -91,10 +91,10 @@ export const AnimatedTabScreen: React.FC<AnimatedTabScreenProps> = ({ children, 
         const fromRight = currentIndex > previousIndex;
         
         translateX.value = fromRight ? 100 : -100;
-        opacity.value = 0;
+        // Keep opacity at 1 to prevent blank screen
+        opacity.value = 1;
         
         translateX.value = withTiming(0, { duration: 300 });
-        opacity.value = withTiming(1, { duration: 300 });
       } else if (wasPreviousTab) {
         // Animate out to left
         const currentIndex = TAB_ORDER.indexOf(currentTab);
@@ -102,12 +102,21 @@ export const AnimatedTabScreen: React.FC<AnimatedTabScreenProps> = ({ children, 
         const toLeft = currentIndex > previousIndex;
         
         translateX.value = withTiming(toLeft ? -100 : 100, { duration: 300 });
-        opacity.value = withTiming(0, { duration: 300 });
+        // Keep opacity at 1 during transition to prevent blank screen
+        opacity.value = 1;
       }
-    } else if (isCurrentTab) {
-      // Ensure current tab is visible
-      translateX.value = 0;
-      opacity.value = 1;
+    } else {
+      // Always ensure tabs are visible and positioned correctly
+      const normalizedPath = tabPath === '/index' ? '/' : tabPath;
+      const isCurrentTab = normalizedPath === currentTab;
+      
+      if (isCurrentTab) {
+        translateX.value = 0;
+        opacity.value = 1;
+      } else {
+        // Hide non-current tabs by moving them off-screen
+        opacity.value = 0;
+      }
     }
   }, [isTransitioning, currentTab, previousTab, tabPath, translateX, opacity]);
 
