@@ -38,7 +38,7 @@ const TabLayout = memo(function TabLayout() {
           fontWeight: 'bold',
         },
         headerShadowVisible: false,
-        animation: Platform.OS !== 'web' ? 'slide_from_right' : 'none',
+        animation: Platform.OS !== 'web' ? 'shift' : 'none',
       }}
     >
       <Tabs.Screen
