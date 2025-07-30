@@ -1,5 +1,6 @@
 import React, { memo } from 'react';
 import { Tabs } from 'expo-router';
+import { LayoutAnimation, Platform } from 'react-native';
 import { 
   Home, 
   BookOpen, 
@@ -11,6 +12,10 @@ import {
 import Colors from '@/constants/colors';
 
 const TabLayout = memo(function TabLayout() {
+  // Enable layout animations for smooth transitions
+  if (Platform.OS !== 'web') {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+  }
 
   return (
     <Tabs
