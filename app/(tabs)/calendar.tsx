@@ -24,7 +24,6 @@ import { useTaskStore } from '@/store/taskStore';
 import { formatDate, getTodayDate } from '@/utils/dateUtils';
 import { Task } from '@/types';
 import CreateTaskModal from '@/components/CreateTaskModal';
-import TabScreenAnimator from '@/components/TabScreenAnimator';
 
 // Helper function to get days in a month
 const getDaysInMonth = (year: number, month: number) => {
@@ -55,7 +54,7 @@ interface GoalDeadline {
   year: number;
 }
 
-function CalendarScreen() {
+export default function CalendarScreen() {
   const router = useRouter();
   const { goals } = useGoalStore();
   const { tasks, generateTasksForGoal, isGenerating } = useTaskStore();
@@ -290,8 +289,7 @@ function CalendarScreen() {
   }
   
   return (
-    <TabScreenAnimator>
-      <SafeAreaView style={styles.container} edges={['bottom']}>
+    <SafeAreaView style={styles.container} edges={['bottom']}>
       <View style={styles.calendarContainer}>
         <View style={styles.header}>
           <TouchableOpacity 
@@ -411,12 +409,9 @@ function CalendarScreen() {
         onClose={() => setShowCreateTaskModal(false)}
         date={selectedDate}
       />
-      </SafeAreaView>
-    </TabScreenAnimator>
+    </SafeAreaView>
   );
 }
-
-export default CalendarScreen;
 
 const styles = StyleSheet.create({
   container: {

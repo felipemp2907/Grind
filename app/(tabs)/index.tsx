@@ -39,9 +39,8 @@ import FocusModePrompt from '@/components/FocusModePrompt';
 import FocusShortcut from '@/components/FocusShortcut';
 import GoalClarifyWizard from '@/components/GoalClarifyWizard';
 import { generateMotivationMessage } from '@/utils/aiUtils';
-import TabScreenAnimator from '@/components/TabScreenAnimator';
 
-function DashboardScreen() {
+export default function DashboardScreen() {
   const router = useRouter();
   const { goals, activeGoalId, setActiveGoal } = useGoalStore();
   const { 
@@ -243,8 +242,7 @@ function DashboardScreen() {
   };
   
   return (
-    <TabScreenAnimator>
-      <SafeAreaView style={styles.container} edges={['bottom']}>
+    <SafeAreaView style={styles.container} edges={['bottom']}>
       <View style={styles.header}>
         <View>
           <Text style={styles.date}>{formatDateForDisplay(todayDate)}</Text>
@@ -514,12 +512,9 @@ function DashboardScreen() {
           goalTitle={goals.find(g => g.id === selectedGoalForClarify)?.title || ''}
         />
       )}
-      </SafeAreaView>
-    </TabScreenAnimator>
+    </SafeAreaView>
   );
 }
-
-export default DashboardScreen;
 
 const styles = StyleSheet.create({
   container: {

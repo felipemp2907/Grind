@@ -20,9 +20,8 @@ import { useJournalStore } from '@/store/journalStore';
 import JournalCard from '@/components/JournalCard';
 import * as ImagePicker from 'expo-image-picker';
 import { getTodayDate } from '@/utils/dateUtils';
-import TabScreenAnimator from '@/components/TabScreenAnimator';
 
-function JournalScreen() {
+export default function JournalScreen() {
   const router = useRouter();
   const { entries, addEntry } = useJournalStore();
   
@@ -108,8 +107,7 @@ function JournalScreen() {
   );
   
   return (
-    <TabScreenAnimator>
-      <SafeAreaView style={styles.container} edges={['bottom']}>
+    <SafeAreaView style={styles.container} edges={['bottom']}>
       <View style={styles.header}>
         {isSearching ? (
           <View style={styles.searchContainer}>
@@ -165,12 +163,9 @@ function JournalScreen() {
           <Plus size={24} color="#000000" />
         </TouchableOpacity>
       </View>
-      </SafeAreaView>
-    </TabScreenAnimator>
+    </SafeAreaView>
   );
 }
-
-export default JournalScreen;
 
 const styles = StyleSheet.create({
   container: {
