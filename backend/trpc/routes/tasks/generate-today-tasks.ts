@@ -9,6 +9,9 @@ const generateTodayTasksSchema = z.object({
   goalId: z.string().optional() // If provided, generate only for this goal
 });
 
+type GenerateTodayTasksInput = z.infer<typeof generateTodayTasksSchema>;
+type GenerateTodayTasksContext = { user: { id: string } };
+
 interface AIGeneratedTask {
   title: string;
   description: string;
@@ -18,7 +21,7 @@ interface AIGeneratedTask {
 
 export const generateTodayTasksProcedure = protectedProcedure
   .input(generateTodayTasksSchema)
-  .mutation(async ({ input, ctx }: { input: z.infer<typeof generateTodayTasksSchema>, ctx: any }) => {
+  .mutation(async ({ input, ctx }: { input: GenerateTodayTasksInput, ctx: GenerateTodayTasksContext }) => {
     const { user } = ctx;
     const { targetDate, goalId } = input;
     
@@ -162,41 +165,51 @@ export const generateTodayTasksProcedure = protectedProcedure
             ]);
           }
           
-          // Parse AI response
+          // Parse AI response with improved error handling
           let aiTasks: AIGeneratedTask[] = [];
           try {
-            // More robust JSON cleaning
+            // More robust JSON cleaning and parsing
             let cleanedResponse = aiResponse.trim();
             
-            // Remove any HTML tags if present
-            cleanedResponse = cleanedResponse.replace(/<[^>]*>/g, '');
+            // Remove any HTML tags, markdown, or extra formatting
+            cleanedResponse = cleanedResponse
+              .replace(/<[^>]*>/g, '') // Remove HTML tags
+              .replace(/```json\s*/g, '') // Remove markdown code block start
+              .replace(/```\s*$/g, '') // Remove markdown code block end
+              .replace(/```/g, '') // Remove any remaining backticks
+              .replace(/^[^\[]*/, '') // Remove any text before the first [
+              .replace(/[^\]]*$/, ']'); // Ensure it ends with ]
             
-            // Remove markdown code blocks
-            cleanedResponse = cleanedResponse.replace(/```json\s*/g, '').replace(/```\s*$/g, '').replace(/```/g, '');
-            
-            // Find JSON array in the response
-            let jsonToParse = cleanedResponse;
-            if (!cleanedResponse.startsWith('[')) {
-              const arrayMatch = cleanedResponse.match(/\[[\s\S]*?\]/g);
-              if (arrayMatch && arrayMatch.length > 0) {
-                jsonToParse = arrayMatch[arrayMatch.length - 1]; // Take the last/most complete array
-              } else {
-                throw new Error('No JSON array found in response');
-              }
+            // Find and extract JSON array
+            const arrayMatch = cleanedResponse.match(/\[[\s\S]*\]/);
+            if (!arrayMatch) {
+              throw new Error('No valid JSON array found in response');
             }
             
-            console.log('Cleaned JSON to parse:', jsonToParse.substring(0, 200));
-            aiTasks = JSON.parse(jsonToParse);
+            const jsonToParse = arrayMatch[0];
+            console.log('Attempting to parse JSON:', jsonToParse.substring(0, 200) + '...');
             
-            // Validate the parsed tasks
-            if (!Array.isArray(aiTasks)) {
+            const parsed = JSON.parse(jsonToParse);
+            
+            // Validate and normalize the parsed tasks
+            if (!Array.isArray(parsed)) {
               throw new Error('Parsed result is not an array');
             }
+            
+            aiTasks = parsed.map((task: any) => ({
+              title: String(task.title || 'Untitled Task'),
+              description: String(task.description || 'No description'),
+              isHabit: Boolean(task.isHabit || false),
+              xpValue: Number(task.xpValue || task.xp_value || 30)
+            }));
+            
+            console.log(`Successfully parsed ${aiTasks.length} AI tasks`);
+            
           } catch (parseError) {
             console.error('Error parsing AI response:', parseError);
-            console.error('Raw response that failed to parse:', aiResponse);
+            console.error('Raw response that failed to parse:', aiResponse.substring(0, 500));
             
-            // Use fallback tasks
+            // Use fallback tasks with better error recovery
             aiTasks = [
               {
                 title: `Work on ${goal.title} - ${new Date(targetDate).toLocaleDateString('en-US', {month: 'short', day: 'numeric'})}`,
@@ -217,6 +230,8 @@ export const generateTodayTasksProcedure = protectedProcedure
                 xpValue: 25
               }
             ];
+            
+            console.log('Using fallback tasks due to parsing error');
           }
           
           // Filter only today tasks (not habits) and limit to what we need

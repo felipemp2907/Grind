@@ -15,9 +15,12 @@ const createUltimateGoalSchema = z.object({
   coverImage: z.string().optional()
 });
 
+type CreateUltimateGoalInput = z.infer<typeof createUltimateGoalSchema>;
+type CreateUltimateGoalContext = { user: { id: string } };
+
 export const createUltimateGoalProcedure = protectedProcedure
   .input(createUltimateGoalSchema)
-  .mutation(async ({ input, ctx }: { input: z.infer<typeof createUltimateGoalSchema>, ctx: any }) => {
+  .mutation(async ({ input, ctx }: { input: CreateUltimateGoalInput, ctx: CreateUltimateGoalContext }) => {
     const { user } = ctx;
     
     try {
