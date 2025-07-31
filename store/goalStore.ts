@@ -4,6 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Goal, Milestone, ProgressUpdate, MilestoneAlert, GoalShareCard } from '@/types';
 import { supabase, setupDatabase, serializeError, getCurrentUser, ensureUserProfile } from '@/lib/supabase';
 import { useAuthStore } from './authStore';
+import { trpcClient } from '@/lib/trpc';
 
 interface GoalState {
   goals: Goal[];
@@ -13,6 +14,17 @@ interface GoalState {
   
   // Goal management
   addGoal: (goal: Goal) => Promise<void>;
+  createUltimateGoal: (goalData: {
+    title: string;
+    description: string;
+    deadline: string;
+    category?: string;
+    targetValue?: number;
+    unit?: string;
+    priority?: 'high' | 'medium' | 'low';
+    color?: string;
+    coverImage?: string;
+  }) => Promise<void>;
   updateGoal: (id: string, updates: Partial<Goal>) => Promise<void>;
   deleteGoal: (id: string) => Promise<void>;
   setActiveGoal: (id: string) => void;

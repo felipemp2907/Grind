@@ -32,3 +32,7 @@ export const protectedProcedure = t.procedure.use(async ({ ctx, next }) => {
     }
   });
 });
+
+export type ProtectedContext = {
+  user: { id: string };
+} & Context;

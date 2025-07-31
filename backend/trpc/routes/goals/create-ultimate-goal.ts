@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { protectedProcedure } from '../../create-context';
+import { protectedProcedure, type ProtectedContext } from '../../create-context';
 import { supabase } from '../../../../lib/supabase';
 import { buildStreakTemplate, calculateDaysToDeadline } from '../../../../utils/streakUtils';
 
@@ -19,7 +19,7 @@ type CreateUltimateGoalInput = z.infer<typeof createUltimateGoalSchema>;
 
 export const createUltimateGoalProcedure = protectedProcedure
   .input(createUltimateGoalSchema)
-  .mutation(async ({ input, ctx }: { input: CreateUltimateGoalInput; ctx: any }) => {
+  .mutation(async ({ input, ctx }: { input: CreateUltimateGoalInput; ctx: ProtectedContext }) => {
     const user = ctx.user;
     
     try {

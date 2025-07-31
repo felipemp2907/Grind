@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { protectedProcedure } from '../../create-context';
+import { protectedProcedure, type ProtectedContext } from '../../create-context';
 import { supabase } from '../../../../lib/supabase';
 import { getActiveGoalsForDate } from '../../../../utils/streakUtils';
 import { generateDailyTasksForGoal } from '../../../../utils/aiUtils';
@@ -20,7 +20,7 @@ interface AIGeneratedTask {
 
 export const generateTodayTasksProcedure = protectedProcedure
   .input(generateTodayTasksSchema)
-  .mutation(async ({ input, ctx }: { input: GenerateTodayTasksInput; ctx: any }) => {
+  .mutation(async ({ input, ctx }: { input: GenerateTodayTasksInput; ctx: ProtectedContext }) => {
     const user = ctx.user;
     const { targetDate, goalId } = input;
     
@@ -61,7 +61,7 @@ export const generateTodayTasksProcedure = protectedProcedure
         streakCount: 0,
         todayTasksIds: [],
         streakTaskIds: [],
-        status: (g.status === 'paused' ? 'active' : g.status as 'active' | 'completed' | 'abandoned') || 'active',
+        status: (g.status === 'paused' ? 'active' : g.status) as 'active' | 'completed' | 'abandoned',
         coverImage: undefined,
         color: undefined,
         priority: 'medium' as const

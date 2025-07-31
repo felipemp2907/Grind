@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { randomUUID } from 'expo-crypto';
+// Remove randomUUID import as we'll let Supabase generate UUIDs
 import { Task } from '@/types';
 import { generateDailyTasksForGoal, generateDailyAgenda } from '@/utils/aiUtils';
 import { useGoalStore } from '@/store/goalStore';
@@ -120,7 +120,9 @@ export const useTaskStore = create<TaskState>()(
             title: task.title,
             description: task.description,
             completed: task.completed,
-            due_date: task.date ? new Date(task.date).toISOString() : null,
+            due_date: task.date && !task.isHabit ? new Date(task.date).toISOString() : null,
+            task_date: task.isHabit && task.date ? task.date : null, // For streak tasks
+            type: task.isHabit ? 'streak' : 'today',
             priority: task.priority || 'medium',
             xp_value: task.xpValue || 30,
             is_habit: task.isHabit || false,
@@ -714,7 +716,8 @@ export const useTaskStore = create<TaskState>()(
                 id: task.id,
                 title: task.title,
                 description: task.description || '',
-                date: task.due_date ? task.due_date.split('T')[0] : new Date().toISOString().split('T')[0],
+                // For streak tasks, use task_date; for today tasks, use due_date
+                date: task.task_date || (task.due_date ? task.due_date.split('T')[0] : new Date().toISOString().split('T')[0]),
                 goalId: task.goal_id || '',
                 completed: task.completed || false,
                 xpValue: task.xp_value || 30,
@@ -723,7 +726,9 @@ export const useTaskStore = create<TaskState>()(
                 isUserCreated: true,
                 requiresValidation: true,
                 priority: task.priority as 'high' | 'medium' | 'low' || 'medium',
-                completedAt: task.completed_at || undefined
+                completedAt: task.completed_at || undefined,
+                type: task.type as 'today' | 'streak' || (task.is_habit ? 'streak' : 'today'),
+                taskDate: task.task_date || undefined
               }));
               
               set({ tasks });
