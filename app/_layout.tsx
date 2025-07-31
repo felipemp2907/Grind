@@ -316,14 +316,7 @@ function RootLayoutNav() {
               headerBackTitle: "Back",
             }} 
           />
-          <Stack.Screen 
-            name="focus-mode" 
-            options={{ 
-              title: "Focus Mode",
-              presentation: "modal",
-              headerBackTitle: "Back",
-            }} 
-          />
+
           <Stack.Screen 
             name="goals/create" 
             options={{ 

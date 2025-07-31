@@ -20,8 +20,6 @@ import {
   Flame,
   BookOpen,
   Calendar,
-  Focus,
-
   Zap
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
@@ -37,8 +35,7 @@ import Button from '@/components/Button';
 import GoalCard from '@/components/GoalCard';
 import AgendaCard from '@/components/AgendaCard';
 import MotivationToast from '@/components/MotivationToast';
-import FocusModePrompt from '@/components/FocusModePrompt';
-import FocusShortcut from '@/components/FocusShortcut';
+
 import GoalClarifyWizard from '@/components/GoalClarifyWizard';
 import { generateMotivationMessage } from '@/utils/aiUtils';
 
@@ -61,16 +58,13 @@ export default function DashboardScreen() {
     profile, 
     coachSettings, 
     incrementMissedTasks,
-    recordBlurEvent,
-    startFocusSession,
     updateCoachSettings
   } = useUserStore();
   
   const [refreshing, setRefreshing] = useState(false);
   const [motivationVisible, setMotivationVisible] = useState(false);
   const [motivationMessage, setMotivationMessage] = useState('');
-  const [focusPromptVisible, setFocusPromptVisible] = useState(false);
-  const [lastBlurCheck, setLastBlurCheck] = useState(Date.now());
+
   const [goalClarifyVisible, setGoalClarifyVisible] = useState(false);
   const [selectedGoalForClarify, setSelectedGoalForClarify] = useState<string | null>(null);
   
@@ -93,36 +87,7 @@ export default function DashboardScreen() {
   // Get today's agenda
   const todayAgenda = getAgenda(todayDate);
   
-  // Focus mode detection (web only)
-  useEffect(() => {
-    if (Platform.OS === 'web' && coachSettings.focusModeEnabled) {
-      const handleBlur = () => {
-        recordBlurEvent();
-        
-        // Check if we should show focus prompt
-        const now = Date.now();
-        const timeSinceLastCheck = now - lastBlurCheck;
-        
-        // If more than 5 blur events in 10 minutes, suggest focus mode
-        if (timeSinceLastCheck > 10 * 60 * 1000) { // Reset every 10 minutes
-          setLastBlurCheck(now);
-          
-          if (coachSettings.focusStats.blurEvents >= 5 && !coachSettings.focusStats.focusPromptSent) {
-            setFocusPromptVisible(true);
-            updateCoachSettings({
-              focusStats: {
-                ...coachSettings.focusStats,
-                focusPromptSent: true
-              }
-            });
-          }
-        }
-      };
-      
-      window.addEventListener('blur', handleBlur);
-      return () => window.removeEventListener('blur', handleBlur);
-    }
-  }, [coachSettings.focusModeEnabled, coachSettings.focusStats, lastBlurCheck]);
+
   
   // Generate daily agenda at 7 AM (simulated for demo)
   useEffect(() => {
@@ -226,10 +191,7 @@ export default function DashboardScreen() {
     }
   };
   
-  const handleStartFocus = () => {
-    startFocusSession();
-    setFocusPromptVisible(false);
-  };
+
   
   const handleGoalClarify = (goalId: string) => {
     setSelectedGoalForClarify(goalId);
@@ -268,8 +230,7 @@ export default function DashboardScreen() {
           />
         }
       >
-        {/* Focus Mode Shortcut */}
-        <FocusShortcut />
+
         
         {/* Daily Agenda Card */}
         {todayAgenda && (
@@ -464,27 +425,7 @@ export default function DashboardScreen() {
           />
         </View>
         
-        {Platform.OS === 'web' && coachSettings.focusModeEnabled && (
-          <TouchableOpacity 
-            style={styles.focusCard}
-            onPress={() => setFocusPromptVisible(true)}
-            activeOpacity={0.8}
-          >
-            <View style={styles.focusContent}>
-              <Focus size={20} color={Colors.dark.warning} />
-              <View style={styles.focusTextContainer}>
-                <Text style={styles.focusTitle}>Focus Mode</Text>
-                <Text style={styles.focusDescription}>
-                  {coachSettings.focusStats.blurEvents > 0 
-                    ? `${coachSettings.focusStats.blurEvents} distractions detected`
-                    : 'Start a focused work session'
-                  }
-                </Text>
-              </View>
-            </View>
-            <ChevronRight size={16} color={Colors.dark.subtext} />
-          </TouchableOpacity>
-        )}
+
       </ScrollView>
       
       {/* Motivation Toast */}
@@ -496,13 +437,7 @@ export default function DashboardScreen() {
         escalationLevel={Math.floor((coachSettings.missedTaskCount + coachSettings.missedStreakCount) / 2)}
       />
       
-      {/* Focus Mode Prompt */}
-      <FocusModePrompt
-        visible={focusPromptVisible}
-        onDismiss={() => setFocusPromptVisible(false)}
-        onStartFocus={handleStartFocus}
-        blurCount={coachSettings.focusStats.blurEvents}
-      />
+
       
       {/* Goal Clarification Wizard */}
       {selectedGoalForClarify && (
@@ -706,36 +641,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: Colors.dark.subtext,
   },
-  focusCard: {
-    backgroundColor: Colors.dark.card,
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    borderLeftWidth: 3,
-    borderLeftColor: Colors.dark.warning,
-  },
-  focusContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  focusTextContainer: {
-    marginLeft: 8,
-    flex: 1,
-  },
-  focusTitle: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: Colors.dark.text,
-    marginBottom: 2,
-  },
-  focusDescription: {
-    fontSize: 12,
-    color: Colors.dark.subtext,
-  },
+
   quickActions: {
     flexDirection: 'row',
     justifyContent: 'space-between',

@@ -14,7 +14,7 @@ import {
   Bell, 
   Brain, 
   Clock, 
-  Focus,
+
   Heart,
   TrendingUp,
   Zap,
@@ -126,17 +126,12 @@ export default function SettingsScreen() {
                 preferredTone: 'tough-love',
                 agendaTime: '07:00',
                 recapTime: '22:00',
-                focusModeEnabled: true,
+
                 notificationsEnabled: true,
                 missedTaskCount: 0,
                 missedStreakCount: 0,
                 lastMotivationSent: null,
-                focusStats: {
-                  blurEvents: 0,
-                  lastBlurTime: null,
-                  focusPromptSent: false,
-                  focusSessionsToday: 0
-                }
+
               });
               
               // Reset auth state (but keep user logged in)
@@ -317,48 +312,7 @@ export default function SettingsScreen() {
           </View>
         </View>
         
-        {/* Focus Mode */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Focus size={20} color={Colors.dark.warning} />
-            <Text style={styles.sectionTitle}>Focus Mode</Text>
-          </View>
-          
-          <View style={styles.settingItem}>
-            <View style={styles.settingLeft}>
-              <Text style={styles.settingLabel}>Enable Focus Mode</Text>
-              <Text style={styles.settingDescription}>
-                Detect distractions and suggest focus sessions
-              </Text>
-            </View>
-            <Switch
-              value={localSettings.focusModeEnabled}
-              onValueChange={(value) => handleToggle('focusModeEnabled', value)}
-              trackColor={{ false: Colors.dark.inactive, true: Colors.dark.warning }}
-              thumbColor={Colors.dark.text}
-            />
-          </View>
-          
-          {localSettings.focusModeEnabled && (
-            <View style={styles.focusStats}>
-              <Text style={styles.focusStatsTitle}>Today's Focus Stats</Text>
-              <View style={styles.focusStatsGrid}>
-                <View style={styles.focusStatItem}>
-                  <Text style={styles.focusStatValue}>
-                    {localSettings.focusStats.blurEvents}
-                  </Text>
-                  <Text style={styles.focusStatLabel}>Distractions</Text>
-                </View>
-                <View style={styles.focusStatItem}>
-                  <Text style={styles.focusStatValue}>
-                    {localSettings.focusStats.focusSessionsToday}
-                  </Text>
-                  <Text style={styles.focusStatLabel}>Focus Sessions</Text>
-                </View>
-              </View>
-            </View>
-          )}
-        </View>
+
         
         {/* Motivation Tracking */}
         <View style={styles.section}>
@@ -564,35 +518,7 @@ const styles = StyleSheet.create({
     borderColor: Colors.dark.primary,
     backgroundColor: Colors.dark.primary,
   },
-  focusStats: {
-    marginTop: 12,
-    padding: 12,
-    backgroundColor: Colors.dark.background,
-    borderRadius: 8,
-  },
-  focusStatsTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: Colors.dark.text,
-    marginBottom: 8,
-  },
-  focusStatsGrid: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-  },
-  focusStatItem: {
-    alignItems: 'center',
-  },
-  focusStatValue: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: Colors.dark.warning,
-    marginBottom: 4,
-  },
-  focusStatLabel: {
-    fontSize: 12,
-    color: Colors.dark.subtext,
-  },
+
   motivationStats: {
     flexDirection: 'row',
     justifyContent: 'space-around',

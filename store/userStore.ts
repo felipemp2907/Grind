@@ -11,17 +11,10 @@ interface CoachSettings {
   preferredTone: MotivationTone;
   agendaTime: string; // "07:00" format
   recapTime: string; // "22:00" format
-  focusModeEnabled: boolean;
   notificationsEnabled: boolean;
   missedTaskCount: number;
   missedStreakCount: number;
   lastMotivationSent: string | null;
-  focusStats: {
-    blurEvents: number;
-    lastBlurTime: string | null;
-    focusPromptSent: boolean;
-    focusSessionsToday: number;
-  };
 }
 
 interface UserState {
@@ -39,9 +32,7 @@ interface UserState {
   incrementMissedTasks: () => void;
   incrementMissedStreaks: () => void;
   resetMissedCounts: () => void;
-  recordBlurEvent: () => void;
-  resetFocusStats: () => void;
-  startFocusSession: () => void;
+
   fetchProfile: () => Promise<void>;
   checkDatabaseSetup: () => Promise<void>;
 }
@@ -53,17 +44,10 @@ const defaultCoachSettings: CoachSettings = {
   preferredTone: 'tough-love',
   agendaTime: '07:00',
   recapTime: '22:00',
-  focusModeEnabled: true,
   notificationsEnabled: true,
   missedTaskCount: 0,
   missedStreakCount: 0,
-  lastMotivationSent: null,
-  focusStats: {
-    blurEvents: 0,
-    lastBlurTime: null,
-    focusPromptSent: false,
-    focusSessionsToday: 0,
-  }
+  lastMotivationSent: null
 };
 
 export const useUserStore = create<UserState>()(
@@ -453,47 +437,7 @@ export const useUserStore = create<UserState>()(
         }));
       },
       
-      recordBlurEvent: () => {
-        const now = new Date().toISOString();
-        set((state) => ({
-          coachSettings: {
-            ...state.coachSettings,
-            focusStats: {
-              ...state.coachSettings.focusStats,
-              blurEvents: state.coachSettings.focusStats.blurEvents + 1,
-              lastBlurTime: now
-            }
-          }
-        }));
-      },
-      
-      resetFocusStats: () => {
-        set((state) => ({
-          coachSettings: {
-            ...state.coachSettings,
-            focusStats: {
-              blurEvents: 0,
-              lastBlurTime: null,
-              focusPromptSent: false,
-              focusSessionsToday: state.coachSettings.focusStats.focusSessionsToday
-            }
-          }
-        }));
-      },
-      
-      startFocusSession: () => {
-        set((state) => ({
-          coachSettings: {
-            ...state.coachSettings,
-            focusStats: {
-              ...state.coachSettings.focusStats,
-              focusSessionsToday: state.coachSettings.focusStats.focusSessionsToday + 1,
-              focusPromptSent: false,
-              blurEvents: 0
-            }
-          }
-        }));
-      },
+
       
       checkDatabaseSetup: async () => {
         try {

@@ -68,11 +68,11 @@ export default function TasksScreen() {
   };
   
   useEffect(() => {
-    // Only generate tasks automatically for today, not future dates
+    // Only generate tasks automatically for today, not when switching dates
     if (selectedTasks.length === 0 && selectedDate === getTodayDate() && goals.length > 0) {
       generateDailyTasks(selectedDate);
     }
-  }, [selectedDate, goals.length]);
+  }, [goals.length]); // Removed selectedDate from dependencies to prevent auto-generation when switching dates
   
   const onRefresh = async () => {
     setRefreshing(true);
