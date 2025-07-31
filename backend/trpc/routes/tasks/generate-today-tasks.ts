@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { publicProcedure } from '../../create-context';
+import { protectedProcedure } from '../../create-context';
 import { supabase } from '../../../../lib/supabase';
 import { getActiveGoalsForDate } from '../../../../utils/streakUtils';
 import { generateDailyTasksForGoal } from '../../../../utils/aiUtils';
@@ -18,11 +18,10 @@ interface AIGeneratedTask {
   xpValue: number;
 }
 
-export const generateTodayTasksProcedure = publicProcedure
+export const generateTodayTasksProcedure = protectedProcedure
   .input(generateTodayTasksSchema)
-  .mutation(async ({ input }: { input: GenerateTodayTasksInput; ctx: any }) => {
-    // Mock user for now - in production, get from auth context
-    const user = { id: 'mock-user-id' };
+  .mutation(async ({ input, ctx }: { input: GenerateTodayTasksInput; ctx: any }) => {
+    const user = ctx.user;
     const { targetDate, goalId } = input;
     
     try {

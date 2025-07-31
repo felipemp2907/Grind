@@ -1,6 +1,7 @@
 /**
  * Test suite for streak preseed and deadline guard functionality
- * Tests the comprehensive implementation of fixed-duration streaks
+ * Tests the core requirement: streak tasks are generated once when ultimate goal is set,
+ * and appear on every single day until the deadline
  */
 
 const { describe, test, expect, beforeEach, afterEach } = require('@jest/globals');

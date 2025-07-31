@@ -534,7 +534,7 @@ const styles = StyleSheet.create({
     color: Colors.dark.subtext,
   },
   editGoalButton: {
-    backgroundColor: Colors.dark.primary,
+    backgroundColor: Colors.dark.text,
     borderRadius: 6,
     paddingHorizontal: 12,
     paddingVertical: 6,

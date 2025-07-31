@@ -71,8 +71,8 @@ const TabLayout = memo(function TabLayout() {
               disabled: disabled || false,
               onBlur: onBlur || undefined,
               onFocus: onFocus || undefined,
-              onLongPress: onLongPress || undefined,
-              onPressIn: onPressIn || undefined,
+              onLongPress: onLongPress ?? undefined,
+              onPressIn: onPressIn ?? undefined,
               onPressOut: onPressOut || undefined,
               onPress: (e) => {
                 handleTabPress();
@@ -107,8 +107,8 @@ const TabLayout = memo(function TabLayout() {
               disabled: disabled || false,
               onBlur: onBlur || undefined,
               onFocus: onFocus || undefined,
-              onLongPress: onLongPress || undefined,
-              onPressIn: onPressIn || undefined,
+              onLongPress: onLongPress ?? undefined,
+              onPressIn: onPressIn ?? undefined,
               onPressOut: onPressOut || undefined,
               onPress: (e) => {
                 handleTabPress();
@@ -143,8 +143,8 @@ const TabLayout = memo(function TabLayout() {
               disabled: disabled || false,
               onBlur: onBlur || undefined,
               onFocus: onFocus || undefined,
-              onLongPress: onLongPress || undefined,
-              onPressIn: onPressIn || undefined,
+              onLongPress: onLongPress ?? undefined,
+              onPressIn: onPressIn ?? undefined,
               onPressOut: onPressOut || undefined,
               onPress: (e) => {
                 handleTabPress();
@@ -179,8 +179,8 @@ const TabLayout = memo(function TabLayout() {
               disabled: disabled || false,
               onBlur: onBlur || undefined,
               onFocus: onFocus || undefined,
-              onLongPress: onLongPress || undefined,
-              onPressIn: onPressIn || undefined,
+              onLongPress: onLongPress ?? undefined,
+              onPressIn: onPressIn ?? undefined,
               onPressOut: onPressOut || undefined,
               onPress: (e) => {
                 handleTabPress();
@@ -215,8 +215,8 @@ const TabLayout = memo(function TabLayout() {
               disabled: disabled || false,
               onBlur: onBlur || undefined,
               onFocus: onFocus || undefined,
-              onLongPress: onLongPress || undefined,
-              onPressIn: onPressIn || undefined,
+              onLongPress: onLongPress ?? undefined,
+              onPressIn: onPressIn ?? undefined,
               onPressOut: onPressOut || undefined,
               onPress: (e) => {
                 handleTabPress();
@@ -251,8 +251,8 @@ const TabLayout = memo(function TabLayout() {
               disabled: disabled || false,
               onBlur: onBlur || undefined,
               onFocus: onFocus || undefined,
-              onLongPress: onLongPress || undefined,
-              onPressIn: onPressIn || undefined,
+              onLongPress: onLongPress ?? undefined,
+              onPressIn: onPressIn ?? undefined,
               onPressOut: onPressOut || undefined,
               onPress: (e) => {
                 handleTabPress();
