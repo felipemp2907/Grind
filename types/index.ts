@@ -160,15 +160,7 @@ export interface ChallengeProgress {
   notes?: string;
 }
 
-export interface FocusSession {
-  id: string;
-  startTime: string;
-  endTime?: string;
-  duration: number; // in minutes
-  completed: boolean;
-  distractionsDetected: number;
-  xpEarned: number;
-}
+
 
 export interface ValidationResult {
   isValid: boolean;
