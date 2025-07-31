@@ -127,15 +127,40 @@ export const generateTodayTasksProcedure = protectedProcedure
           const previousTaskTitles = (previousTasks || []).map(t => t.title);
           
           // Call AI to generate tasks
-          const aiResponse = await generateDailyTasksForGoal(
-            goal.title,
-            goal.description,
-            goal.deadline,
-            previousTaskTitles,
-            targetDate
-          );
-          
-          console.log('Raw AI response:', aiResponse.substring(0, 200));
+          let aiResponse: string;
+          try {
+            aiResponse = await generateDailyTasksForGoal(
+              goal.title,
+              goal.description,
+              goal.deadline,
+              previousTaskTitles,
+              targetDate
+            );
+            console.log('Raw AI response:', aiResponse.substring(0, 200));
+          } catch (aiError) {
+            console.error('Error calling AI:', aiError);
+            // Use fallback response
+            aiResponse = JSON.stringify([
+              {
+                title: `Work on ${goal.title} - ${new Date(targetDate).toLocaleDateString('en-US', {month: 'short', day: 'numeric'})}`,
+                description: `Make progress on your goal: ${goal.description.substring(0, 50)}...`,
+                isHabit: false,
+                xpValue: 50
+              },
+              {
+                title: `Research for ${goal.title}`,
+                description: 'Gather information and resources to help you progress',
+                isHabit: false,
+                xpValue: 30
+              },
+              {
+                title: `Plan next steps for ${goal.title}`,
+                description: 'Create a detailed action plan',
+                isHabit: false,
+                xpValue: 25
+              }
+            ]);
+          }
           
           // Parse AI response
           let aiTasks: AIGeneratedTask[] = [];

@@ -78,12 +78,28 @@ export const createUltimateGoalProcedure = protectedProcedure
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       
+      // First, check if streak tasks already exist for this goal to avoid duplicates
+      const { data: existingStreakTasks } = await supabase
+        .from('tasks')
+        .select('task_date')
+        .eq('user_id', user.id)
+        .eq('goal_id', goalData.id)
+        .eq('type', 'streak');
+        
+      const existingDates = new Set((existingStreakTasks || []).map(t => t.task_date));
+      
       const streakTasks = [];
       
       for (let dayOffset = 0; dayOffset < daysToDeadline; dayOffset++) {
         const currentDate = new Date(today);
         currentDate.setDate(today.getDate() + dayOffset);
         const dateString = currentDate.toISOString().split('T')[0];
+        
+        // Skip if tasks already exist for this date
+        if (existingDates.has(dateString)) {
+          console.log(`Skipping ${dateString} - streak tasks already exist`);
+          continue;
+        }
         
         for (const streakItem of limitedStreakTemplate) {
           streakTasks.push({
@@ -104,6 +120,8 @@ export const createUltimateGoalProcedure = protectedProcedure
       
       // 4. Batch insert all streak tasks
       if (streakTasks.length > 0) {
+        console.log(`Creating ${streakTasks.length} new streak tasks`);
+        
         // Insert in smaller batches to avoid potential issues
         const batchSize = 100;
         let totalInserted = 0;
@@ -127,6 +145,8 @@ export const createUltimateGoalProcedure = protectedProcedure
         }
         
         console.log(`Successfully created ${totalInserted} out of ${streakTasks.length} streak tasks`);
+      } else {
+        console.log('No new streak tasks to create - all dates already have tasks');
       }
       
       // 5. Return the created goal with additional metadata

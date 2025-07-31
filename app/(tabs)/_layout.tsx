@@ -1,6 +1,6 @@
 import React, { memo } from 'react';
 import { Tabs } from 'expo-router';
-import { LayoutAnimation, Platform, TouchableOpacity } from 'react-native';
+import { LayoutAnimation, Platform, TouchableOpacity, TouchableOpacityProps } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { 
   Home, 
@@ -62,20 +62,21 @@ const TabLayout = memo(function TabLayout() {
               onLongPress,
               ...touchableProps 
             } = props;
-            return (
-              <TouchableOpacity
-                {...touchableProps}
-                delayLongPress={delayLongPress || undefined}
-                disabled={disabled || false}
-                onBlur={onBlur || undefined}
-                onFocus={onFocus || undefined}
-                onLongPress={onLongPress || undefined}
-                onPress={(e) => {
-                  handleTabPress();
-                  props.onPress?.(e);
-                }}
-              />
-            );
+            
+            const touchableOpacityProps: TouchableOpacityProps = {
+              ...touchableProps,
+              delayLongPress: delayLongPress ?? undefined,
+              disabled: disabled ?? false,
+              onBlur: onBlur ?? undefined,
+              onFocus: onFocus ?? undefined,
+              onLongPress: onLongPress ?? undefined,
+              onPress: (e) => {
+                handleTabPress();
+                props.onPress?.(e);
+              }
+            };
+            
+            return <TouchableOpacity {...touchableOpacityProps} />;
           }
         }}
       />
@@ -93,20 +94,21 @@ const TabLayout = memo(function TabLayout() {
               onLongPress,
               ...touchableProps 
             } = props;
-            return (
-              <TouchableOpacity
-                {...touchableProps}
-                delayLongPress={delayLongPress || undefined}
-                disabled={disabled || false}
-                onBlur={onBlur || undefined}
-                onFocus={onFocus || undefined}
-                onLongPress={onLongPress || undefined}
-                onPress={(e) => {
-                  handleTabPress();
-                  props.onPress?.(e);
-                }}
-              />
-            );
+            
+            const touchableOpacityProps: TouchableOpacityProps = {
+              ...touchableProps,
+              delayLongPress: delayLongPress ?? undefined,
+              disabled: disabled ?? false,
+              onBlur: onBlur ?? undefined,
+              onFocus: onFocus ?? undefined,
+              onLongPress: onLongPress ?? undefined,
+              onPress: (e) => {
+                handleTabPress();
+                props.onPress?.(e);
+              }
+            };
+            
+            return <TouchableOpacity {...touchableOpacityProps} />;
           }
         }}
       />
@@ -124,20 +126,21 @@ const TabLayout = memo(function TabLayout() {
               onLongPress,
               ...touchableProps 
             } = props;
-            return (
-              <TouchableOpacity
-                {...touchableProps}
-                delayLongPress={delayLongPress || undefined}
-                disabled={disabled || false}
-                onBlur={onBlur || undefined}
-                onFocus={onFocus || undefined}
-                onLongPress={onLongPress || undefined}
-                onPress={(e) => {
-                  handleTabPress();
-                  props.onPress?.(e);
-                }}
-              />
-            );
+            
+            const touchableOpacityProps: TouchableOpacityProps = {
+              ...touchableProps,
+              delayLongPress: delayLongPress ?? undefined,
+              disabled: disabled ?? false,
+              onBlur: onBlur ?? undefined,
+              onFocus: onFocus ?? undefined,
+              onLongPress: onLongPress ?? undefined,
+              onPress: (e) => {
+                handleTabPress();
+                props.onPress?.(e);
+              }
+            };
+            
+            return <TouchableOpacity {...touchableOpacityProps} />;
           }
         }}
       />
@@ -155,20 +158,21 @@ const TabLayout = memo(function TabLayout() {
               onLongPress,
               ...touchableProps 
             } = props;
-            return (
-              <TouchableOpacity
-                {...touchableProps}
-                delayLongPress={delayLongPress || undefined}
-                disabled={disabled || false}
-                onBlur={onBlur || undefined}
-                onFocus={onFocus || undefined}
-                onLongPress={onLongPress || undefined}
-                onPress={(e) => {
-                  handleTabPress();
-                  props.onPress?.(e);
-                }}
-              />
-            );
+            
+            const touchableOpacityProps: TouchableOpacityProps = {
+              ...touchableProps,
+              delayLongPress: delayLongPress ?? undefined,
+              disabled: disabled ?? false,
+              onBlur: onBlur ?? undefined,
+              onFocus: onFocus ?? undefined,
+              onLongPress: onLongPress ?? undefined,
+              onPress: (e) => {
+                handleTabPress();
+                props.onPress?.(e);
+              }
+            };
+            
+            return <TouchableOpacity {...touchableOpacityProps} />;
           }
         }}
       />
@@ -186,20 +190,21 @@ const TabLayout = memo(function TabLayout() {
               onLongPress,
               ...touchableProps 
             } = props;
-            return (
-              <TouchableOpacity
-                {...touchableProps}
-                delayLongPress={delayLongPress || undefined}
-                disabled={disabled || false}
-                onBlur={onBlur || undefined}
-                onFocus={onFocus || undefined}
-                onLongPress={onLongPress || undefined}
-                onPress={(e) => {
-                  handleTabPress();
-                  props.onPress?.(e);
-                }}
-              />
-            );
+            
+            const touchableOpacityProps: TouchableOpacityProps = {
+              ...touchableProps,
+              delayLongPress: delayLongPress ?? undefined,
+              disabled: disabled ?? false,
+              onBlur: onBlur ?? undefined,
+              onFocus: onFocus ?? undefined,
+              onLongPress: onLongPress ?? undefined,
+              onPress: (e) => {
+                handleTabPress();
+                props.onPress?.(e);
+              }
+            };
+            
+            return <TouchableOpacity {...touchableOpacityProps} />;
           }
         }}
       />
@@ -217,20 +222,21 @@ const TabLayout = memo(function TabLayout() {
               onLongPress,
               ...touchableProps 
             } = props;
-            return (
-              <TouchableOpacity
-                {...touchableProps}
-                delayLongPress={delayLongPress || undefined}
-                disabled={disabled || false}
-                onBlur={onBlur || undefined}
-                onFocus={onFocus || undefined}
-                onLongPress={onLongPress || undefined}
-                onPress={(e) => {
-                  handleTabPress();
-                  props.onPress?.(e);
-                }}
-              />
-            );
+            
+            const touchableOpacityProps: TouchableOpacityProps = {
+              ...touchableProps,
+              delayLongPress: delayLongPress ?? undefined,
+              disabled: disabled ?? false,
+              onBlur: onBlur ?? undefined,
+              onFocus: onFocus ?? undefined,
+              onLongPress: onLongPress ?? undefined,
+              onPress: (e) => {
+                handleTabPress();
+                props.onPress?.(e);
+              }
+            };
+            
+            return <TouchableOpacity {...touchableOpacityProps} />;
           }
         }}
       />
