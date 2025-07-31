@@ -62,7 +62,7 @@ export const generateTodayTasksProcedure = publicProcedure
         streakCount: 0,
         todayTasksIds: [],
         streakTaskIds: [],
-        status: (g.status as 'active' | 'completed' | 'paused') || 'active',
+        status: (g.status === 'paused' ? 'active' : g.status as 'active' | 'completed' | 'abandoned') || 'active',
         coverImage: undefined,
         color: undefined,
         priority: 'medium' as const
