@@ -68,8 +68,8 @@ export default function TasksScreen() {
   };
   
   useEffect(() => {
-    // Generate tasks for the selected date if none exist
-    if (selectedTasks.length === 0 && !isPastDate(selectedDate) && goals.length > 0) {
+    // Only generate tasks automatically for today, not future dates
+    if (selectedTasks.length === 0 && selectedDate === getTodayDate() && goals.length > 0) {
       generateDailyTasks(selectedDate);
     }
   }, [selectedDate, goals.length]);
