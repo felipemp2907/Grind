@@ -263,12 +263,7 @@ export default function CreateGoalScreen() {
               </TouchableOpacity>
             </View>
             
-            <View style={styles.warningContainer}>
-              <Text style={styles.warningTitle}>⚠️ Important Notice</Text>
-              <Text style={styles.warningText}>
-                Ultimate goals cannot be deleted once created. Please seriously commit to this goal and describe it in as much detail as possible. This will be your main focus for the duration you set.
-              </Text>
-            </View>
+
             
             <View style={styles.aiInfoContainer}>
               <Zap size={20} color={Colors.dark.secondary} />
@@ -397,25 +392,7 @@ const styles = StyleSheet.create({
     color: Colors.dark.primary,
     fontWeight: '600',
   },
-  warningContainer: {
-    backgroundColor: 'rgba(255, 118, 117, 0.1)',
-    borderRadius: 8,
-    padding: 16,
-    marginBottom: 16,
-    borderLeftWidth: 3,
-    borderLeftColor: Colors.dark.danger,
-  },
-  warningTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: Colors.dark.danger,
-    marginBottom: 8,
-  },
-  warningText: {
-    fontSize: 14,
-    color: Colors.dark.text,
-    lineHeight: 20,
-  },
+
   aiInfoContainer: {
     flexDirection: 'row',
     backgroundColor: 'rgba(0, 206, 201, 0.1)',

@@ -13,8 +13,7 @@ import {
   User, 
   Bell, 
   Brain, 
-  Clock, 
-
+  Target,
   Heart,
   TrendingUp,
   Zap,
@@ -59,32 +58,7 @@ export default function SettingsScreen() {
     updateCoachSettings(newSettings);
   };
   
-  const resetMissedCounts = () => {
-    Alert.alert(
-      'Reset Motivation Tracking',
-      'This will reset your missed task and streak counts. Are you sure?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Reset', 
-          style: 'destructive',
-          onPress: () => {
-            updateCoachSettings({
-              missedTaskCount: 0,
-              missedStreakCount: 0,
-              lastMotivationSent: null
-            });
-            setLocalSettings(prev => ({
-              ...prev,
-              missedTaskCount: 0,
-              missedStreakCount: 0,
-              lastMotivationSent: null
-            }));
-          }
-        }
-      ]
-    );
-  };
+
 
   const resetEverything = () => {
     Alert.alert(
@@ -201,19 +175,19 @@ export default function SettingsScreen() {
           </TouchableOpacity>
           
           <View style={styles.statsContainer}>
-            <View style={styles.statItem}>
+            <View key="level" style={styles.statItem}>
               <Text style={styles.statValue}>{profile.level}</Text>
               <Text style={styles.statLabel}>Level</Text>
             </View>
-            <View style={styles.statItem}>
+            <View key="xp" style={styles.statItem}>
               <Text style={styles.statValue}>{profile.xp}</Text>
               <Text style={styles.statLabel}>Total XP</Text>
             </View>
-            <View style={styles.statItem}>
+            <View key="streak" style={styles.statItem}>
               <Text style={styles.statValue}>{profile.streakDays}</Text>
               <Text style={styles.statLabel}>Current Streak</Text>
             </View>
-            <View style={styles.statItem}>
+            <View key="goals" style={styles.statItem}>
               <Text style={styles.statValue}>{goals.length}</Text>
               <Text style={styles.statLabel}>Active Goals</Text>
             </View>
@@ -314,34 +288,49 @@ export default function SettingsScreen() {
         
 
         
-        {/* Motivation Tracking */}
+        {/* Manage Ultimate Goals */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Clock size={20} color={Colors.dark.subtext} />
-            <Text style={styles.sectionTitle}>Motivation Tracking</Text>
-          </View>
-          
-          <View style={styles.motivationStats}>
-            <View style={styles.motivationStatItem}>
-              <Text style={styles.motivationStatValue}>
-                {localSettings.missedTaskCount}
-              </Text>
-              <Text style={styles.motivationStatLabel}>Missed Tasks</Text>
-            </View>
-            <View style={styles.motivationStatItem}>
-              <Text style={styles.motivationStatValue}>
-                {localSettings.missedStreakCount}
-              </Text>
-              <Text style={styles.motivationStatLabel}>Missed Streaks</Text>
-            </View>
+            <Target size={20} color={Colors.dark.primary} />
+            <Text style={styles.sectionTitle}>Manage Ultimate Goals</Text>
           </View>
           
           <TouchableOpacity 
-            style={styles.resetButton}
-            onPress={resetMissedCounts}
+            style={styles.settingItem}
+            onPress={() => router.push('/goals/create')}
           >
-            <Text style={styles.resetButtonText}>Reset Motivation Tracking</Text>
+            <View style={styles.settingLeft}>
+              <Text style={styles.settingLabel}>Create New Goal</Text>
+              <Text style={styles.settingDescription}>
+                Set a new ultimate goal with AI-generated tasks
+              </Text>
+            </View>
+            <ChevronRight size={20} color={Colors.dark.subtext} />
           </TouchableOpacity>
+          
+          <View style={styles.goalsList}>
+            {goals.map((goal) => (
+              <View key={goal.id} style={styles.goalItem}>
+                <View style={styles.goalInfo}>
+                  <Text style={styles.goalTitle}>{goal.title}</Text>
+                  <Text style={styles.goalProgress}>
+                    {Math.round(goal.progressValue)}% complete
+                  </Text>
+                </View>
+                <TouchableOpacity 
+                  style={styles.editGoalButton}
+                  onPress={() => router.push(`/goals/edit?id=${goal.id}`)}
+                >
+                  <Text style={styles.editGoalText}>Edit</Text>
+                </TouchableOpacity>
+              </View>
+            ))}
+            {goals.length === 0 && (
+              <Text style={styles.noGoalsText}>
+                No ultimate goals yet. Create your first goal to get started!
+              </Text>
+            )}
+          </View>
         </View>
         
         {/* Developer Section */}
@@ -519,34 +508,48 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.dark.primary,
   },
 
-  motivationStats: {
+  goalsList: {
+    marginTop: 8,
+  },
+  goalItem: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginBottom: 16,
-  },
-  motivationStatItem: {
+    justifyContent: 'space-between',
     alignItems: 'center',
+    padding: 12,
+    backgroundColor: Colors.dark.background,
+    borderRadius: 8,
+    marginBottom: 8,
   },
-  motivationStatValue: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: Colors.dark.danger,
+  goalInfo: {
+    flex: 1,
+  },
+  goalTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: Colors.dark.text,
     marginBottom: 4,
   },
-  motivationStatLabel: {
-    fontSize: 12,
+  goalProgress: {
+    fontSize: 14,
     color: Colors.dark.subtext,
   },
-  resetButton: {
-    backgroundColor: 'rgba(255, 118, 117, 0.1)',
-    borderRadius: 8,
-    padding: 12,
-    alignItems: 'center',
+  editGoalButton: {
+    backgroundColor: Colors.dark.primary,
+    borderRadius: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
   },
-  resetButtonText: {
+  editGoalText: {
     fontSize: 14,
     fontWeight: '600',
-    color: Colors.dark.danger,
+    color: Colors.dark.text,
+  },
+  noGoalsText: {
+    fontSize: 14,
+    color: Colors.dark.subtext,
+    textAlign: 'center',
+    fontStyle: 'italic',
+    padding: 16,
   },
   appInfo: {
     fontSize: 16,
