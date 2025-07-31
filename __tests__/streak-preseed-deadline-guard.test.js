@@ -1,6 +1,6 @@
 /**
- * Test suite for streak pre-seeding and deadline guard functionality
- * Tests the implementation of fixed-duration streaks and deadline respect
+ * Test suite for streak preseed and deadline guard functionality
+ * Tests the comprehensive implementation of fixed-duration streaks
  */
 
 const { describe, test, expect, beforeEach, afterEach } = require('@jest/globals');
@@ -177,11 +177,11 @@ describe('Streak Pre-seeding System', () => {
     test('should return completed notice when no active goals for date', () => {
       const result = {
         tasks: [],
-        notice: 'No active goals cover this date'
+        notice: 'completed'
       };
       
       expect(result.tasks).toHaveLength(0);
-      expect(result.notice).toBe('No active goals cover this date');
+      expect(result.notice).toBe('completed');
     });
   });
 

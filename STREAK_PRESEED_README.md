@@ -1,29 +1,24 @@
-# Streak Pre-seeding System
+# Streak Preseed and Deadline Guard System
 
 ## Overview
 
-The Hustle app implements a **Fixed-Duration Streak Pre-seeding System** that creates all streak tasks upfront when an Ultimate Goal is created, ensuring consistent daily habits throughout the goal's duration.
+The Hustle app now implements a comprehensive **Fixed-Duration Streaks + Respect Deadlines** system that pre-seeds all streak tasks when an Ultimate Goal is created, ensuring consistent daily habits throughout the goal's duration while respecting goal deadlines.
 
 ## Key Features
 
-### 🎯 One-Time Streak Creation
-- **When**: Streak tasks are generated ONCE when an Ultimate Goal is created
-- **What**: Exactly 3 streak tasks per day from today until the goal's deadline
-- **Where**: All tasks are stored in the database with `type='streak'` and specific `task_date`
+### 1. Streak Pre-seeding
+- **One-time Creation**: When an Ultimate Goal is created, the system generates exactly 3 streak tasks for every single day from today until the goal's deadline
+- **Fixed Duration**: Streak tasks are created once and never regenerated, ensuring consistency
+- **Calendar Integration**: Yellow dots appear on every day in the calendar until the deadline, showing streak task availability
 
-### 📅 Calendar Integration
-- **Yellow dots** appear on every single day from today until the deadline
-- Each day shows the same 3 streak tasks (consistent habits)
-- No gaps or missing days in the streak schedule
+### 2. Deadline Guard
+- **Respect Deadlines**: The AI task generator only creates tasks for dates that fall within active goal deadlines
+- **Smart Filtering**: If no goals cover a target date, the system returns a "completed" notice
+- **UI Protection**: The "Generate AI Tasks" button is disabled for dates beyond the latest goal deadline
 
-### 🚫 No Regeneration
-- Streak tasks are **NEVER** regenerated or modified by the daily task generator
-- The AI task generator only creates `type='today'` tasks
-- Streak tasks remain identical throughout the goal's duration
+### 3. Database Schema
 
-## Database Schema
 
-### Tasks Table Updates
 ```sql
 -- New column for dated streak copies
 ALTER TABLE public.tasks ADD COLUMN task_date DATE;
@@ -39,30 +34,78 @@ CHECK (
 CREATE INDEX idx_tasks_date ON public.tasks(task_date);
 ```
 
-### Task Types
+#### Task Types
 - **`type='today'`**: AI-generated daily tasks, `task_date=NULL`, uses `due_date`
 - **`type='streak'`**: Pre-seeded habit tasks, `task_date` set, `due_date=NULL`
 
 ## Implementation Details
 
 ### Goal Creation Process
-1. User creates Ultimate Goal with deadline
-2. System builds streak template (3 habits based on goal category)
-3. System calculates days from today to deadline (inclusive)
-4. System creates `days × 3` streak tasks in batches
-5. Each task gets assigned to a specific `task_date`
+
+1. **Create Goal**: Insert the goal record into the database
+2. **Generate Streak Template**: Build 3 customized streak habits based on goal content
+3. **Calculate Days**: Determine the inclusive range from today to deadline
+4. **Batch Insert**: Create streak tasks for every day in the range
+5. **Return Metadata**: Provide information about created tasks and duration
+
+```typescript
+// Example: 30-day goal creates 90 streak tasks (30 days × 3 tasks)
+const daysToDeadline = calculateDaysToDeadline(deadline);
+const totalStreakTasks = daysToDeadline * 3;
+```
+
+### Task Generation Process
+
+1. **Fetch Goals**: Get all active goals for the user
+2. **Apply Deadline Guard**: Filter goals that cover the target date
+3. **Check Existing**: Verify what tasks already exist for the date
+4. **Generate Today Tasks**: Create only "today" type tasks, never streak tasks
+5. **Respect Limits**: Ensure tasks don't exceed goal deadlines
 
 ### Deadline Changes
-- **Extended deadline**: Append streak tasks for additional days
-- **Shortened deadline**: Delete streak tasks beyond new deadline
-- **Same habits**: Maintain consistency across all dates
 
-### Task Generation Guard
-- AI generator checks goal deadlines before creating tasks
-- Returns empty array if target date exceeds all goal deadlines
-- Client disables "Generate AI Tasks" button for invalid dates
+- **Extended Deadline**: Automatically add streak tasks for new days
+- **Shortened Deadline**: Remove streak tasks beyond the new deadline
+- **Batch Operations**: Handle large numbers of tasks efficiently
 
-## Code Examples
+## Usage Examples
+
+### Creating a 30-Day Fitness Goal
+```typescript
+const goal = await trpc.goals.createUltimate.mutate({
+  title: "Get Fit in 30 Days",
+  description: "Complete daily workouts and track nutrition",
+  deadline: "2024-08-30"
+});
+
+// Result: 90 streak tasks created (30 days × 3 habits)
+// - Daily workout session
+// - Track nutrition and hydration  
+// - Recovery and stretching
+```
+
+### Generating Tasks for a Specific Date
+```typescript
+const result = await trpc.tasks.generateToday.mutate({
+  targetDate: "2024-08-15"
+});
+
+// If date is within goal deadlines: generates today tasks
+// If date exceeds all deadlines: returns { tasks: [], notice: 'completed' }
+```
+
+### Calendar Integration
+```typescript
+// Check if date has tasks
+const hasStreakTasks = await checkStreakTasksForDate("2024-08-15");
+// Show yellow dot if hasStreakTasks is true
+
+// Disable button for dates beyond deadlines
+const latestDeadline = Math.max(...goals.map(g => Date.parse(g.deadline)));
+const isDisabled = selectedDate.getTime() > latestDeadline;
+```
+
+## Implementation Details
 
 ### Creating Streak Tasks
 ```typescript
@@ -110,35 +153,30 @@ const isPast = selectedDate.getTime() > latestDeadline;
 
 ## Benefits
 
-### ✅ Consistency
-- Same streak tasks appear every day
-- No variation in habit requirements
-- Predictable daily routine
+### For Users
+- **Consistent Habits**: Same streak tasks appear every day until goal completion
+- **Clear Progress**: Visual calendar indicators show commitment duration
+- **No Surprises**: Predictable daily routine without unexpected changes
 
-### ✅ Performance
-- No daily streak generation overhead
-- Fast calendar rendering with pre-computed data
-- Efficient database queries with indexed `task_date`
+### For Performance
+- **Efficient Queries**: Indexed lookups by date and type
+- **Batch Operations**: Minimize database round trips
+- **Smart Caching**: Pre-computed streak tasks reduce generation overhead
 
-### ✅ Reliability
-- No risk of missing streak tasks
-- No dependency on daily generation processes
-- Guaranteed habit coverage for entire goal duration
-
-### ✅ User Experience
-- Clear visual feedback in calendar (yellow dots)
-- Immediate habit visibility upon goal creation
-- No surprises or missing tasks
+### For Data Integrity
+- **Type Safety**: Database constraints prevent invalid task configurations
+- **Deadline Respect**: No tasks created beyond goal deadlines
+- **Consistent State**: Streak tasks remain unchanged after creation
 
 ## Testing
 
 The system includes comprehensive tests covering:
-- Database schema validation
-- Streak task creation logic
+- Database schema and constraints
+- Streak task pre-seeding logic
 - Deadline guard functionality
 - Calendar integration
-- Batch processing
-- Error handling
+- Performance with large datasets
+- Edge cases and error handling
 
 Run tests with:
 ```bash
@@ -147,49 +185,25 @@ npm test __tests__/streak-preseed-deadline-guard.test.js
 
 ## Migration
 
-To apply the streak pre-seeding system:
-
-1. Run the database migration:
+To apply the database changes:
 ```bash
-# Apply the migration script
-psql -f scripts/20240730_streak_preseed.sql
-```
+# Apply the migration
+psql -d your_database -f scripts/20240730_streak_preseed.sql
 
-2. Update existing goals (if needed):
-```sql
--- Backfill streak tasks for existing active goals
--- (This would be handled by a separate migration script)
+# Verify the changes
+SELECT column_name, data_type, is_nullable 
+FROM information_schema.columns 
+WHERE table_name = 'tasks' AND column_name = 'task_date';
 ```
 
 ## Monitoring
 
 Key metrics to monitor:
-- Streak task creation success rate
-- Calendar rendering performance
-- Database query efficiency
-- User engagement with streak tasks
+- **Streak Task Creation**: Number of tasks created per goal
+- **Calendar Performance**: Query speed for date-based lookups  
+- **Deadline Compliance**: Percentage of tasks within goal deadlines
+- **User Engagement**: Completion rates for pre-seeded streak tasks
 
-## Troubleshooting
+---
 
-### Common Issues
-1. **Missing yellow dots**: Check if streak tasks were created during goal setup
-2. **Duplicate tasks**: Verify constraint `chk_task_date_by_type` is working
-3. **Performance issues**: Ensure `idx_tasks_date` index exists
-4. **AI generation errors**: Check deadline guard logic
-
-### Debug Queries
-```sql
--- Check streak tasks for a goal
-SELECT task_date, COUNT(*) 
-FROM tasks 
-WHERE goal_id = 'goal-id' AND type = 'streak' 
-GROUP BY task_date 
-ORDER BY task_date;
-
--- Verify constraint is working
-SELECT type, task_date IS NULL as has_null_date, COUNT(*)
-FROM tasks 
-GROUP BY type, (task_date IS NULL);
-```
-
-This system ensures that Hustle users have a consistent, reliable streak experience that supports their long-term goal achievement.
+This system ensures that Hustle provides a consistent, predictable, and efficient experience for users working toward their Ultimate Goals while maintaining high performance and data integrity.

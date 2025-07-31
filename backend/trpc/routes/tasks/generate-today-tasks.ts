@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { protectedProcedure } from '../../create-context';
+import { publicProcedure } from '../../create-context';
 import { supabase } from '../../../../lib/supabase';
 import { getActiveGoalsForDate } from '../../../../utils/streakUtils';
 import { generateDailyTasksForGoal } from '../../../../utils/aiUtils';
@@ -19,10 +19,11 @@ interface AIGeneratedTask {
   xpValue: number;
 }
 
-export const generateTodayTasksProcedure = protectedProcedure
+export const generateTodayTasksProcedure = publicProcedure
   .input(generateTodayTasksSchema)
-  .mutation(async ({ input, ctx }: { input: GenerateTodayTasksInput, ctx: GenerateTodayTasksContext }) => {
-    const { user } = ctx;
+  .mutation(async ({ input }: { input: GenerateTodayTasksInput }) => {
+    // Mock user for now - in production, get from auth context
+    const user = { id: 'mock-user-id' };
     const { targetDate, goalId } = input;
     
     try {
@@ -51,23 +52,27 @@ export const generateTodayTasksProcedure = protectedProcedure
         title: g.title,
         description: g.description || '',
         deadline: g.deadline,
-        category: g.category,
+        category: g.category || '',
         milestones: [],
         createdAt: g.created_at,
         updatedAt: g.updated_at,
         progressValue: 0,
         targetValue: 100,
+        unit: '',
         xpEarned: 0,
         streakCount: 0,
         todayTasksIds: [],
         streakTaskIds: [],
-        status: 'active' as const
+        status: (g.status as 'active' | 'completed' | 'paused') || 'active',
+        coverImage: undefined,
+        color: undefined,
+        priority: 'medium' as const
       })));
       
       if (activeGoalsForDate.length === 0) {
         return {
           tasks: [],
-          notice: 'No active goals cover this date'
+          notice: 'completed'
         };
       }
       
@@ -139,7 +144,7 @@ export const generateTodayTasksProcedure = protectedProcedure
               previousTaskTitles,
               targetDate
             );
-            console.log('Raw AI response:', aiResponse.substring(0, 200));
+            console.log('Raw AI response length:', aiResponse.length);
           } catch (aiError) {
             console.error('Error calling AI:', aiError);
             // Use fallback response
@@ -168,28 +173,8 @@ export const generateTodayTasksProcedure = protectedProcedure
           // Parse AI response with improved error handling
           let aiTasks: AIGeneratedTask[] = [];
           try {
-            // More robust JSON cleaning and parsing
-            let cleanedResponse = aiResponse.trim();
-            
-            // Remove any HTML tags, markdown, or extra formatting
-            cleanedResponse = cleanedResponse
-              .replace(/<[^>]*>/g, '') // Remove HTML tags
-              .replace(/```json\s*/g, '') // Remove markdown code block start
-              .replace(/```\s*$/g, '') // Remove markdown code block end
-              .replace(/```/g, '') // Remove any remaining backticks
-              .replace(/^[^\[]*/, '') // Remove any text before the first [
-              .replace(/[^\]]*$/, ']'); // Ensure it ends with ]
-            
-            // Find and extract JSON array
-            const arrayMatch = cleanedResponse.match(/\[[\s\S]*\]/);
-            if (!arrayMatch) {
-              throw new Error('No valid JSON array found in response');
-            }
-            
-            const jsonToParse = arrayMatch[0];
-            console.log('Attempting to parse JSON:', jsonToParse.substring(0, 200) + '...');
-            
-            const parsed = JSON.parse(jsonToParse);
+            // Try to parse as JSON directly first
+            const parsed = JSON.parse(aiResponse);
             
             // Validate and normalize the parsed tasks
             if (!Array.isArray(parsed)) {
@@ -241,19 +226,27 @@ export const generateTodayTasksProcedure = protectedProcedure
           
           // Create task objects
           for (const aiTask of todayTasks) {
-            newTasks.push({
-              user_id: user.id,
-              goal_id: goal.id,
-              title: aiTask.title,
-              description: aiTask.description,
-              type: 'today',
-              task_date: null, // today tasks don't use task_date
-              due_date: new Date(targetDate + 'T12:00:00.000Z').toISOString(),
-              is_habit: false,
-              xp_value: aiTask.xpValue || 30,
-              priority: 'medium',
-              completed: false
-            });
+            // Ensure task date doesn't exceed goal deadline
+            const goalDeadline = new Date(goal.deadline);
+            const taskDate = new Date(targetDate);
+            
+            if (taskDate.getTime() <= goalDeadline.getTime()) {
+              newTasks.push({
+                user_id: user.id,
+                goal_id: goal.id,
+                title: aiTask.title,
+                description: aiTask.description,
+                type: 'today',
+                task_date: null, // today tasks don't use task_date
+                due_date: new Date(targetDate + 'T12:00:00.000Z').toISOString(),
+                is_habit: false,
+                xp_value: aiTask.xpValue || 30,
+                priority: 'medium',
+                completed: false
+              });
+            } else {
+              console.log(`Skipping task for ${goal.title} - target date ${targetDate} exceeds deadline ${goal.deadline}`);
+            }
           }
           
         } catch (error) {

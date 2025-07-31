@@ -67,13 +67,13 @@ const TabLayout = memo(function TabLayout() {
             
             const touchableOpacityProps: TouchableOpacityProps = {
               ...touchableProps,
-              delayLongPress: delayLongPress || undefined,
-              disabled: disabled || false,
-              onBlur: onBlur || undefined,
-              onFocus: onFocus || undefined,
-              onLongPress: onLongPress || undefined,
-              onPressIn: onPressIn || undefined,
-              onPressOut: onPressOut || undefined,
+              delayLongPress: delayLongPress ?? undefined,
+              disabled: disabled ?? false,
+              onBlur: onBlur ?? undefined,
+              onFocus: onFocus ?? undefined,
+              onLongPress: onLongPress ?? undefined,
+              onPressIn: onPressIn ?? undefined,
+              onPressOut: onPressOut ?? undefined,
               onPress: (e) => {
                 handleTabPress();
                 props.onPress?.(e);
@@ -103,13 +103,13 @@ const TabLayout = memo(function TabLayout() {
             
             const touchableOpacityProps: TouchableOpacityProps = {
               ...touchableProps,
-              delayLongPress: delayLongPress || undefined,
-              disabled: disabled || false,
-              onBlur: onBlur || undefined,
-              onFocus: onFocus || undefined,
-              onLongPress: onLongPress || undefined,
-              onPressIn: onPressIn || undefined,
-              onPressOut: onPressOut || undefined,
+              delayLongPress: delayLongPress ?? undefined,
+              disabled: disabled ?? false,
+              onBlur: onBlur ?? undefined,
+              onFocus: onFocus ?? undefined,
+              onLongPress: onLongPress ?? undefined,
+              onPressIn: onPressIn ?? undefined,
+              onPressOut: onPressOut ?? undefined,
               onPress: (e) => {
                 handleTabPress();
                 props.onPress?.(e);
@@ -139,13 +139,13 @@ const TabLayout = memo(function TabLayout() {
             
             const touchableOpacityProps: TouchableOpacityProps = {
               ...touchableProps,
-              delayLongPress: delayLongPress || undefined,
-              disabled: disabled || false,
-              onBlur: onBlur || undefined,
-              onFocus: onFocus || undefined,
-              onLongPress: onLongPress || undefined,
-              onPressIn: onPressIn || undefined,
-              onPressOut: onPressOut || undefined,
+              delayLongPress: delayLongPress ?? undefined,
+              disabled: disabled ?? false,
+              onBlur: onBlur ?? undefined,
+              onFocus: onFocus ?? undefined,
+              onLongPress: onLongPress ?? undefined,
+              onPressIn: onPressIn ?? undefined,
+              onPressOut: onPressOut ?? undefined,
               onPress: (e) => {
                 handleTabPress();
                 props.onPress?.(e);
@@ -175,13 +175,13 @@ const TabLayout = memo(function TabLayout() {
             
             const touchableOpacityProps: TouchableOpacityProps = {
               ...touchableProps,
-              delayLongPress: delayLongPress || undefined,
-              disabled: disabled || false,
-              onBlur: onBlur || undefined,
-              onFocus: onFocus || undefined,
-              onLongPress: onLongPress || undefined,
-              onPressIn: onPressIn || undefined,
-              onPressOut: onPressOut || undefined,
+              delayLongPress: delayLongPress ?? undefined,
+              disabled: disabled ?? false,
+              onBlur: onBlur ?? undefined,
+              onFocus: onFocus ?? undefined,
+              onLongPress: onLongPress ?? undefined,
+              onPressIn: onPressIn ?? undefined,
+              onPressOut: onPressOut ?? undefined,
               onPress: (e) => {
                 handleTabPress();
                 props.onPress?.(e);
@@ -211,13 +211,13 @@ const TabLayout = memo(function TabLayout() {
             
             const touchableOpacityProps: TouchableOpacityProps = {
               ...touchableProps,
-              delayLongPress: delayLongPress || undefined,
-              disabled: disabled || false,
-              onBlur: onBlur || undefined,
-              onFocus: onFocus || undefined,
-              onLongPress: onLongPress || undefined,
-              onPressIn: onPressIn || undefined,
-              onPressOut: onPressOut || undefined,
+              delayLongPress: delayLongPress ?? undefined,
+              disabled: disabled ?? false,
+              onBlur: onBlur ?? undefined,
+              onFocus: onFocus ?? undefined,
+              onLongPress: onLongPress ?? undefined,
+              onPressIn: onPressIn ?? undefined,
+              onPressOut: onPressOut ?? undefined,
               onPress: (e) => {
                 handleTabPress();
                 props.onPress?.(e);
@@ -247,13 +247,13 @@ const TabLayout = memo(function TabLayout() {
             
             const touchableOpacityProps: TouchableOpacityProps = {
               ...touchableProps,
-              delayLongPress: delayLongPress || undefined,
-              disabled: disabled || false,
-              onBlur: onBlur || undefined,
-              onFocus: onFocus || undefined,
-              onLongPress: onLongPress || undefined,
-              onPressIn: onPressIn || undefined,
-              onPressOut: onPressOut || undefined,
+              delayLongPress: delayLongPress ?? undefined,
+              disabled: disabled ?? false,
+              onBlur: onBlur ?? undefined,
+              onFocus: onFocus ?? undefined,
+              onLongPress: onLongPress ?? undefined,
+              onPressIn: onPressIn ?? undefined,
+              onPressOut: onPressOut ?? undefined,
               onPress: (e) => {
                 handleTabPress();
                 props.onPress?.(e);
