@@ -21,7 +21,7 @@ const TabLayout = memo(function TabLayout() {
 
   const handleTabPress = () => {
     if (Platform.OS !== 'web') {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     }
   };
 
@@ -54,11 +54,12 @@ const TabLayout = memo(function TabLayout() {
           title: "Home",
           tabBarIcon: ({ color, size }) => <Home size={size} color={color} />,
           tabBarButton: (props) => {
-            const { delayLongPress, ...touchableProps } = props;
+            const { delayLongPress, disabled, ...touchableProps } = props;
             return (
               <TouchableOpacity
                 {...touchableProps}
                 delayLongPress={delayLongPress ?? undefined}
+                disabled={disabled ?? false}
                 onPress={(e) => {
                   handleTabPress();
                   props.onPress?.(e);
@@ -74,11 +75,12 @@ const TabLayout = memo(function TabLayout() {
           title: "Tasks",
           tabBarIcon: ({ color, size }) => <BarChart size={size} color={color} />,
           tabBarButton: (props) => {
-            const { delayLongPress, ...touchableProps } = props;
+            const { delayLongPress, disabled, ...touchableProps } = props;
             return (
               <TouchableOpacity
                 {...touchableProps}
                 delayLongPress={delayLongPress ?? undefined}
+                disabled={disabled ?? false}
                 onPress={(e) => {
                   handleTabPress();
                   props.onPress?.(e);
@@ -94,11 +96,12 @@ const TabLayout = memo(function TabLayout() {
           title: "Calendar",
           tabBarIcon: ({ color, size }) => <Calendar size={size} color={color} />,
           tabBarButton: (props) => {
-            const { delayLongPress, ...touchableProps } = props;
+            const { delayLongPress, disabled, ...touchableProps } = props;
             return (
               <TouchableOpacity
                 {...touchableProps}
                 delayLongPress={delayLongPress ?? undefined}
+                disabled={disabled ?? false}
                 onPress={(e) => {
                   handleTabPress();
                   props.onPress?.(e);
@@ -114,11 +117,12 @@ const TabLayout = memo(function TabLayout() {
           title: "Journal",
           tabBarIcon: ({ color, size }) => <BookOpen size={size} color={color} />,
           tabBarButton: (props) => {
-            const { delayLongPress, ...touchableProps } = props;
+            const { delayLongPress, disabled, ...touchableProps } = props;
             return (
               <TouchableOpacity
                 {...touchableProps}
                 delayLongPress={delayLongPress ?? undefined}
+                disabled={disabled ?? false}
                 onPress={(e) => {
                   handleTabPress();
                   props.onPress?.(e);
@@ -134,11 +138,12 @@ const TabLayout = memo(function TabLayout() {
           title: "AI",
           tabBarIcon: ({ color, size }) => <Brain size={size} color={color} />,
           tabBarButton: (props) => {
-            const { delayLongPress, ...touchableProps } = props;
+            const { delayLongPress, disabled, ...touchableProps } = props;
             return (
               <TouchableOpacity
                 {...touchableProps}
                 delayLongPress={delayLongPress ?? undefined}
+                disabled={disabled ?? false}
                 onPress={(e) => {
                   handleTabPress();
                   props.onPress?.(e);
@@ -154,11 +159,12 @@ const TabLayout = memo(function TabLayout() {
           title: "Settings",
           tabBarIcon: ({ color, size }) => <Settings size={size} color={color} />,
           tabBarButton: (props) => {
-            const { delayLongPress, ...touchableProps } = props;
+            const { delayLongPress, disabled, ...touchableProps } = props;
             return (
               <TouchableOpacity
                 {...touchableProps}
                 delayLongPress={delayLongPress ?? undefined}
+                disabled={disabled ?? false}
                 onPress={(e) => {
                   handleTabPress();
                   props.onPress?.(e);
