@@ -534,7 +534,7 @@ const styles = StyleSheet.create({
     color: Colors.dark.subtext,
   },
   editGoalButton: {
-    backgroundColor: Colors.dark.text,
+    backgroundColor: Colors.dark.primary,
     borderRadius: 6,
     paddingHorizontal: 12,
     paddingVertical: 6,
@@ -542,7 +542,7 @@ const styles = StyleSheet.create({
   editGoalText: {
     fontSize: 14,
     fontWeight: '600',
-    color: Colors.dark.background,
+    color: Colors.dark.text,
   },
   noGoalsText: {
     fontSize: 14,

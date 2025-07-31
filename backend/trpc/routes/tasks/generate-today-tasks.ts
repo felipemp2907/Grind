@@ -20,7 +20,7 @@ interface AIGeneratedTask {
 
 export const generateTodayTasksProcedure = protectedProcedure
   .input(generateTodayTasksSchema)
-  .mutation(async ({ input, ctx }: { input: GenerateTodayTasksInput; ctx: ProtectedContext }) => {
+  .mutation(async ({ input, ctx }) => {
     const user = ctx.user;
     const { targetDate, goalId } = input;
     
@@ -61,7 +61,7 @@ export const generateTodayTasksProcedure = protectedProcedure
         streakCount: 0,
         todayTasksIds: [],
         streakTaskIds: [],
-        status: (g.status === 'paused' ? 'active' : g.status) as 'active' | 'completed' | 'abandoned',
+        status: g.status as 'active' | 'completed' | 'abandoned',
         coverImage: undefined,
         color: undefined,
         priority: 'medium' as const
