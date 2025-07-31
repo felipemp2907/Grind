@@ -16,11 +16,10 @@ const createUltimateGoalSchema = z.object({
 });
 
 type CreateUltimateGoalInput = z.infer<typeof createUltimateGoalSchema>;
-type CreateUltimateGoalContext = { user: { id: string } };
 
 export const createUltimateGoalProcedure = publicProcedure
   .input(createUltimateGoalSchema)
-  .mutation(async ({ input }: { input: CreateUltimateGoalInput }) => {
+  .mutation(async ({ input }: { input: CreateUltimateGoalInput; ctx: any }) => {
     // Mock user for now - in production, get from auth context
     const user = { id: 'mock-user-id' };
     

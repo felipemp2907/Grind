@@ -983,33 +983,29 @@ export const generateDailyTasksForGoal = async (
     {
       role: 'system',
       content: `You are Hustle, an AI assistant for the Grind app that helps users achieve their long-term goals. 
-      Your job is to generate up to 6 specific, actionable daily tasks that will help the user make progress toward their goal.
+      Your job is to generate ONLY TODAY TASKS - specific, actionable one-time tasks for today (${formattedDate}) that will help the user make progress toward their goal.
       
-      Create two types of tasks:
-      1. Today Tasks: Maximum 3 one-time tasks specific to today (${formattedDate}) that move the user toward their goal. These should be UNIQUE for each day and NOT repetitive.
-      2. Streak Tasks: Maximum 3 daily habits that should be maintained consistently (marked with isHabit: true)
+      IMPORTANT: DO NOT generate streak tasks or habits. This function is ONLY for generating TODAY TASKS.
+      Streak tasks are generated separately when the ultimate goal is created and are assigned to every day until the deadline.
       
-      Tasks should be:
+      Generate exactly 3 TODAY TASKS that are:
       - Concrete and measurable
-      - Specific enough to be validated with a photo
+      - Specific to today (${formattedDate}) and NOT repetitive
       - Varied in difficulty and approach
       - Aligned with the user's goal
       - Realistic to complete in a day
-      - Appropriate for the specific day of the week and date (${formattedDate})
+      - Appropriate for the specific day of the week and date
+      - Unique and contextual to this specific date
       
-      IMPORTANT: For Today Tasks, consider the day of the week, the date, and create tasks that are specifically relevant to ${formattedDate}. 
-      DO NOT generate generic tasks that could apply to any day. Make them contextual to this specific date.
-      
-      Format your response as a JSON array of task objects with these properties:
+      Each task should have:
       - title: String (clear, concise task name)
       - description: String (detailed instructions, 1-2 sentences)
-      - isHabit: Boolean (true for streak tasks, false for today tasks)
+      - isHabit: Boolean (ALWAYS false for today tasks)
       - xpValue: Number (20-50, based on difficulty)
       
-      Include at least one Streak Task (habit) in your response.
-      
       IMPORTANT: Return ONLY the JSON array without any markdown formatting, explanation, or code block syntax.
-      DO NOT include \`\`\`json or \`\`\` in your response. Return only the raw JSON array.`
+      DO NOT include \`\`\`json or \`\`\` in your response. Return only the raw JSON array.
+      All tasks must have isHabit: false since this is only for TODAY TASKS.`
     },
     {
       role: 'user',
@@ -1023,7 +1019,7 @@ export const generateDailyTasksForGoal = async (
       
       Previous tasks I've completed: ${previousTasks.length > 0 ? previousTasks.join(', ') : 'None yet'}
       
-      Please generate detailed, high-quality tasks to help me make progress toward my goal for specifically ${formattedDate}. Include both unique one-time tasks for today and streak tasks (habits) I should maintain daily.`
+      Please generate exactly 3 unique TODAY TASKS that will help me make progress toward my goal specifically for ${formattedDate}. Do NOT include streak tasks or habits - only one-time tasks for today.`
     }
   ];
 

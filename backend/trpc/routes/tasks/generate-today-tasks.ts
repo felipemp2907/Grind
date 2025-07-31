@@ -10,7 +10,6 @@ const generateTodayTasksSchema = z.object({
 });
 
 type GenerateTodayTasksInput = z.infer<typeof generateTodayTasksSchema>;
-type GenerateTodayTasksContext = { user: { id: string } };
 
 interface AIGeneratedTask {
   title: string;
@@ -21,7 +20,7 @@ interface AIGeneratedTask {
 
 export const generateTodayTasksProcedure = publicProcedure
   .input(generateTodayTasksSchema)
-  .mutation(async ({ input }: { input: GenerateTodayTasksInput }) => {
+  .mutation(async ({ input }: { input: GenerateTodayTasksInput; ctx: any }) => {
     // Mock user for now - in production, get from auth context
     const user = { id: 'mock-user-id' };
     const { targetDate, goalId } = input;
@@ -173,8 +172,34 @@ export const generateTodayTasksProcedure = publicProcedure
           // Parse AI response with improved error handling
           let aiTasks: AIGeneratedTask[] = [];
           try {
-            // Try to parse as JSON directly first
-            const parsed = JSON.parse(aiResponse);
+            // Clean the response first
+            let cleanedResponse = aiResponse.trim();
+            
+            // Remove any HTML tags if present
+            cleanedResponse = cleanedResponse.replace(/<[^>]*>/g, '');
+            
+            // Remove markdown code block syntax if present
+            cleanedResponse = cleanedResponse.replace(/```json\s*/g, '').replace(/```\s*$/g, '');
+            cleanedResponse = cleanedResponse.replace(/```/g, '');
+            
+            // If response doesn't start with [ or {, try to extract JSON
+            if (!cleanedResponse.startsWith('[') && !cleanedResponse.startsWith('{')) {
+              const arrayMatch = cleanedResponse.match(/\[[\s\S]*?\]/);
+              const objectMatch = cleanedResponse.match(/\{[\s\S]*?\}/);
+              
+              if (arrayMatch) {
+                cleanedResponse = arrayMatch[0];
+              } else if (objectMatch) {
+                cleanedResponse = objectMatch[0];
+              } else {
+                throw new Error('No valid JSON found in response');
+              }
+            }
+            
+            console.log('Cleaned AI response:', cleanedResponse.substring(0, 200));
+            
+            // Try to parse as JSON
+            const parsed = JSON.parse(cleanedResponse);
             
             // Validate and normalize the parsed tasks
             if (!Array.isArray(parsed)) {
