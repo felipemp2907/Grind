@@ -8,6 +8,8 @@ import { useGoalStore } from '@/store/goalStore';
 import { useUserStore } from '@/store/userStore';
 import { supabase, setupDatabase, serializeError, ensureUserProfile } from '@/lib/supabase';
 import { useAuthStore } from './authStore';
+import { isDateBeyondDeadlines } from '@/utils/streakUtils';
+import { trpcClient } from '@/lib/trpc';
 
 // Interface for tasks returned from AI
 interface AIGeneratedTask {
@@ -431,20 +433,38 @@ export const useTaskStore = create<TaskState>()(
         return get().dailyAgendas.find(a => a.date === date);
       },
       
-      // Generate tasks for all goals
+      // Generate tasks for all goals with deadline guard
       generateDailyTasks: async (date) => {
         const { goals } = useGoalStore.getState();
+        
+        // Apply deadline guard - check if date is beyond all goal deadlines
+        if (isDateBeyondDeadlines(date, goals)) {
+          console.log('Date is beyond all goal deadlines, skipping task generation');
+          return;
+        }
+        
         set({ isGenerating: true });
         
         try {
-          // Generate tasks for each goal
+          // Use the new backend function with deadline guard
+          const result = await trpcClient.tasks.generateToday.mutate({
+            targetDate: date
+          });
+          
+          console.log('Task generation result:', result);
+          
+          // Refresh tasks from database to get the new ones
+          await get().fetchTasks();
+          
+        } catch (error) {
+          console.error('Error generating daily tasks:', error);
+          
+          // Fallback to old method if backend fails
           const promises = goals.map((goal: any) => 
             get().generateTasksForGoal(date, goal.id)
           );
           
           await Promise.all(promises);
-        } catch (error) {
-          console.error('Error generating daily tasks:', error);
         } finally {
           set({ isGenerating: false });
         }

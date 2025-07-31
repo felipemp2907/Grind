@@ -30,6 +30,7 @@ import {
   formatDate,
   isPastDate
 } from '@/utils/dateUtils';
+import { isDateBeyondDeadlines } from '@/utils/streakUtils';
 import TaskCard from '@/components/TaskCard';
 import Button from '@/components/Button';
 import CreateTaskModal from '@/components/CreateTaskModal';
@@ -113,6 +114,9 @@ export default function TasksScreen() {
     }
   };
   
+  // Check if date is beyond all goal deadlines
+  const isDateBeyondGoalDeadlines = isDateBeyondDeadlines(selectedDate, goals);
+  
   const renderEmptyState = () => (
     <View style={styles.emptyState}>
       <Calendar size={48} color={Colors.dark.inactive} />
@@ -120,11 +124,13 @@ export default function TasksScreen() {
       <Text style={styles.emptyStateDescription}>
         {isPastDate(selectedDate) 
           ? "You don't have any tasks for this day."
+          : isDateBeyondGoalDeadlines
+          ? "No active goals cover this date."
           : "Add tasks to make progress toward your goal."}
       </Text>
-      {!isPastDate(selectedDate) && goals.length > 0 && (
+      {!isPastDate(selectedDate) && goals.length > 0 && !isDateBeyondGoalDeadlines && (
         <Button 
-          title={isGenerating ? "Generating..." : "Generate Tasks"}
+          title={isGenerating ? "Generating..." : "Generate AI Tasks"}
           onPress={() => generateDailyTasks(selectedDate)}
           style={styles.emptyStateButton}
           size="small"
@@ -278,10 +284,15 @@ export default function TasksScreen() {
             <Calendar size={20} color={Colors.dark.text} />
           </TouchableOpacity>
           
-          {!isPastDate(selectedDate) && goals.length > 0 && (
+          {!isPastDate(selectedDate) && goals.length > 0 && !isDateBeyondGoalDeadlines && (
             <TouchableOpacity 
-              style={styles.aiSuggestButton}
+              style={[
+                styles.aiSuggestButton,
+                isDateBeyondGoalDeadlines && styles.disabledButton
+              ]}
               onPress={async () => {
+                if (isDateBeyondGoalDeadlines) return;
+                
                 const activeGoal = goals.find(g => g.id === activeGoalId) || goals[0];
                 if (activeGoal) {
                   const taskLimits = canAddMoreTasks(selectedDate, filterByGoal || activeGoal.id);
@@ -290,9 +301,9 @@ export default function TasksScreen() {
                   }
                 }
               }}
-              disabled={isGenerating}
+              disabled={isGenerating || isDateBeyondGoalDeadlines}
             >
-              <Zap size={18} color={Colors.dark.secondary} />
+              <Zap size={18} color={isDateBeyondGoalDeadlines ? Colors.dark.inactive : Colors.dark.secondary} />
             </TouchableOpacity>
           )}
           
@@ -519,5 +530,8 @@ const styles = StyleSheet.create({
   },
   emptyStateButton: {
     minWidth: 150,
+  },
+  disabledButton: {
+    opacity: 0.5,
   }
 });

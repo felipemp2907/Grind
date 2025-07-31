@@ -53,7 +53,8 @@ export interface Task {
   proofRequired?: boolean;
   proofSubmitted?: boolean;
   proofValidated?: boolean;
-  taskType?: 'today' | 'streak';
+  type?: 'today' | 'streak';
+  taskDate?: string; // YYYY-MM-DD format for streak tasks
 }
 
 export interface JournalEntry {
