@@ -18,7 +18,7 @@ interface AIGeneratedTask {
 
 export const generateTodayTasksProcedure = protectedProcedure
   .input(generateTodayTasksSchema)
-  .mutation(async ({ input, ctx }) => {
+  .mutation(async ({ input, ctx }: { input: z.infer<typeof generateTodayTasksSchema>, ctx: any }) => {
     const { user } = ctx;
     const { targetDate, goalId } = input;
     

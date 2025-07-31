@@ -19,3 +19,16 @@ const t = initTRPC.context<Context>().create({
 
 export const createTRPCRouter = t.router;
 export const publicProcedure = t.procedure;
+
+// For now, we'll create a simple protected procedure that assumes authentication is handled elsewhere
+// In a real app, you'd want to add proper authentication middleware here
+export const protectedProcedure = t.procedure.use(async ({ ctx, next }) => {
+  // Add your authentication logic here
+  // For now, we'll just pass through with a mock user
+  return next({
+    ctx: {
+      ...ctx,
+      user: { id: 'mock-user-id' } // Replace with actual user from auth
+    }
+  });
+});

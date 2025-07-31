@@ -60,6 +60,8 @@ const TabLayout = memo(function TabLayout() {
               onBlur, 
               onFocus, 
               onLongPress,
+              onPressIn,
+              onPressOut,
               ...touchableProps 
             } = props;
             
@@ -70,6 +72,8 @@ const TabLayout = memo(function TabLayout() {
               onBlur: onBlur ?? undefined,
               onFocus: onFocus ?? undefined,
               onLongPress: onLongPress ?? undefined,
+              onPressIn: onPressIn ?? undefined,
+              onPressOut: onPressOut ?? undefined,
               onPress: (e) => {
                 handleTabPress();
                 props.onPress?.(e);
@@ -92,6 +96,8 @@ const TabLayout = memo(function TabLayout() {
               onBlur, 
               onFocus, 
               onLongPress,
+              onPressIn,
+              onPressOut,
               ...touchableProps 
             } = props;
             
@@ -102,6 +108,8 @@ const TabLayout = memo(function TabLayout() {
               onBlur: onBlur ?? undefined,
               onFocus: onFocus ?? undefined,
               onLongPress: onLongPress ?? undefined,
+              onPressIn: onPressIn ?? undefined,
+              onPressOut: onPressOut ?? undefined,
               onPress: (e) => {
                 handleTabPress();
                 props.onPress?.(e);
@@ -124,6 +132,8 @@ const TabLayout = memo(function TabLayout() {
               onBlur, 
               onFocus, 
               onLongPress,
+              onPressIn,
+              onPressOut,
               ...touchableProps 
             } = props;
             
@@ -134,6 +144,8 @@ const TabLayout = memo(function TabLayout() {
               onBlur: onBlur ?? undefined,
               onFocus: onFocus ?? undefined,
               onLongPress: onLongPress ?? undefined,
+              onPressIn: onPressIn ?? undefined,
+              onPressOut: onPressOut ?? undefined,
               onPress: (e) => {
                 handleTabPress();
                 props.onPress?.(e);
@@ -156,6 +168,8 @@ const TabLayout = memo(function TabLayout() {
               onBlur, 
               onFocus, 
               onLongPress,
+              onPressIn,
+              onPressOut,
               ...touchableProps 
             } = props;
             
@@ -166,6 +180,8 @@ const TabLayout = memo(function TabLayout() {
               onBlur: onBlur ?? undefined,
               onFocus: onFocus ?? undefined,
               onLongPress: onLongPress ?? undefined,
+              onPressIn: onPressIn ?? undefined,
+              onPressOut: onPressOut ?? undefined,
               onPress: (e) => {
                 handleTabPress();
                 props.onPress?.(e);
@@ -188,6 +204,8 @@ const TabLayout = memo(function TabLayout() {
               onBlur, 
               onFocus, 
               onLongPress,
+              onPressIn,
+              onPressOut,
               ...touchableProps 
             } = props;
             
@@ -198,6 +216,8 @@ const TabLayout = memo(function TabLayout() {
               onBlur: onBlur ?? undefined,
               onFocus: onFocus ?? undefined,
               onLongPress: onLongPress ?? undefined,
+              onPressIn: onPressIn ?? undefined,
+              onPressOut: onPressOut ?? undefined,
               onPress: (e) => {
                 handleTabPress();
                 props.onPress?.(e);
@@ -220,6 +240,8 @@ const TabLayout = memo(function TabLayout() {
               onBlur, 
               onFocus, 
               onLongPress,
+              onPressIn,
+              onPressOut,
               ...touchableProps 
             } = props;
             
@@ -230,6 +252,8 @@ const TabLayout = memo(function TabLayout() {
               onBlur: onBlur ?? undefined,
               onFocus: onFocus ?? undefined,
               onLongPress: onLongPress ?? undefined,
+              onPressIn: onPressIn ?? undefined,
+              onPressOut: onPressOut ?? undefined,
               onPress: (e) => {
                 handleTabPress();
                 props.onPress?.(e);
