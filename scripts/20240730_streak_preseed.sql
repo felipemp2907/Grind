@@ -9,7 +9,11 @@ ADD COLUMN IF NOT EXISTS task_date DATE;
 ALTER TABLE public.tasks
 ADD COLUMN IF NOT EXISTS type TEXT CHECK (type IN ('today', 'streak')) DEFAULT 'today';
 
--- 1-c  check that exactly one of (type, task_date) rules is respected
+-- 1-c  Drop existing constraint if it exists
+ALTER TABLE public.tasks
+DROP CONSTRAINT IF EXISTS chk_task_date_by_type;
+
+-- 1-d  check that exactly one of (type, task_date) rules is respected
 ALTER TABLE public.tasks
 ADD CONSTRAINT chk_task_date_by_type
 CHECK (
@@ -191,7 +195,11 @@ CREATE TRIGGER goal_deadline_change_trigger
   FOR EACH ROW
   EXECUTE FUNCTION public.handle_goal_deadline_change();
 
--- 7   Update existing tasks to have proper type
+-- 7   Add status column to goals table if it doesn't exist
+ALTER TABLE public.goals
+ADD COLUMN IF NOT EXISTS status TEXT CHECK (status IN ('active', 'completed', 'paused')) DEFAULT 'active';
+
+-- 8   Update existing tasks to have proper type
 UPDATE public.tasks
 SET type = CASE
   WHEN is_habit = true THEN 'streak'
@@ -199,7 +207,12 @@ SET type = CASE
 END
 WHERE type IS NULL;
 
--- 8   Refresh schema cache
+-- 9   Update existing goals to have active status
+UPDATE public.goals
+SET status = 'active'
+WHERE status IS NULL;
+
+-- 10   Refresh schema cache
 NOTIFY pgrst, 'reload schema';
 
 SELECT 'Streak preseed migration completed successfully!' as status;

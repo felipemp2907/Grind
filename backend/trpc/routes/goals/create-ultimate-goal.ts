@@ -66,9 +66,13 @@ export const createUltimateGoalProcedure = protectedProcedure
       };
       
       const streakTemplate = buildStreakTemplate(goalForTemplate);
+      
+      // Ensure we only have exactly 3 streak tasks
+      const limitedStreakTemplate = streakTemplate.slice(0, 3);
+      
       const daysToDeadline = calculateDaysToDeadline(input.deadline);
       
-      console.log(`Creating streak tasks for ${daysToDeadline} days with ${streakTemplate.length} habits per day`);
+      console.log(`Creating streak tasks for ${daysToDeadline} days with ${limitedStreakTemplate.length} habits per day`);
       
       // 3. Create streak tasks for each day from today to deadline
       const today = new Date();
@@ -81,7 +85,7 @@ export const createUltimateGoalProcedure = protectedProcedure
         currentDate.setDate(today.getDate() + dayOffset);
         const dateString = currentDate.toISOString().split('T')[0];
         
-        for (const streakItem of streakTemplate) {
+        for (const streakItem of limitedStreakTemplate) {
           streakTasks.push({
             user_id: user.id,
             goal_id: goalData.id,
@@ -100,17 +104,29 @@ export const createUltimateGoalProcedure = protectedProcedure
       
       // 4. Batch insert all streak tasks
       if (streakTasks.length > 0) {
-        const { error: tasksError } = await supabase
-          .from('tasks')
-          .insert(streakTasks);
+        // Insert in smaller batches to avoid potential issues
+        const batchSize = 100;
+        let totalInserted = 0;
+        
+        for (let i = 0; i < streakTasks.length; i += batchSize) {
+          const batch = streakTasks.slice(i, i + batchSize);
           
-        if (tasksError) {
-          console.error('Error creating streak tasks:', tasksError);
-          // Don't fail the entire operation, just log the error
-          console.warn('Goal created but streak tasks failed to create');
-        } else {
-          console.log(`Successfully created ${streakTasks.length} streak tasks`);
+          const { error: tasksError } = await supabase
+            .from('tasks')
+            .insert(batch);
+            
+          if (tasksError) {
+            console.error(`Error creating streak tasks batch ${i}-${i + batch.length}:`, tasksError);
+            // Don't fail the entire operation, just log the error
+            console.warn(`Goal created but some streak tasks failed to create: ${tasksError.message}`);
+            break;
+          } else {
+            totalInserted += batch.length;
+            console.log(`Successfully created batch ${i}-${i + batch.length} (${batch.length} tasks)`);
+          }
         }
+        
+        console.log(`Successfully created ${totalInserted} out of ${streakTasks.length} streak tasks`);
       }
       
       // 5. Return the created goal with additional metadata

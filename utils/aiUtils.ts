@@ -166,8 +166,11 @@ function postProcessTasks(
 
 // Function to clean AI response to ensure valid JSON
 const cleanJsonResponse = (response: string): string => {
+  // Remove any HTML tags if present
+  let cleaned = response.replace(/<[^>]*>/g, '');
+  
   // Remove markdown code block syntax if present
-  let cleaned = response.replace(/```json\s*/g, '').replace(/```\s*$/g, '');
+  cleaned = cleaned.replace(/```json\s*/g, '').replace(/```\s*$/g, '');
   
   // Remove any other markdown formatting that might be present
   cleaned = cleaned.replace(/```/g, '');
@@ -178,13 +181,20 @@ const cleanJsonResponse = (response: string): string => {
   // Ensure the response starts with [ or { for valid JSON
   if (!cleaned.startsWith('[') && !cleaned.startsWith('{')) {
     // If we can find a JSON array or object within the text, extract it
-    const arrayMatch = cleaned.match(/\[[\s\S]*\]/);
-    const objectMatch = cleaned.match(/\{[\s\S]*\}/);
+    // Look for arrays first, then objects
+    const arrayMatches = cleaned.match(/\[[\s\S]*?\]/g);
+    const objectMatches = cleaned.match(/\{[\s\S]*?\}/g);
     
-    if (arrayMatch) {
-      cleaned = arrayMatch[0];
-    } else if (objectMatch) {
-      cleaned = objectMatch[0];
+    if (arrayMatches && arrayMatches.length > 0) {
+      // Take the largest/most complete array
+      cleaned = arrayMatches.reduce((longest, current) => 
+        current.length > longest.length ? current : longest
+      );
+    } else if (objectMatches && objectMatches.length > 0) {
+      // Take the largest/most complete object
+      cleaned = objectMatches.reduce((longest, current) => 
+        current.length > longest.length ? current : longest
+      );
     } else {
       // If we can't find valid JSON, return a fallback
       return '[]';
@@ -206,10 +216,24 @@ export const callAI = async (messages: AIMessage[]): Promise<string> => {
     });
 
     if (!response.ok) {
-      throw new Error(`API error: ${response.status}`);
+      const errorText = await response.text();
+      console.error('API error response:', errorText);
+      throw new Error(`API error: ${response.status} - ${errorText}`);
+    }
+
+    const contentType = response.headers.get('content-type');
+    if (!contentType || !contentType.includes('application/json')) {
+      const textResponse = await response.text();
+      console.error('Non-JSON response received:', textResponse.substring(0, 200));
+      throw new Error('API returned non-JSON response');
     }
 
     const data = await response.json();
+    if (!data.completion) {
+      console.error('Invalid API response structure:', data);
+      throw new Error('API response missing completion field');
+    }
+    
     return data.completion;
   } catch (error) {
     console.error('Error calling AI:', error);

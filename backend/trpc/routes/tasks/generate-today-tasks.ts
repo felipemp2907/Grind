@@ -81,12 +81,14 @@ export const generateTodayTasksProcedure = protectedProcedure
       }
       
       // 4. Check if tasks already exist for this date
+      const targetDateISO = new Date(targetDate).toISOString().split('T')[0];
       const { data: existingTasks, error: tasksError } = await supabase
         .from('tasks')
         .select('*')
         .eq('user_id', user.id)
         .eq('type', 'today')
-        .eq('due_date', new Date(targetDate).toISOString().split('T')[0] + 'T00:00:00.000Z');
+        .gte('due_date', targetDateISO + 'T00:00:00.000Z')
+        .lt('due_date', targetDateISO + 'T23:59:59.999Z');
         
       if (tasksError) {
         console.error('Error checking existing tasks:', tasksError);
@@ -133,26 +135,42 @@ export const generateTodayTasksProcedure = protectedProcedure
             targetDate
           );
           
+          console.log('Raw AI response:', aiResponse.substring(0, 200));
+          
           // Parse AI response
           let aiTasks: AIGeneratedTask[] = [];
           try {
-            const cleanedResponse = aiResponse
-              .replace(/```json\s*/g, '')
-              .replace(/```\s*$/g, '')
-              .replace(/```/g, '')
-              .trim();
-              
+            // More robust JSON cleaning
+            let cleanedResponse = aiResponse.trim();
+            
+            // Remove any HTML tags if present
+            cleanedResponse = cleanedResponse.replace(/<[^>]*>/g, '');
+            
+            // Remove markdown code blocks
+            cleanedResponse = cleanedResponse.replace(/```json\s*/g, '').replace(/```\s*$/g, '').replace(/```/g, '');
+            
+            // Find JSON array in the response
             let jsonToParse = cleanedResponse;
             if (!cleanedResponse.startsWith('[')) {
-              const match = cleanedResponse.match(/\[[\s\S]*\]/);
-              if (match) {
-                jsonToParse = match[0];
+              const arrayMatch = cleanedResponse.match(/\[[\s\S]*?\]/g);
+              if (arrayMatch && arrayMatch.length > 0) {
+                jsonToParse = arrayMatch[arrayMatch.length - 1]; // Take the last/most complete array
+              } else {
+                throw new Error('No JSON array found in response');
               }
             }
             
+            console.log('Cleaned JSON to parse:', jsonToParse.substring(0, 200));
             aiTasks = JSON.parse(jsonToParse);
+            
+            // Validate the parsed tasks
+            if (!Array.isArray(aiTasks)) {
+              throw new Error('Parsed result is not an array');
+            }
           } catch (parseError) {
             console.error('Error parsing AI response:', parseError);
+            console.error('Raw response that failed to parse:', aiResponse);
+            
             // Use fallback tasks
             aiTasks = [
               {
@@ -179,7 +197,7 @@ export const generateTodayTasksProcedure = protectedProcedure
           // Filter only today tasks (not habits) and limit to what we need
           const todayTasks = aiTasks
             .filter(task => !task.isHabit)
-            .slice(0, 3 - existingForGoal.length);
+            .slice(0, Math.max(0, 3 - existingForGoal.length));
           
           // Create task objects
           for (const aiTask of todayTasks) {
@@ -190,7 +208,7 @@ export const generateTodayTasksProcedure = protectedProcedure
               description: aiTask.description,
               type: 'today',
               task_date: null, // today tasks don't use task_date
-              due_date: new Date(targetDate).toISOString(),
+              due_date: new Date(targetDate + 'T12:00:00.000Z').toISOString(),
               is_habit: false,
               xp_value: aiTask.xpValue || 30,
               priority: 'medium',
