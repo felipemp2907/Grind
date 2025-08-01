@@ -23,6 +23,8 @@ interface UserState {
   isLoading: boolean;
   error: string | null;
   needsDatabaseSetup: boolean;
+  hasSeenWelcome: boolean;
+  markWelcomeSeen: () => void;
   addXp: (amount: number) => Promise<void>;
   addXP: (amount: number) => Promise<void>; // Alias for compatibility
   updateStreak: (increment: boolean) => Promise<void>;
@@ -65,6 +67,11 @@ export const useUserStore = create<UserState>()(
       isLoading: false,
       error: null,
       needsDatabaseSetup: false,
+      hasSeenWelcome: false,
+      
+      markWelcomeSeen: () => {
+        set({ hasSeenWelcome: true });
+      },
       
       fetchProfile: async () => {
         const currentState = get();

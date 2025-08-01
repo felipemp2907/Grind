@@ -12,7 +12,7 @@ import Button from '@/components/Button';
 export default function Index() {
   const { isOnboarded } = useGoalStore();
   const { isAuthenticated, isLoading: authLoading, user, resetAuth } = useAuthStore();
-  const { fetchProfile, isLoading: profileLoading, needsDatabaseSetup, checkDatabaseSetup } = useUserStore();
+  const { fetchProfile, isLoading: profileLoading, needsDatabaseSetup, checkDatabaseSetup, hasSeenWelcome } = useUserStore();
   const [loadingTimeout, setLoadingTimeout] = useState(false);
   const [initialCheckComplete, setInitialCheckComplete] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
@@ -115,7 +115,13 @@ export default function Index() {
     );
   }
   
-  // First check if user is authenticated (or timeout reached)
+  // First check if user has seen welcome screen
+  if (!hasSeenWelcome) {
+    console.log('Index: User has not seen welcome, redirecting to welcome');
+    return <Redirect href="/welcome" />;
+  }
+  
+  // Then check if user is authenticated (or timeout reached)
   if (!isAuthenticated) {
     console.log('Index: User not authenticated, redirecting to login');
     return <Redirect href="/login" />;
