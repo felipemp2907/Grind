@@ -24,8 +24,8 @@ import DateTimePicker from '@/components/DateTimePicker';
 
 export default function CreateGoalScreen() {
   const router = useRouter();
-  const { goals, addGoal } = useGoalStore();
-  const { addTask } = useTaskStore();
+  const { goals, createUltimateGoal } = useGoalStore();
+  const { fetchTasks } = useTaskStore();
   
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -49,113 +49,27 @@ export default function CreateGoalScreen() {
     setCreating(true);
     
     try {
-      // Create new goal with enhanced structure
-      const newGoal = {
-        id: Date.now().toString(),
+      // Use the new createUltimateGoal method that generates streak tasks automatically
+      await createUltimateGoal({
         title,
         description,
         deadline,
         category: 'personal',
-        milestones: [],
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        
-        // Enhanced Grind fields
-        progressValue: 0,
-        targetValue: 100, // Default to 100 for percentage-based progress
-        xpEarned: 0,
-        streakCount: 0,
-        todayTasksIds: [],
-        streakTaskIds: [],
-        status: 'active' as const,
-        priority: 'high' as const
-      };
+        targetValue: 100,
+        unit: 'progress',
+        priority: 'high',
+        color: undefined,
+        coverImage: undefined
+      });
       
-      // Add goal
-      addGoal(newGoal);
+      // Refresh tasks to get the newly created streak tasks
+      await fetchTasks();
       
-      // Generate AI breakdown
-      if (title && description) {
-        setGeneratingBreakdown(true);
-        
-        try {
-          const breakdown = await generateGoalBreakdown(
-            title,
-            description,
-            deadline,
-            100, // Use 100 as default target for percentage-based progress
-            'progress',
-            0
-          );
-          
-          // Create tasks from breakdown
-          const todayDate = getTodayDate();
-          
-          // Add today tasks (limit to 3)
-          breakdown.todayTasks.slice(0, 3).forEach((task, index) => {
-            const newTask = {
-              title: task.title,
-              description: task.description,
-              date: todayDate,
-              goalId: newGoal.id,
-              completed: false,
-              xpValue: task.xpValue,
-              isHabit: false,
-              streak: 0,
-              isUserCreated: false,
-              requiresValidation: true,
-              priority: task.priority,
-              estimatedTime: task.estimatedTime,
-              proofRequired: true,
-              proofSubmitted: false,
-              proofValidated: false,
-              taskType: 'today' as const
-            };
-            
-            addTask(newTask);
-          });
-          
-          // Add streak habits (limit to 3)
-          breakdown.streakHabits.slice(0, 3).forEach((habit, index) => {
-            const newTask = {
-              title: habit.title,
-              description: habit.description,
-              date: todayDate,
-              goalId: newGoal.id,
-              completed: false,
-              xpValue: habit.xpValue,
-              isHabit: true,
-              streak: 0,
-              isUserCreated: false,
-              requiresValidation: true,
-              priority: 'medium' as const,
-              estimatedTime: '15 min',
-              proofRequired: true,
-              proofSubmitted: false,
-              proofValidated: false,
-              taskType: 'streak' as const
-            };
-            
-            addTask(newTask);
-          });
-          
-          Alert.alert(
-            "Goal Created! 🎯",
-            `Your goal "${title}" has been created and Hustle has generated ${Math.min(breakdown.todayTasks.length, 3)} tasks and ${Math.min(breakdown.streakHabits.length, 3)} daily habits to get you started!`,
-            [{ text: "Let's Go!" }]
-          );
-          
-        } catch (error) {
-          console.error('Error generating breakdown:', error);
-          Alert.alert(
-            "Goal Created",
-            "Your goal has been created! You can ask Hustle to generate tasks for you in the coach tab.",
-            [{ text: "OK" }]
-          );
-        } finally {
-          setGeneratingBreakdown(false);
-        }
-      }
+      Alert.alert(
+        "Ultimate Goal Created! 🎯",
+        `Your goal "${title}" has been created and Hustle has generated streak tasks for every day until your deadline. These will help you build consistent daily habits to achieve your goal!`,
+        [{ text: "Let's Go!" }]
+      );
       
       // Navigate back
       router.back();

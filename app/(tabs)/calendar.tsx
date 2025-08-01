@@ -22,6 +22,7 @@ import Colors from '@/constants/colors';
 import { useGoalStore } from '@/store/goalStore';
 import { useTaskStore } from '@/store/taskStore';
 import { formatDate, getTodayDate } from '@/utils/dateUtils';
+import { isDateBeyondDeadlines } from '@/utils/streakUtils';
 import { Task } from '@/types';
 import CreateTaskModal from '@/components/CreateTaskModal';
 
@@ -150,6 +151,12 @@ export default function CalendarScreen() {
   }, []);
   
   const handleGenerateTasks = useCallback(async () => {
+    // Check if selected date is beyond all goal deadlines
+    if (isDateBeyondDeadlines(selectedDate, goals)) {
+      console.log('Cannot generate tasks - selected date is beyond all goal deadlines');
+      return;
+    }
+    
     // Find goals that don't have tasks for this date
     const goalsWithoutTasks = goals.filter(goal => {
       return !tasks.some(task => 
@@ -162,6 +169,11 @@ export default function CalendarScreen() {
       await generateTasksForGoal(selectedDate, goal.id);
     }
   }, [goals, tasks, selectedDate, generateTasksForGoal]);
+  
+  // Check if generate button should be disabled
+  const isGenerateDisabled = useMemo(() => {
+    return isDateBeyondDeadlines(selectedDate, goals);
+  }, [selectedDate, goals]);
   
   const renderCalendarDay = (day: number) => {
     const dateString = formatDate(new Date(currentYear, currentMonth, day));
@@ -368,10 +380,17 @@ export default function CalendarScreen() {
             
             {goals.length > 0 && selectedDate >= getTodayDate() && (
               <TouchableOpacity 
-                style={styles.generateTasksButton}
+                style={[
+                  styles.generateTasksButton,
+                  isGenerateDisabled && styles.generateTasksButtonDisabled
+                ]}
                 onPress={handleGenerateTasks}
+                disabled={isGenerateDisabled}
               >
-                <Text style={styles.generateTasksText}>Generate AI Tasks</Text>
+                <Text style={[
+                  styles.generateTasksText,
+                  isGenerateDisabled && styles.generateTasksTextDisabled
+                ]}>Generate AI Tasks</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -705,5 +724,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: 'bold',
     color: Colors.dark.primary,
+  },
+  generateTasksButtonDisabled: {
+    backgroundColor: 'rgba(108, 92, 231, 0.05)',
+    opacity: 0.5,
+  },
+  generateTasksTextDisabled: {
+    color: Colors.dark.inactive,
   }
 });

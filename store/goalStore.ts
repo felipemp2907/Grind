@@ -190,6 +190,63 @@ export const useGoalStore = create<GoalState>()(
         }
       },
       
+      createUltimateGoal: async (goalData) => {
+        try {
+          console.log('Creating ultimate goal with backend:', goalData);
+          
+          // Use the backend tRPC procedure to create the goal and generate streak tasks
+          const result = await trpcClient.goals.createUltimate.mutate(goalData);
+          
+          console.log('Ultimate goal creation result:', result);
+          
+          // Add the goal to local state
+          const newGoal: Goal = {
+            id: result.goal.id,
+            title: result.goal.title,
+            description: result.goal.description,
+            deadline: result.goal.deadline,
+            category: result.goal.category || '',
+            createdAt: result.goal.createdAt,
+            updatedAt: result.goal.updatedAt,
+            progressValue: result.goal.progressValue,
+            targetValue: result.goal.targetValue,
+            unit: result.goal.unit || '',
+            xpEarned: result.goal.xpEarned,
+            streakCount: result.goal.streakCount,
+            todayTasksIds: result.goal.todayTasksIds,
+            streakTaskIds: result.goal.streakTaskIds,
+            status: result.goal.status,
+            coverImage: result.goal.coverImage,
+            color: result.goal.color,
+            priority: result.goal.priority,
+            milestones: result.goal.milestones
+          };
+          
+          set((state) => {
+            // Only allow up to 3 goals
+            if (state.goals.length >= 3) {
+              return state;
+            }
+            
+            const newGoals = [...state.goals, newGoal];
+            
+            // If this is the first goal, set it as active
+            const newActiveGoalId = state.activeGoalId || newGoal.id;
+            
+            return { 
+              goals: newGoals,
+              activeGoalId: newActiveGoalId
+            };
+          });
+          
+          console.log(`Ultimate goal created successfully with ${result.streakTasksCreated} streak tasks for ${result.totalDays} days`);
+          
+        } catch (error) {
+          console.error('Error creating ultimate goal:', error);
+          throw error;
+        }
+      },
+      
       updateGoal: async (id, updates) => {
         // Update local state first
         set((state) => ({

@@ -20,7 +20,7 @@ interface AIGeneratedTask {
 
 export const generateTodayTasksProcedure = protectedProcedure
   .input(generateTodayTasksSchema)
-  .mutation(async ({ input, ctx }: { input: GenerateTodayTasksInput; ctx: ProtectedContext }) => {
+  .mutation(async ({ input, ctx }) => {
     const user = ctx.user;
     const { targetDate, goalId } = input;
     
