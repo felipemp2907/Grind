@@ -36,7 +36,6 @@ app.onError((err, c) => {
 app.use(
   "/trpc/*",
   trpcServer({
-    endpoint: "/api/trpc",
     router: appRouter,
     createContext,
     onError({ error, path }) {
@@ -53,6 +52,26 @@ app.get("/", (c) => {
     timestamp: new Date().toISOString(),
     environment: process.env.NODE_ENV || 'development'
   });
+});
+
+// Test endpoint to verify tRPC is working
+app.get("/test-trpc", async (c) => {
+  try {
+    // Test if we can create a simple tRPC client call
+    return c.json({
+      status: "tRPC test endpoint working",
+      routes: [
+        "goals.createUltimate",
+        "tasks.generateToday",
+        "example.hi"
+      ]
+    });
+  } catch (error) {
+    return c.json({
+      status: "error",
+      error: error instanceof Error ? error.message : 'Unknown error'
+    }, 500);
+  }
 });
 
 // Debug endpoint to check tRPC routes

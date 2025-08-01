@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { protectedProcedure, type ProtectedContext } from '../../create-context';
-import { supabase } from '../../../../lib/supabase';
+// Remove the supabase import since we get it from context
 import { getActiveGoalsForDate } from '../../../../utils/streakUtils';
 import { generateDailyTasksForGoal } from '../../../../utils/aiUtils';
 
@@ -26,7 +26,7 @@ export const generateTodayTasksProcedure = protectedProcedure
     
     try {
       // 1. Get all user's goals
-      const { data: allGoals, error: goalsError } = await supabase
+      const { data: allGoals, error: goalsError } = await ctx.supabase
         .from('goals')
         .select('*')
         .eq('user_id', user.id)
@@ -88,7 +88,7 @@ export const generateTodayTasksProcedure = protectedProcedure
       
       // 4. Check if tasks already exist for this date
       const targetDateISO = new Date(targetDate).toISOString().split('T')[0];
-      const { data: existingTasks, error: tasksError } = await supabase
+      const { data: existingTasks, error: tasksError } = await ctx.supabase
         .from('tasks')
         .select('*')
         .eq('user_id', user.id)
@@ -121,7 +121,7 @@ export const generateTodayTasksProcedure = protectedProcedure
         
         try {
           // Get previous completed tasks for context
-          const { data: previousTasks } = await supabase
+          const { data: previousTasks } = await ctx.supabase
             .from('tasks')
             .select('title')
             .eq('user_id', user.id)
@@ -283,7 +283,7 @@ export const generateTodayTasksProcedure = protectedProcedure
       
       // 6. Insert new tasks
       if (newTasks.length > 0) {
-        const { data: insertedTasks, error: insertError } = await supabase
+        const { data: insertedTasks, error: insertError } = await ctx.supabase
           .from('tasks')
           .insert(newTasks)
           .select();

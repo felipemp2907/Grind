@@ -58,7 +58,16 @@ export const trpcClient = trpc.createClient({
       },
       fetch: (url, options) => {
         console.log('tRPC request:', url, options?.method);
-        return fetch(url, options);
+        return fetch(url, options).then(response => {
+          if (!response.ok) {
+            console.error('tRPC HTTP error:', response.status, response.statusText);
+            return response.text().then(text => {
+              console.error('Response body:', text);
+              throw new Error(`HTTP ${response.status}: ${text}`);
+            });
+          }
+          return response;
+        });
       },
     }),
   ],
