@@ -28,7 +28,10 @@ export default function WelcomeScreen() {
         </View>
         
         {/* Welcome text */}
-        <Text style={styles.title}>Welcome to the Grind.</Text>
+        <View style={styles.titleContainer}>
+          <Text style={styles.titleLine1}>Welcome to the</Text>
+          <Text style={styles.titleLine2}>Grind</Text>
+        </View>
         
         {/* Get started button */}
         <TouchableOpacity style={styles.button} onPress={handleStart}>
@@ -85,13 +88,24 @@ const styles = StyleSheet.create({
     borderRadius: 70,
     backgroundColor: '#0B0B0B',
   },
-  title: {
+  titleContainer: {
+    alignItems: 'center',
+    marginBottom: 48,
+    zIndex: 1,
+  },
+  titleLine1: {
+    color: '#FFFFFF',
+    fontSize: 32,
+    fontWeight: '400',
+    textAlign: 'center',
+    lineHeight: 38,
+  },
+  titleLine2: {
     color: '#FFFFFF',
     fontSize: 32,
     fontWeight: '700',
     textAlign: 'center',
-    marginBottom: 48,
-    zIndex: 1,
+    lineHeight: 38,
   },
   button: {
     backgroundColor: '#FFFFFF',
