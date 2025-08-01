@@ -4,6 +4,7 @@ import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import { useUserStore } from '@/store/userStore';
+import TargetBackdrop from './TargetBackdrop';
 
 export default function WelcomeScreen() {
   const { markWelcomeSeen } = useUserStore();
@@ -18,15 +19,8 @@ export default function WelcomeScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+      <TargetBackdrop />
       <View style={styles.content}>
-        {/* Concentric rings background */}
-        <View style={styles.ringsContainer}>
-          <View style={[styles.ring, styles.ring1]} />
-          <View style={[styles.ring, styles.ring2]} />
-          <View style={[styles.ring, styles.ring3]} />
-          <View style={styles.centerCircle} />
-        </View>
-        
         {/* Welcome text */}
         <View style={styles.titleContainer}>
           <Text style={styles.titleLine1}>Welcome to the</Text>
@@ -53,38 +47,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 20,
   },
-  ringsContainer: {
-    position: 'absolute',
-    width: '100%',
-    height: '100%',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  ring: {
-    position: 'absolute',
-    borderRadius: 1000,
-  },
-  ring1: {
-    width: 600,
-    height: 600,
-    backgroundColor: '#404040',
-  },
-  ring2: {
-    width: 450,
-    height: 450,
-    backgroundColor: '#0B0B0B',
-  },
-  ring3: {
-    width: 300,
-    height: 300,
-    backgroundColor: '#303030',
-  },
-  centerCircle: {
-    width: 150,
-    height: 150,
-    borderRadius: 75,
-    backgroundColor: '#606060',
-  },
+
   titleContainer: {
     alignItems: 'center',
     marginBottom: 48,
