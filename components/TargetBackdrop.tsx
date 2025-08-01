@@ -3,35 +3,38 @@ import { View, StyleSheet, useWindowDimensions } from 'react-native';
 
 export default function TargetBackdrop() {
   const { width, height } = useWindowDimensions();
-  const size = Math.min(width, height) * 1.2; // Slightly larger to ensure full coverage
+  const screenSize = Math.max(width, height);
   
-  // Ring sizes as percentages of the base size
-  const ringSizes = [
-    size * 1.0,    // Outermost ring (100%)
-    size * 0.75,   // Second ring (75%)
-    size * 0.5,    // Third ring (50%)
-    size * 0.25,   // Center circle (25%)
+  // Create concentric rings that fill the entire screen
+  // Using larger multipliers to ensure full coverage on all devices
+  const baseSize = screenSize * 1.8;
+  
+  const rings = [
+    { size: baseSize, color: '#0B0B0B' },        // Outermost (background)
+    { size: baseSize * 0.8, color: '#141414' },  // Second ring
+    { size: baseSize * 0.6, color: '#181818' },  // Third ring  
+    { size: baseSize * 0.4, color: '#1E1E1E' },  // Fourth ring
+    { size: baseSize * 0.2, color: '#0B0B0B' },  // Center circle
   ];
-
-  // Colors from darkest (outer) to lightest (inner)
-  const colors = ['#0B0B0B', '#141414', '#181818', '#1E1E1E'];
 
   return (
     <View style={StyleSheet.absoluteFill}>
-      {ringSizes.map((ringSize, index) => {
-        const radius = ringSize / 2;
+      {rings.map((ring, index) => {
+        const radius = ring.size / 2;
         return (
           <View
             key={index}
             style={[
               styles.ring,
               {
-                width: ringSize,
-                height: ringSize,
+                width: ring.size,
+                height: ring.size,
                 borderRadius: radius,
-                backgroundColor: colors[index],
-                marginLeft: -radius,
-                marginTop: -radius,
+                backgroundColor: ring.color,
+                transform: [
+                  { translateX: -radius },
+                  { translateY: -radius },
+                ],
               },
             ]}
           />
