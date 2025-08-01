@@ -24,9 +24,7 @@ export default function WelcomeScreen() {
           <View style={[styles.ring, styles.ring1]} />
           <View style={[styles.ring, styles.ring2]} />
           <View style={[styles.ring, styles.ring3]} />
-          <View style={styles.centerCircle}>
-            <View style={styles.innerCircle} />
-          </View>
+          <View style={styles.centerCircle} />
         </View>
         
         {/* Welcome text */}
@@ -57,46 +55,34 @@ const styles = StyleSheet.create({
   },
   ringsContainer: {
     position: 'absolute',
-    width: 320,
-    height: 320,
+    width: '100%',
+    height: '100%',
     alignItems: 'center',
     justifyContent: 'center',
-    top: '50%',
-    left: '50%',
-    marginTop: -160,
-    marginLeft: -160,
   },
   ring: {
     position: 'absolute',
     borderRadius: 1000,
   },
   ring1: {
-    width: 320,
-    height: 320,
-    backgroundColor: '#505050',
+    width: 600,
+    height: 600,
+    backgroundColor: '#404040',
   },
   ring2: {
-    width: 240,
-    height: 240,
+    width: 450,
+    height: 450,
     backgroundColor: '#0B0B0B',
   },
   ring3: {
-    width: 160,
-    height: 160,
-    backgroundColor: '#404040',
+    width: 300,
+    height: 300,
+    backgroundColor: '#303030',
   },
   centerCircle: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: '#0B0B0B',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  innerCircle: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 150,
+    height: 150,
+    borderRadius: 75,
     backgroundColor: '#606060',
   },
   titleContainer: {
