@@ -4,7 +4,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Goal, Milestone, ProgressUpdate, MilestoneAlert, GoalShareCard } from '@/types';
 import { supabase, setupDatabase, serializeError, getCurrentUser, ensureUserProfile } from '@/lib/supabase';
 import { useAuthStore } from './authStore';
-import { trpcClient } from '@/lib/trpc';
+// Remove trpcClient import for now
+// import { trpcClient } from '@/lib/trpc';
 
 interface GoalState {
   goals: Goal[];
@@ -193,6 +194,9 @@ export const useGoalStore = create<GoalState>()(
       createUltimateGoal: async (goalData) => {
         try {
           console.log('Creating ultimate goal with backend:', goalData);
+          console.log('tRPC client available:', !!trpcClient);
+          console.log('tRPC goals available:', !!trpcClient.goals);
+          console.log('tRPC createUltimate available:', !!trpcClient.goals?.createUltimate);
           
           // Use the backend tRPC procedure to create the goal and generate streak tasks
           const result = await trpcClient.goals.createUltimate.mutate(goalData);

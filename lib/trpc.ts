@@ -58,13 +58,18 @@ export const trpcClient = trpc.createClient({
       },
       fetch: (url, options) => {
         console.log('tRPC request:', url, options?.method);
-        return fetch(url, options).then(response => {
+        return fetch(url, options).then(async response => {
           if (!response.ok) {
             console.error('tRPC HTTP error:', response.status, response.statusText);
-            return response.text().then(text => {
-              console.error('Response body:', text);
-              throw new Error(`HTTP ${response.status}: ${text}`);
-            });
+            const text = await response.text();
+            console.error('Response body:', text);
+            
+            // If we get HTML instead of JSON, it means the API route isn't working
+            if (text.includes('<html>') || text.includes('<!DOCTYPE')) {
+              throw new Error(`API route not found or misconfigured. Got HTML response instead of JSON.`);
+            }
+            
+            throw new Error(`HTTP ${response.status}: ${text}`);
           }
           return response;
         });

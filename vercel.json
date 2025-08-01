@@ -5,15 +5,11 @@
   "cleanUrls": true,
   "framework": null,
   "functions": {
-    "backend/hono.ts": {
+    "api/[[...route]].ts": {
       "runtime": "edge"
     }
   },
   "rewrites": [
-    {
-      "source": "/api/(.*)",
-      "destination": "/backend/hono.ts"
-    },
     {
       "source": "/:path*",
       "destination": "/"

@@ -8,6 +8,8 @@ import { createContext } from "./trpc/create-context";
 // app will be mounted at /api
 const app = new Hono();
 
+console.log('Hono app initialized');
+
 // Add logging middleware
 app.use("*", logger());
 

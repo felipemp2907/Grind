@@ -1,6 +1,8 @@
 import { handle } from 'hono/vercel';
 import app from '../backend/hono';
 
+console.log('API route loaded');
+
 // Handle all HTTP methods
 export const GET = handle(app);
 export const POST = handle(app);
