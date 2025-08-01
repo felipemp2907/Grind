@@ -166,6 +166,8 @@ function postProcessTasks(
 
 // Function to clean AI response to ensure valid JSON
 const cleanJsonResponse = (response: string): string => {
+  console.log('Original AI response:', response.substring(0, 200));
+  
   // Remove any HTML tags if present
   let cleaned = response.replace(/<[^>]*>/g, '');
   
@@ -175,8 +177,13 @@ const cleanJsonResponse = (response: string): string => {
   // Remove any other markdown formatting that might be present
   cleaned = cleaned.replace(/```/g, '');
   
+  // Remove any leading/trailing text that's not JSON
+  cleaned = cleaned.replace(/^[^\[\{]*/, '').replace(/[^\]\}]*$/, '');
+  
   // Trim whitespace
   cleaned = cleaned.trim();
+  
+  console.log('Cleaned response:', cleaned.substring(0, 200));
   
   // Ensure the response starts with [ or { for valid JSON
   if (!cleaned.startsWith('[') && !cleaned.startsWith('{')) {
@@ -197,11 +204,19 @@ const cleanJsonResponse = (response: string): string => {
       );
     } else {
       // If we can't find valid JSON, return a fallback
+      console.warn('No valid JSON found in response, using fallback');
       return '[]';
     }
   }
   
-  return cleaned;
+  // Final validation - try to parse to ensure it's valid JSON
+  try {
+    JSON.parse(cleaned);
+    return cleaned;
+  } catch (error) {
+    console.error('Final JSON validation failed:', error);
+    return '[]';
+  }
 };
 
 // Function to call the AI API

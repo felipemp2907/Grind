@@ -1,6 +1,5 @@
 import { z } from 'zod';
-import { protectedProcedure } from '../../create-context';
-import type { ProtectedContext } from '../../create-context';
+import { protectedProcedure, type ProtectedContext } from '../../create-context';
 import { supabase } from '../../../../lib/supabase';
 import { getActiveGoalsForDate } from '../../../../utils/streakUtils';
 import { generateDailyTasksForGoal } from '../../../../utils/aiUtils';

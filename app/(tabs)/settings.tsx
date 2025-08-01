@@ -542,7 +542,7 @@ const styles = StyleSheet.create({
   editGoalText: {
     fontSize: 14,
     fontWeight: '600',
-    color: Colors.dark.background,
+    color: Colors.dark.card,
   },
   noGoalsText: {
     fontSize: 14,

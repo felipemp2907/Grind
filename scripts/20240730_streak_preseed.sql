@@ -203,7 +203,7 @@ CREATE TRIGGER goal_deadline_change_trigger
 
 -- 7: Add status column to goals table if it doesn't exist
 ALTER TABLE public.goals
-ADD COLUMN IF NOT EXISTS status TEXT CHECK (status IN ('active', 'completed', 'paused')) DEFAULT 'active';
+ADD COLUMN IF NOT EXISTS status TEXT CHECK (status IN ('active', 'completed', 'abandoned')) DEFAULT 'active';
 
 -- 8: Update existing tasks to have proper type
 UPDATE public.tasks

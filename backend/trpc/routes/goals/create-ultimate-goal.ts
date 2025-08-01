@@ -1,6 +1,5 @@
 import { z } from 'zod';
-import { protectedProcedure } from '../../create-context';
-import type { ProtectedContext } from '../../create-context';
+import { protectedProcedure, type ProtectedContext } from '../../create-context';
 import { supabase } from '../../../../lib/supabase';
 import { buildStreakTemplate, calculateDaysToDeadline } from '../../../../utils/streakUtils';
 
