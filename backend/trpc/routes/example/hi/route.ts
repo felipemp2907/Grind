@@ -1,9 +1,11 @@
 import { z } from "zod";
-import { publicProcedure, protectedProcedure } from "../../create-context";
+import { publicProcedure, protectedProcedure, type ProtectedContext } from "../../create-context";
+
+type HiInput = { name?: string } | undefined;
 
 export const hiProcedure = publicProcedure
   .input(z.object({ name: z.string().optional() }).optional())
-  .query(({ input }: { input?: { name?: string } }) => {
+  .query(({ input }: { input: HiInput }) => {
     return {
       hello: input?.name || 'World',
       date: new Date(),
@@ -12,7 +14,7 @@ export const hiProcedure = publicProcedure
   });
 
 export const testProtectedProcedure = protectedProcedure
-  .query(({ ctx }: { ctx: { user: { id: string }; supabase: any } }) => {
+  .query(({ ctx }: { ctx: ProtectedContext }) => {
     return {
       message: 'Protected route working!',
       userId: ctx.user.id,
