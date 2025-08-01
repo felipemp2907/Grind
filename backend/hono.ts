@@ -15,7 +15,7 @@ app.use("*", logger());
 
 // Enable CORS for all routes
 app.use("*", cors({
-  origin: ['http://localhost:3000', 'http://localhost:8081', 'https://*.vercel.app'],
+  origin: ['http://localhost:3000', 'http://localhost:8081', 'https://*.vercel.app', 'exp://192.168.*'],
   allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowHeaders: ['Content-Type', 'Authorization'],
   credentials: true,
@@ -24,6 +24,8 @@ app.use("*", cors({
 // Add error handling middleware
 app.onError((err, c) => {
   console.error('Hono error:', err);
+  
+  // Always return JSON, never HTML
   return c.json(
     {
       error: 'Internal Server Error',
@@ -83,9 +85,28 @@ app.get("/debug", (c) => {
     availableRoutes: [
       "/api/trpc/example.hi",
       "/api/trpc/goals.createUltimate",
+      "/api/trpc/goals.create",
       "/api/trpc/tasks.generateToday"
     ]
   });
+});
+
+// 404 handler - always return JSON, never HTML
+app.notFound((c) => {
+  return c.json(
+    {
+      error: 'Not Found',
+      message: `Route ${c.req.path} not found`,
+      availableRoutes: [
+        '/api/',
+        '/api/trpc/example.hi',
+        '/api/trpc/goals.createUltimate',
+        '/api/trpc/goals.create',
+        '/api/trpc/tasks.generateToday'
+      ]
+    },
+    404
+  );
 });
 
 export default app;

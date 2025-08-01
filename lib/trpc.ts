@@ -26,16 +26,16 @@ const getBaseUrl = () => {
     return window.location.origin;
   }
 
-  throw new Error(
-    "No base url found, please set EXPO_PUBLIC_RORK_API_BASE_URL for production"
-  );
+  // Default fallback for development
+  console.warn('No base URL configured, using localhost:3000');
+  return 'http://localhost:3000';
 };
 
 export const trpcClient = trpc.createClient({
+  transformer: superjson,
   links: [
     httpLink({
       url: `${getBaseUrl()}/api/trpc`,
-      transformer: superjson,
       headers: async () => {
         const headers: Record<string, string> = {
           'Content-Type': 'application/json',
@@ -66,10 +66,16 @@ export const trpcClient = trpc.createClient({
             
             // If we get HTML instead of JSON, it means the API route isn't working
             if (text.includes('<html>') || text.includes('<!DOCTYPE')) {
-              throw new Error(`API route not found or misconfigured. Got HTML response instead of JSON.`);
+              throw new Error(`API route not found or misconfigured. Got HTML response instead of JSON. Check that your backend server is running at ${getBaseUrl()}`);
             }
             
-            throw new Error(`HTTP ${response.status}: ${text}`);
+            // Try to parse as JSON to get a better error message
+            try {
+              const errorData = JSON.parse(text);
+              throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`);
+            } catch (parseError) {
+              throw new Error(`HTTP ${response.status}: ${text}`);
+            }
           }
           return response;
         });

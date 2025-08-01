@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { TRPCError } from '@trpc/server';
 import { protectedProcedure, type ProtectedContext } from '../../create-context';
 import { buildStreakTemplate, calculateDaysToDeadline } from '../../../../utils/streakUtils';
 
@@ -187,9 +188,13 @@ export const createUltimateGoalProcedure = protectedProcedure
     } catch (error) {
       console.error('Error in createUltimateGoal:', error);
       
-      // Return a more detailed error response
+      // Return a proper tRPC error to ensure JSON response
       const errorMessage = error instanceof Error ? error.message : 'Failed to create ultimate goal';
       
-      throw new Error(`Goal creation failed: ${errorMessage}`);
+      throw new TRPCError({
+        code: 'INTERNAL_SERVER_ERROR',
+        message: `Goal creation failed: ${errorMessage}`,
+        cause: error,
+      });
     }
   });

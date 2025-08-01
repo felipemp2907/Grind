@@ -10,6 +10,7 @@ export const appRouter = createTRPCRouter({
   }),
   goals: createTRPCRouter({
     createUltimate: createUltimateGoalProcedure,
+    create: createUltimateGoalProcedure, // Alias for backward compatibility
   }),
   tasks: createTRPCRouter({
     generateToday: generateTodayTasksProcedure,
