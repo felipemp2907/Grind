@@ -1,6 +1,6 @@
 import { createTRPCRouter } from "./create-context";
 import { hiProcedure, testProtectedProcedure } from "./routes/example/hi/route";
-import { createUltimateGoalProcedure } from "./routes/goals/create-ultimate-goal";
+import { createUltimateGoalProcedure, createGoalProcedure } from "./routes/goals/create-ultimate-goal";
 import { generateTodayTasksProcedure } from "./routes/tasks/generate-today-tasks";
 
 export const appRouter = createTRPCRouter({
@@ -9,8 +9,8 @@ export const appRouter = createTRPCRouter({
     test: testProtectedProcedure,
   }),
   goals: createTRPCRouter({
+    create: createGoalProcedure,
     createUltimate: createUltimateGoalProcedure,
-    create: createUltimateGoalProcedure, // Alias for backward compatibility
   }),
   tasks: createTRPCRouter({
     generateToday: generateTodayTasksProcedure,

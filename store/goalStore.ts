@@ -195,10 +195,78 @@ export const useGoalStore = create<GoalState>()(
           console.log('Creating ultimate goal with backend:', goalData);
           console.log('tRPC client available:', !!trpcClient);
           
-          // Use the backend tRPC procedure to create the goal and generate streak tasks
-          const result = await trpcClient.goals.createUltimate.mutate(goalData);
-          
-          console.log('Ultimate goal creation result:', result);
+          // Try to use the backend tRPC procedure first
+          let result;
+          try {
+            result = await trpcClient.goals.createUltimate.mutate(goalData);
+            console.log('Ultimate goal creation result:', result);
+          } catch (trpcError) {
+            console.error('tRPC error, falling back to direct Supabase:', trpcError);
+            
+            // Fallback to direct Supabase insertion if tRPC fails
+            const { user: currentUser, error: userError } = await getCurrentUser();
+            if (userError || !currentUser) {
+              throw new Error('User not authenticated');
+            }
+            
+            const dbResult = await setupDatabase();
+            if (!dbResult.success) {
+              throw new Error('Database not set up');
+            }
+            
+            // Create goal directly in Supabase
+            const { data: goalDbData, error: goalError } = await supabase
+              .from('goals')
+              .insert({
+                user_id: currentUser.id,
+                title: goalData.title,
+                description: goalData.description,
+                deadline: new Date(goalData.deadline).toISOString(),
+                category: goalData.category || '',
+                target_value: goalData.targetValue || 100,
+                unit: goalData.unit || '',
+                priority: goalData.priority || 'medium',
+                color: goalData.color,
+                cover_image: goalData.coverImage,
+                status: 'active'
+              })
+              .select()
+              .single();
+              
+            if (goalError || !goalDbData) {
+              throw new Error(`Failed to create goal: ${goalError?.message || 'Unknown error'}`);
+            }
+            
+            // Create fallback result object
+            result = {
+              goal: {
+                id: goalDbData.id,
+                title: goalData.title,
+                description: goalData.description,
+                deadline: goalData.deadline,
+                category: goalData.category || '',
+                createdAt: goalDbData.created_at,
+                updatedAt: goalDbData.updated_at,
+                progressValue: 0,
+                targetValue: goalData.targetValue || 100,
+                unit: goalData.unit || '',
+                xpEarned: 0,
+                streakCount: 0,
+                todayTasksIds: [],
+                streakTaskIds: [],
+                status: 'active' as const,
+                coverImage: goalData.coverImage,
+                color: goalData.color,
+                priority: goalData.priority || 'medium',
+                milestones: []
+              },
+              streakTasksCreated: 0,
+              totalDays: 0,
+              daysToDeadline: 0
+            };
+            
+            console.log('Goal created via fallback method');
+          }
           
           // Add the goal to local state
           const newGoal: Goal = {

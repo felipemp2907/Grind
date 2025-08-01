@@ -50,11 +50,17 @@ app.use(
 
 // Simple health check endpoint
 app.get("/", (c) => {
+  console.log('Health check endpoint hit');
   return c.json({ 
     status: "ok", 
     message: "API is running",
     timestamp: new Date().toISOString(),
-    environment: process.env.NODE_ENV || 'development'
+    environment: process.env.NODE_ENV || 'development',
+    routes: {
+      trpc: '/api/trpc',
+      health: '/api/',
+      debug: '/api/debug'
+    }
   });
 });
 

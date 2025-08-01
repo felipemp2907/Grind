@@ -17,6 +17,93 @@ const createUltimateGoalSchema = z.object({
 
 type CreateUltimateGoalInput = z.infer<typeof createUltimateGoalSchema>;
 
+// Simple goal creation procedure without streak tasks
+export const createGoalProcedure = protectedProcedure
+  .input(createUltimateGoalSchema)
+  .mutation(async ({ input, ctx }: { input: CreateUltimateGoalInput; ctx: ProtectedContext }) => {
+    const user = ctx.user;
+    
+    try {
+      // Create the goal
+      const { data: goalData, error: goalError } = await ctx.supabase
+        .from('goals')
+        .insert({
+          user_id: user.id,
+          title: input.title,
+          description: input.description,
+          deadline: new Date(input.deadline).toISOString(),
+          category: input.category || '',
+          target_value: input.targetValue,
+          unit: input.unit || '',
+          priority: input.priority,
+          color: input.color,
+          cover_image: input.coverImage,
+          status: 'active'
+        })
+        .select()
+        .single();
+        
+      if (goalError) {
+        console.error('Error creating goal:', goalError);
+        throw new TRPCError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: `Failed to create goal: ${goalError.message}`,
+        });
+      }
+      
+      if (!goalData) {
+        throw new TRPCError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: 'Goal creation returned no data',
+        });
+      }
+      
+      // Return the created goal
+      return {
+        goal: {
+          id: goalData.id,
+          title: input.title,
+          description: input.description,
+          deadline: input.deadline,
+          category: input.category,
+          createdAt: goalData.created_at,
+          updatedAt: goalData.updated_at,
+          progressValue: 0,
+          targetValue: input.targetValue,
+          unit: input.unit,
+          xpEarned: 0,
+          streakCount: 0,
+          todayTasksIds: [],
+          streakTaskIds: [],
+          status: 'active' as const,
+          coverImage: input.coverImage,
+          color: input.color,
+          priority: input.priority,
+          milestones: []
+        },
+        streakTasksCreated: 0,
+        totalDays: 0,
+        daysToDeadline: 0
+      };
+      
+    } catch (error) {
+      console.error('Error in createGoal:', error);
+      
+      if (error instanceof TRPCError) {
+        throw error;
+      }
+      
+      const errorMessage = error instanceof Error ? error.message : 'Failed to create goal';
+      
+      throw new TRPCError({
+        code: 'INTERNAL_SERVER_ERROR',
+        message: `Goal creation failed: ${errorMessage}`,
+        cause: error,
+      });
+    }
+  });
+
+// Ultimate goal creation procedure with streak tasks
 export const createUltimateGoalProcedure = protectedProcedure
   .input(createUltimateGoalSchema)
   .mutation(async ({ input, ctx }: { input: CreateUltimateGoalInput; ctx: ProtectedContext }) => {
