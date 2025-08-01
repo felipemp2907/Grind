@@ -1,6 +1,5 @@
 import { z } from 'zod';
 import { protectedProcedure, type ProtectedContext } from '../../create-context';
-import { supabase } from '../../../../lib/supabase';
 import { buildStreakTemplate, calculateDaysToDeadline } from '../../../../utils/streakUtils';
 
 const createUltimateGoalSchema = z.object({
@@ -24,13 +23,20 @@ export const createUltimateGoalProcedure = protectedProcedure
     
     try {
       // 1. Create the goal first
-      const { data: goalData, error: goalError } = await supabase
+      const { data: goalData, error: goalError } = await ctx.supabase
         .from('goals')
         .insert({
           user_id: user.id,
           title: input.title,
           description: input.description,
-          deadline: new Date(input.deadline).toISOString()
+          deadline: new Date(input.deadline).toISOString(),
+          category: input.category || '',
+          target_value: input.targetValue,
+          unit: input.unit || '',
+          priority: input.priority,
+          color: input.color,
+          cover_image: input.coverImage,
+          status: 'active'
         })
         .select()
         .single();
@@ -81,7 +87,7 @@ export const createUltimateGoalProcedure = protectedProcedure
       today.setHours(0, 0, 0, 0);
       
       // Delete any existing streak tasks for this goal to avoid duplicates
-      const { error: deleteError } = await supabase
+      const { error: deleteError } = await ctx.supabase
         .from('tasks')
         .delete()
         .eq('user_id', user.id)
@@ -130,7 +136,7 @@ export const createUltimateGoalProcedure = protectedProcedure
         for (let i = 0; i < streakTasks.length; i += batchSize) {
           const batch = streakTasks.slice(i, i + batchSize);
           
-          const { error: tasksError } = await supabase
+          const { error: tasksError } = await ctx.supabase
             .from('tasks')
             .insert(batch);
             
@@ -180,6 +186,10 @@ export const createUltimateGoalProcedure = protectedProcedure
       
     } catch (error) {
       console.error('Error in createUltimateGoal:', error);
-      throw new Error(error instanceof Error ? error.message : 'Failed to create ultimate goal');
+      
+      // Return a more detailed error response
+      const errorMessage = error instanceof Error ? error.message : 'Failed to create ultimate goal';
+      
+      throw new Error(`Goal creation failed: ${errorMessage}`);
     }
   });

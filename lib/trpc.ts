@@ -36,10 +36,29 @@ export const trpcClient = trpc.createClient({
     httpLink({
       url: `${getBaseUrl()}/api/trpc`,
       transformer: superjson,
-      headers: () => {
-        return {
+      headers: async () => {
+        const headers: Record<string, string> = {
           'Content-Type': 'application/json',
         };
+        
+        // Try to get the current user's session token
+        try {
+          // Import supabase dynamically to avoid circular dependencies
+          const { supabase } = await import('./supabase');
+          const { data: { session } } = await supabase.auth.getSession();
+          
+          if (session?.access_token) {
+            headers['Authorization'] = `Bearer ${session.access_token}`;
+          }
+        } catch (error) {
+          console.log('Could not get auth token for tRPC request:', error);
+        }
+        
+        return headers;
+      },
+      fetch: (url, options) => {
+        console.log('tRPC request:', url, options?.method);
+        return fetch(url, options);
       },
     }),
   ],
