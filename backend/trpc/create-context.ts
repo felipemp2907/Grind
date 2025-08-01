@@ -1,6 +1,7 @@
 import { FetchCreateContextFnOptions } from "@trpc/server/adapters/fetch";
 import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
+import { ZodError } from "zod";
 import { createClient } from '@supabase/supabase-js';
 
 // Create a server-side Supabase client
@@ -31,7 +32,7 @@ const t = initTRPC.context<Context>().create({
       data: {
         ...shape.data,
         zodError:
-          error.cause instanceof Error && error.cause.name === 'ZodError'
+          error.cause instanceof ZodError
             ? error.cause.flatten()
             : null,
       },

@@ -3,7 +3,7 @@ import { publicProcedure, protectedProcedure } from "../../create-context";
 
 export const hiProcedure = publicProcedure
   .input(z.object({ name: z.string().optional() }).optional())
-  .query(({ input }) => {
+  .query(({ input }: { input?: { name?: string } }) => {
     return {
       hello: input?.name || 'World',
       date: new Date(),
@@ -12,7 +12,7 @@ export const hiProcedure = publicProcedure
   });
 
 export const testProtectedProcedure = protectedProcedure
-  .query(({ ctx }) => {
+  .query(({ ctx }: { ctx: { user: { id: string }; supabase: any } }) => {
     return {
       message: 'Protected route working!',
       userId: ctx.user.id,
