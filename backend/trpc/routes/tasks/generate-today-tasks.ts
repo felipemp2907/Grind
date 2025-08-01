@@ -1,5 +1,6 @@
 import { z } from 'zod';
-import { protectedProcedure, type ProtectedContext } from '../../create-context';
+import { protectedProcedure } from '../../create-context';
+import type { ProtectedContext } from '../../create-context';
 import { supabase } from '../../../../lib/supabase';
 import { getActiveGoalsForDate } from '../../../../utils/streakUtils';
 import { generateDailyTasksForGoal } from '../../../../utils/aiUtils';
@@ -20,7 +21,7 @@ interface AIGeneratedTask {
 
 export const generateTodayTasksProcedure = protectedProcedure
   .input(generateTodayTasksSchema)
-  .mutation(async ({ input, ctx }) => {
+  .mutation(async ({ input, ctx }: { input: GenerateTodayTasksInput; ctx: ProtectedContext }) => {
     const user = ctx.user;
     const { targetDate, goalId } = input;
     
@@ -266,7 +267,9 @@ export const generateTodayTasksProcedure = protectedProcedure
                 is_habit: false,
                 xp_value: aiTask.xpValue || 30,
                 priority: 'medium',
-                completed: false
+                completed: false,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
               });
             } else {
               console.log(`Skipping task for ${goal.title} - target date ${targetDate} exceeds deadline ${goal.deadline}`);

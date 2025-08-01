@@ -1,5 +1,6 @@
 import { z } from 'zod';
-import { protectedProcedure, type ProtectedContext } from '../../create-context';
+import { protectedProcedure } from '../../create-context';
+import type { ProtectedContext } from '../../create-context';
 import { supabase } from '../../../../lib/supabase';
 import { buildStreakTemplate, calculateDaysToDeadline } from '../../../../utils/streakUtils';
 
@@ -19,7 +20,7 @@ type CreateUltimateGoalInput = z.infer<typeof createUltimateGoalSchema>;
 
 export const createUltimateGoalProcedure = protectedProcedure
   .input(createUltimateGoalSchema)
-  .mutation(async ({ input, ctx }) => {
+  .mutation(async ({ input, ctx }: { input: CreateUltimateGoalInput; ctx: ProtectedContext }) => {
     const user = ctx.user;
     
     try {
@@ -112,7 +113,9 @@ export const createUltimateGoalProcedure = protectedProcedure
             xp_value: streakItem.xpValue,
             priority: streakItem.priority,
             completed: false,
-            due_date: null // streak tasks use task_date instead
+            due_date: null, // streak tasks use task_date instead
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
           });
         }
       }
