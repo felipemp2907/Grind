@@ -24,22 +24,26 @@ export const createGoalProcedure = protectedProcedure
     const user = ctx.user;
     
     try {
-      // Create the goal
+      // Create the goal with only the columns that definitely exist
+      const goalInsertData: any = {
+        user_id: user.id,
+        title: input.title,
+        description: input.description,
+        deadline: new Date(input.deadline).toISOString()
+      };
+      
+      // Add optional columns only if they're provided
+      if (input.category) goalInsertData.category = input.category;
+      if (input.targetValue !== undefined) goalInsertData.target_value = input.targetValue;
+      if (input.unit) goalInsertData.unit = input.unit;
+      if (input.priority) goalInsertData.priority = input.priority;
+      if (input.color) goalInsertData.color = input.color;
+      if (input.coverImage) goalInsertData.cover_image = input.coverImage;
+      goalInsertData.status = 'active';
+      
       const { data: goalData, error: goalError } = await ctx.supabase
         .from('goals')
-        .insert({
-          user_id: user.id,
-          title: input.title,
-          description: input.description,
-          deadline: new Date(input.deadline).toISOString(),
-          category: input.category || null,
-          target_value: input.targetValue,
-          unit: input.unit || '',
-          priority: input.priority,
-          color: input.color,
-          cover_image: input.coverImage,
-          status: 'active'
-        })
+        .insert(goalInsertData)
         .select()
         .single();
         
@@ -110,22 +114,26 @@ export const createUltimateGoalProcedure = protectedProcedure
     const user = ctx.user;
     
     try {
-      // 1. Create the goal first
+      // 1. Create the goal first with only the columns that definitely exist
+      const goalInsertData: any = {
+        user_id: user.id,
+        title: input.title,
+        description: input.description,
+        deadline: new Date(input.deadline).toISOString()
+      };
+      
+      // Add optional columns only if they're provided
+      if (input.category) goalInsertData.category = input.category;
+      if (input.targetValue !== undefined) goalInsertData.target_value = input.targetValue;
+      if (input.unit) goalInsertData.unit = input.unit;
+      if (input.priority) goalInsertData.priority = input.priority;
+      if (input.color) goalInsertData.color = input.color;
+      if (input.coverImage) goalInsertData.cover_image = input.coverImage;
+      goalInsertData.status = 'active';
+      
       const { data: goalData, error: goalError } = await ctx.supabase
         .from('goals')
-        .insert({
-          user_id: user.id,
-          title: input.title,
-          description: input.description,
-          deadline: new Date(input.deadline).toISOString(),
-          category: input.category || null,
-          target_value: input.targetValue,
-          unit: input.unit || '',
-          priority: input.priority,
-          color: input.color,
-          cover_image: input.coverImage,
-          status: 'active'
-        })
+        .insert(goalInsertData)
         .select()
         .single();
         

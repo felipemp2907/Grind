@@ -214,22 +214,26 @@ export const useGoalStore = create<GoalState>()(
               throw new Error('Database not set up');
             }
             
-            // Create goal directly in Supabase
+            // Create goal directly in Supabase with only guaranteed columns
+            const goalInsertData: any = {
+              user_id: currentUser.id,
+              title: goalData.title,
+              description: goalData.description,
+              deadline: new Date(goalData.deadline).toISOString()
+            };
+            
+            // Add optional columns only if they're provided
+            if (goalData.category) goalInsertData.category = goalData.category;
+            if (goalData.targetValue !== undefined) goalInsertData.target_value = goalData.targetValue;
+            if (goalData.unit) goalInsertData.unit = goalData.unit;
+            if (goalData.priority) goalInsertData.priority = goalData.priority;
+            if (goalData.color) goalInsertData.color = goalData.color;
+            if (goalData.coverImage) goalInsertData.cover_image = goalData.coverImage;
+            goalInsertData.status = 'active';
+            
             const { data: goalDbData, error: goalError } = await supabase
               .from('goals')
-              .insert({
-                user_id: currentUser.id,
-                title: goalData.title,
-                description: goalData.description,
-                deadline: new Date(goalData.deadline).toISOString(),
-                category: goalData.category || '',
-                target_value: goalData.targetValue || 100,
-                unit: goalData.unit || '',
-                priority: goalData.priority || 'medium',
-                color: goalData.color,
-                cover_image: goalData.coverImage,
-                status: 'active'
-              })
+              .insert(goalInsertData)
               .select()
               .single();
               
