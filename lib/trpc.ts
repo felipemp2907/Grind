@@ -12,7 +12,7 @@ const getBaseUrl = () => {
     if (typeof window !== 'undefined') {
       return window.location.origin;
     }
-    // For mobile development (Expo Go)
+    // For mobile development (Expo Go) - use the correct port
     return 'http://localhost:3000';
   }
   
