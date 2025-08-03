@@ -32,15 +32,6 @@ export const createGoalProcedure = protectedProcedure
         deadline: new Date(input.deadline).toISOString()
       };
       
-      // Add optional columns only if they're provided
-      if (input.category) goalInsertData.category = input.category;
-      if (input.targetValue !== undefined) goalInsertData.target_value = input.targetValue;
-      if (input.unit) goalInsertData.unit = input.unit;
-      if (input.priority) goalInsertData.priority = input.priority;
-      if (input.color) goalInsertData.color = input.color;
-      if (input.coverImage) goalInsertData.cover_image = input.coverImage;
-      goalInsertData.status = 'active';
-      
       const { data: goalData, error: goalError } = await ctx.supabase
         .from('goals')
         .insert(goalInsertData)
@@ -121,15 +112,6 @@ export const createUltimateGoalProcedure = protectedProcedure
         description: input.description,
         deadline: new Date(input.deadline).toISOString()
       };
-      
-      // Add optional columns only if they're provided
-      if (input.category) goalInsertData.category = input.category;
-      if (input.targetValue !== undefined) goalInsertData.target_value = input.targetValue;
-      if (input.unit) goalInsertData.unit = input.unit;
-      if (input.priority) goalInsertData.priority = input.priority;
-      if (input.color) goalInsertData.color = input.color;
-      if (input.coverImage) goalInsertData.cover_image = input.coverImage;
-      goalInsertData.status = 'active';
       
       const { data: goalData, error: goalError } = await ctx.supabase
         .from('goals')

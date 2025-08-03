@@ -64,6 +64,29 @@ app.get("/", (c) => {
   });
 });
 
+// Test tRPC endpoint directly
+app.get("/test-trpc-direct", async (c) => {
+  try {
+    // Test if tRPC router is accessible
+    return c.json({
+      status: "tRPC router accessible",
+      procedures: {
+        "example.hi": "available",
+        "goals.create": "available", 
+        "goals.createUltimate": "available",
+        "tasks.generateToday": "available"
+      },
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    return c.json({
+      status: "error",
+      error: error instanceof Error ? error.message : 'Unknown error',
+      timestamp: new Date().toISOString()
+    }, 500);
+  }
+});
+
 // Test endpoint to verify tRPC is working
 app.get("/test-trpc", async (c) => {
   try {

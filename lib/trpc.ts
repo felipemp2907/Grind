@@ -6,37 +6,41 @@ import superjson from "superjson";
 export const trpc = createTRPCReact<AppRouter>();
 
 const getBaseUrl = () => {
-  // For development, use localhost
-  if (__DEV__) {
-    // For web development
-    if (typeof window !== 'undefined') {
-      return window.location.origin;
-    }
-    // For mobile development (Expo Go) - use the correct port
-    return 'http://localhost:3000';
-  }
-  
   // For production, use the environment variable if available
   if (process.env.EXPO_PUBLIC_RORK_API_BASE_URL) {
+    console.log('Using production API URL:', process.env.EXPO_PUBLIC_RORK_API_BASE_URL);
     return process.env.EXPO_PUBLIC_RORK_API_BASE_URL;
   }
 
-  // Fallback to current origin for web
+  // For development
+  if (__DEV__) {
+    // For web development - use current origin
+    if (typeof window !== 'undefined') {
+      console.log('Using web development URL:', window.location.origin);
+      return window.location.origin;
+    }
+    // For mobile development (Expo Go) - use localhost
+    console.log('Using mobile development URL: http://localhost:3000');
+    return 'http://localhost:3000';
+  }
+
+  // Production fallback to current origin for web
   if (typeof window !== 'undefined') {
+    console.log('Using production web URL:', window.location.origin);
     return window.location.origin;
   }
 
-  // Default fallback for development
+  // Final fallback
   console.warn('No base URL configured, using localhost:3000');
   return 'http://localhost:3000';
 };
 
 // Create the vanilla tRPC client for non-React contexts
 export const trpcClient = createTRPCClient<AppRouter>({
-  transformer: superjson,
   links: [
     httpBatchLink({
       url: `${getBaseUrl()}/api/trpc`,
+      transformer: superjson,
       headers: async () => {
         const headers: Record<string, string> = {
           'Content-Type': 'application/json',
