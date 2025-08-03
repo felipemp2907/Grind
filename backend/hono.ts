@@ -15,10 +15,10 @@ app.use("*", logger());
 
 // Enable CORS for all routes
 app.use("*", cors({
-  origin: (origin) => {
+  origin: (origin, c) => {
     console.log('CORS origin check:', origin);
     // Allow all origins in development
-    if (!origin) return true; // Allow requests with no origin (mobile apps, etc.)
+    if (!origin) return '*'; // Allow requests with no origin (mobile apps, etc.)
     
     const allowedOrigins = [
       'http://localhost:3000',
@@ -28,15 +28,15 @@ app.use("*", cors({
     ];
     
     // Allow Vercel domains
-    if (origin.includes('.vercel.app')) return true;
+    if (origin.includes('.vercel.app')) return origin;
     
     // Allow Expo development
-    if (origin.startsWith('exp://')) return true;
+    if (origin.startsWith('exp://')) return origin;
     
     // Allow localhost with any port
-    if (origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:')) return true;
+    if (origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:')) return origin;
     
-    return allowedOrigins.includes(origin);
+    return allowedOrigins.includes(origin) ? origin : null;
   },
   allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowHeaders: ['Content-Type', 'Authorization', 'x-trpc-source'],

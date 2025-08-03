@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { TRPCError } from '@trpc/server';
-import { protectedProcedure, type ProtectedContext } from '../../../create-context';
+import { protectedProcedure, type ProtectedContext } from '../../create-context';
 import { buildStreakTemplate, calculateDaysToDeadline } from '../../../../utils/streakUtils';
 
 const createUltimateGoalSchema = z.object({

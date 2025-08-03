@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { protectedProcedure, type ProtectedContext } from '../../../create-context';
+import { protectedProcedure, type ProtectedContext } from '../../create-context';
 // Remove the supabase import since we get it from context
 import { getActiveGoalsForDate } from '../../../../utils/streakUtils';
 import { generateDailyTasksForGoal } from '../../../../utils/aiUtils';
@@ -45,7 +45,7 @@ export const generateTodayTasksProcedure = protectedProcedure
       }
       
       // 2. Apply deadline guard - get active goals for target date
-      const activeGoalsForDate = getActiveGoalsForDate(targetDate, allGoals.map(g => ({
+      const activeGoalsForDate = getActiveGoalsForDate(targetDate, allGoals.map((g: any) => ({
         id: g.id,
         title: g.title,
         description: g.description || '',
@@ -101,7 +101,7 @@ export const generateTodayTasksProcedure = protectedProcedure
         // Continue anyway
       }
       
-      const existingTasksByGoal = (existingTasks || []).reduce((acc, task) => {
+      const existingTasksByGoal = (existingTasks || []).reduce((acc: Record<string, any[]>, task: any) => {
         if (!acc[task.goal_id]) acc[task.goal_id] = [];
         acc[task.goal_id].push(task);
         return acc;
@@ -130,7 +130,7 @@ export const generateTodayTasksProcedure = protectedProcedure
             .order('completed_at', { ascending: false })
             .limit(10);
             
-          const previousTaskTitles = (previousTasks || []).map(t => t.title);
+          const previousTaskTitles = (previousTasks || []).map((t: any) => t.title);
           
           // Call AI to generate tasks
           let aiResponse: string;
