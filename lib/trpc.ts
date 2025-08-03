@@ -33,10 +33,10 @@ const getBaseUrl = () => {
 
 // Create the vanilla tRPC client for non-React contexts
 export const trpcClient = createTRPCClient<AppRouter>({
+  transformer: superjson,
   links: [
     httpBatchLink({
       url: `${getBaseUrl()}/api/trpc`,
-      transformer: superjson,
       headers: async () => {
         const headers: Record<string, string> = {
           'Content-Type': 'application/json',
