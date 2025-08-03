@@ -100,6 +100,24 @@ export const trpcClient = createTRPCClient<AppRouter>({
           return response;
         }).catch(error => {
           console.error('tRPC fetch error:', error);
+          
+          // Provide more helpful error messages for common network issues
+          if (error.message.includes('Failed to fetch')) {
+            const baseUrl = getBaseUrl();
+            console.error('Network error - possible causes:');
+            console.error('1. Backend server is not running');
+            console.error('2. CORS issues');
+            console.error('3. Network connectivity problems');
+            console.error(`Trying to reach: ${baseUrl}/api/trpc`);
+            
+            // For development, suggest starting the server
+            if (__DEV__) {
+              console.error('Development tip: Make sure your backend server is running');
+              console.error('If using Vercel dev: vercel dev');
+              console.error('If using Next.js: npm run dev');
+            }
+          }
+          
           throw error;
         });
       },

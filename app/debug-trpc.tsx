@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, ScrollView, StyleSheet } from 'react-native';
 import { Stack } from 'expo-router';
-import { TRPCTestComponent } from '@/components/TRPCTestComponent';
+import { TRPCHealthCheck } from '@/components/TRPCHealthCheck';
 
 export default function DebugTRPCScreen() {
   return (
@@ -15,7 +15,7 @@ export default function DebugTRPCScreen() {
       />
       <ScrollView style={styles.container}>
         <View style={styles.content}>
-          <TRPCTestComponent />
+          <TRPCHealthCheck />
         </View>
       </ScrollView>
     </>

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { publicProcedure, protectedProcedure, type ProtectedContext } from "../../create-context";
+import { publicProcedure, protectedProcedure, type ProtectedContext } from "../../../create-context";
 
 type HiInput = { name?: string } | undefined;
 

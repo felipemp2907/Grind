@@ -15,9 +15,31 @@ app.use("*", logger());
 
 // Enable CORS for all routes
 app.use("*", cors({
-  origin: ['http://localhost:3000', 'http://localhost:8081', 'https://*.vercel.app', 'exp://192.168.*'],
+  origin: (origin) => {
+    console.log('CORS origin check:', origin);
+    // Allow all origins in development
+    if (!origin) return true; // Allow requests with no origin (mobile apps, etc.)
+    
+    const allowedOrigins = [
+      'http://localhost:3000',
+      'http://localhost:8081', 
+      'http://127.0.0.1:3000',
+      'http://127.0.0.1:8081'
+    ];
+    
+    // Allow Vercel domains
+    if (origin.includes('.vercel.app')) return true;
+    
+    // Allow Expo development
+    if (origin.startsWith('exp://')) return true;
+    
+    // Allow localhost with any port
+    if (origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:')) return true;
+    
+    return allowedOrigins.includes(origin);
+  },
   allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowHeaders: ['Content-Type', 'Authorization'],
+  allowHeaders: ['Content-Type', 'Authorization', 'x-trpc-source'],
   credentials: true,
 }));
 
@@ -61,6 +83,15 @@ app.get("/", (c) => {
       health: '/api/',
       debug: '/api/debug'
     }
+  });
+});
+
+// Add a simple test endpoint to verify the API is working
+app.get("/ping", (c) => {
+  console.log('Ping endpoint hit');
+  return c.json({ 
+    message: "pong",
+    timestamp: new Date().toISOString()
   });
 });
 

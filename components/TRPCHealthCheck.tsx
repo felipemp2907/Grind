@@ -61,6 +61,63 @@ export const TRPCHealthCheck: React.FC = () => {
     }
   };
 
+  const testUltimateGoalCreation = async () => {
+    setIsLoading(true);
+    try {
+      console.log('Testing ultimate goal creation...');
+      
+      const testGoal = {
+        title: 'Test Ultimate Goal',
+        description: 'This is a test ultimate goal with streak tasks',
+        deadline: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days from now
+        category: 'test',
+        targetValue: 100,
+        unit: 'points',
+        priority: 'medium' as const,
+        color: '#FF0000',
+        coverImage: undefined
+      };
+      
+      const result = await trpcClient.goals.createUltimate.mutate(testGoal);
+      
+      console.log('Ultimate goal creation test result:', result);
+      setLastResult(`✅ Ultimate Goal Creation Working: ${result.goal.title} (${result.streakTasksCreated} streak tasks created)`);
+      Alert.alert('Success', `Ultimate goal creation is working! Created ${result.streakTasksCreated} streak tasks.`);
+      
+    } catch (error) {
+      console.error('Ultimate goal creation test failed:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      setLastResult(`❌ Ultimate Goal Creation Failed: ${errorMessage}`);
+      Alert.alert('Error', `Ultimate goal creation test failed: ${errorMessage}`);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const testTaskGeneration = async () => {
+    setIsLoading(true);
+    try {
+      console.log('Testing task generation...');
+      
+      const today = new Date().toISOString().split('T')[0];
+      const result = await trpcClient.tasks.generateToday.mutate({
+        targetDate: today
+      });
+      
+      console.log('Task generation test result:', result);
+      setLastResult(`✅ Task Generation Working: ${result.tasks.length} tasks generated - ${result.notice}`);
+      Alert.alert('Success', `Task generation is working! Generated ${result.tasks.length} tasks.`);
+      
+    } catch (error) {
+      console.error('Task generation test failed:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      setLastResult(`❌ Task Generation Failed: ${errorMessage}`);
+      Alert.alert('Error', `Task generation test failed: ${errorMessage}`);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>tRPC Health Check</Text>
@@ -82,6 +139,26 @@ export const TRPCHealthCheck: React.FC = () => {
       >
         <Text style={styles.buttonText}>
           {isLoading ? 'Testing...' : 'Test Goal Creation'}
+        </Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity 
+        style={[styles.button, isLoading && styles.buttonDisabled]} 
+        onPress={testUltimateGoalCreation}
+        disabled={isLoading}
+      >
+        <Text style={styles.buttonText}>
+          {isLoading ? 'Testing...' : 'Test Ultimate Goal Creation'}
+        </Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity 
+        style={[styles.button, isLoading && styles.buttonDisabled]} 
+        onPress={testTaskGeneration}
+        disabled={isLoading}
+      >
+        <Text style={styles.buttonText}>
+          {isLoading ? 'Testing...' : 'Test Task Generation'}
         </Text>
       </TouchableOpacity>
 
