@@ -95,7 +95,7 @@ export default function AgendaCard({
       
       <View style={styles.tasksContainer}>
         {agenda.tasks.map((task, index) => (
-          <View key={index} style={styles.taskItem}>
+          <View key={`${index}-${task.title}`} style={styles.taskItem}>
             <View style={styles.taskHeader}>
               <Text style={styles.taskTitle}>{task.title}</Text>
               <View style={styles.taskMeta}>
