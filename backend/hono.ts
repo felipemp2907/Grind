@@ -15,7 +15,7 @@ app.use("*", logger());
 
 // Enable CORS for all routes
 app.use("*", cors({
-  origin: (origin) => {
+  origin: (origin, c) => {
     console.log('CORS origin check:', origin);
     // Allow all origins in development
     if (!origin) return '*'; // Allow requests with no origin (mobile apps, etc.)
