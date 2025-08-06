@@ -15,7 +15,14 @@ app.use("*", logger());
 
 // Enable CORS for all routes
 app.use("*", cors({
-  origin: '*', // Allow all origins for now
+  origin: (origin) => {
+    // Allow all origins in development
+    if (process.env.NODE_ENV === 'development') {
+      return origin || '*';
+    }
+    // In production, you might want to restrict this
+    return origin || '*';
+  },
   allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowHeaders: ['Content-Type', 'Authorization', 'x-trpc-source'],
   credentials: true,

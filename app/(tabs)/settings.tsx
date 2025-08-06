@@ -213,7 +213,7 @@ export default function SettingsScreen() {
           <View style={styles.toneOptions}>
             {(['tough-love', 'data-driven'] as MotivationTone[]).map((tone) => (
               <TouchableOpacity
-                key={tone}
+                key={`tone-${tone}`}
                 style={[
                   styles.toneOption,
                   localSettings.preferredTone === tone && styles.toneOptionSelected

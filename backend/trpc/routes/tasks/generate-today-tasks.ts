@@ -93,7 +93,7 @@ export const generateTodayTasksProcedure = protectedProcedure
       const targetDateObj = new Date(targetDate);
       targetDateObj.setHours(0, 0, 0, 0);
       
-      const activeGoalsForDate = allGoals.filter((g) => {
+      const activeGoalsForDate = allGoals.filter((g: any) => {
         const goalDeadline = new Date(g.deadline);
         goalDeadline.setHours(0, 0, 0, 0);
         return goalDeadline.getTime() >= targetDateObj.getTime();
@@ -133,7 +133,7 @@ export const generateTodayTasksProcedure = protectedProcedure
         // Continue anyway
       }
       
-      const existingTasksByGoal = (existingTasks || []).reduce((acc, task) => {
+      const existingTasksByGoal = (existingTasks || []).reduce((acc: any, task: any) => {
         if (!acc[task.goal_id]) acc[task.goal_id] = [];
         acc[task.goal_id].push(task);
         return acc;
@@ -162,7 +162,7 @@ export const generateTodayTasksProcedure = protectedProcedure
             .order('completed_at', { ascending: false })
             .limit(10);
             
-          const previousTaskTitles = (previousTasks || []).map((t) => t.title);
+          const previousTaskTitles = (previousTasks || []).map((t: any) => t.title);
           
           // Call AI to generate tasks
           let aiResponse: string;
