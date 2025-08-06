@@ -99,6 +99,177 @@ export const createGoalProcedure = protectedProcedure
   });
 
 // Ultimate goal creation procedure with streak tasks
+// Update goal procedure that replaces old tasks with new ones
+export const updateUltimateGoalProcedure = protectedProcedure
+  .input(createUltimateGoalSchema.extend({ id: z.string() }))
+  .mutation(async ({ input, ctx }: { input: CreateUltimateGoalInput & { id: string }; ctx: ProtectedContext }) => {
+    const user = ctx.user;
+    const { id, ...updateData } = input;
+    
+    try {
+      // 1. Update the goal
+      const { data: goalData, error: goalError } = await ctx.supabase
+        .from('goals')
+        .update({
+          title: updateData.title,
+          description: updateData.description,
+          deadline: new Date(updateData.deadline).toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', id)
+        .eq('user_id', user.id)
+        .select()
+        .single();
+        
+      if (goalError) {
+        console.error('Error updating goal:', goalError);
+        throw new TRPCError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: `Failed to update goal: ${goalError.message}`,
+        });
+      }
+      
+      if (!goalData) {
+        throw new TRPCError({
+          code: 'NOT_FOUND',
+          message: 'Goal not found',
+        });
+      }
+      
+      // 2. Delete ALL existing tasks for this goal (both streak and today tasks)
+      const { error: deleteTasksError } = await ctx.supabase
+        .from('tasks')
+        .delete()
+        .eq('user_id', user.id)
+        .eq('goal_id', id);
+        
+      if (deleteTasksError) {
+        console.warn('Error deleting existing tasks:', deleteTasksError);
+      }
+      
+      // 3. Build new streak template
+      const goalForTemplate = {
+        id: goalData.id,
+        title: updateData.title,
+        description: updateData.description,
+        deadline: updateData.deadline,
+        category: updateData.category || '',
+        milestones: [],
+        createdAt: goalData.created_at,
+        updatedAt: goalData.updated_at,
+        progressValue: 0,
+        targetValue: updateData.targetValue,
+        unit: updateData.unit || '',
+        xpEarned: 0,
+        streakCount: 0,
+        todayTasksIds: [],
+        streakTaskIds: [],
+        status: 'active' as const,
+        coverImage: updateData.coverImage,
+        color: updateData.color,
+        priority: updateData.priority
+      };
+      
+      const streakTemplate = buildStreakTemplate(goalForTemplate);
+      const limitedStreakTemplate = streakTemplate.slice(0, 3);
+      const daysToDeadline = calculateDaysToDeadline(updateData.deadline);
+      
+      // 4. Create new streak tasks
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const streakTasks = [];
+      
+      for (let dayOffset = 0; dayOffset < daysToDeadline; dayOffset++) {
+        const currentDate = new Date(today);
+        currentDate.setDate(today.getDate() + dayOffset);
+        const dateString = currentDate.toISOString().split('T')[0];
+        
+        for (const streakItem of limitedStreakTemplate) {
+          streakTasks.push({
+            user_id: user.id,
+            goal_id: goalData.id,
+            title: streakItem.title,
+            description: streakItem.description,
+            type: 'streak',
+            task_date: dateString,
+            is_habit: true,
+            xp_value: streakItem.xpValue,
+            priority: streakItem.priority,
+            completed: false,
+            due_date: null,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          });
+        }
+      }
+      
+      // 5. Insert new streak tasks
+      if (streakTasks.length > 0) {
+        const batchSize = 100;
+        let totalInserted = 0;
+        
+        for (let i = 0; i < streakTasks.length; i += batchSize) {
+          const batch = streakTasks.slice(i, i + batchSize);
+          
+          const { error: tasksError } = await ctx.supabase
+            .from('tasks')
+            .insert(batch);
+            
+          if (tasksError) {
+            console.error(`Error creating new streak tasks:`, tasksError);
+            break;
+          } else {
+            totalInserted += batch.length;
+          }
+        }
+        
+        console.log(`Successfully created ${totalInserted} new streak tasks after goal update`);
+      }
+      
+      return {
+        goal: {
+          id: goalData.id,
+          title: updateData.title,
+          description: updateData.description,
+          deadline: updateData.deadline,
+          category: updateData.category,
+          createdAt: goalData.created_at,
+          updatedAt: goalData.updated_at,
+          progressValue: 0,
+          targetValue: updateData.targetValue,
+          unit: updateData.unit,
+          xpEarned: 0,
+          streakCount: 0,
+          todayTasksIds: [],
+          streakTaskIds: [],
+          status: 'active' as const,
+          coverImage: updateData.coverImage,
+          color: updateData.color,
+          priority: updateData.priority,
+          milestones: []
+        },
+        streakTasksCreated: streakTasks.length,
+        totalDays: daysToDeadline,
+        daysToDeadline
+      };
+      
+    } catch (error) {
+      console.error('Error in updateUltimateGoal:', error);
+      
+      if (error instanceof TRPCError) {
+        throw error;
+      }
+      
+      const errorMessage = error instanceof Error ? error.message : 'Failed to update ultimate goal';
+      
+      throw new TRPCError({
+        code: 'INTERNAL_SERVER_ERROR',
+        message: `Goal update failed: ${errorMessage}`,
+        cause: error,
+      });
+    }
+  });
+
 export const createUltimateGoalProcedure = protectedProcedure
   .input(createUltimateGoalSchema)
   .mutation(async ({ input, ctx }: { input: CreateUltimateGoalInput; ctx: ProtectedContext }) => {

@@ -15,7 +15,7 @@ app.use("*", logger());
 
 // Enable CORS for all routes
 app.use("*", cors({
-  origin: (origin, c) => {
+  origin: (origin) => {
     console.log('CORS origin check:', origin);
     // Allow all origins in development
     if (!origin) return '*'; // Allow requests with no origin (mobile apps, etc.)
@@ -36,7 +36,7 @@ app.use("*", cors({
     // Allow localhost with any port
     if (origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:')) return origin;
     
-    return allowedOrigins.includes(origin) ? origin : null;
+    return allowedOrigins.includes(origin) ? origin : '*';
   },
   allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowHeaders: ['Content-Type', 'Authorization', 'x-trpc-source'],
@@ -105,7 +105,9 @@ app.get("/test-trpc-direct", async (c) => {
         "example.hi": "available",
         "goals.create": "available", 
         "goals.createUltimate": "available",
-        "tasks.generateToday": "available"
+        "goals.updateUltimate": "available",
+        "tasks.generateToday": "available",
+        "tasks.getStreakTasks": "available"
       },
       timestamp: new Date().toISOString()
     });
@@ -126,7 +128,9 @@ app.get("/test-trpc", async (c) => {
       status: "tRPC test endpoint working",
       routes: [
         "goals.createUltimate",
+        "goals.updateUltimate",
         "tasks.generateToday",
+        "tasks.getStreakTasks",
         "example.hi"
       ]
     });
@@ -145,8 +149,10 @@ app.get("/debug", (c) => {
     availableRoutes: [
       "/api/trpc/example.hi",
       "/api/trpc/goals.createUltimate",
+      "/api/trpc/goals.updateUltimate",
       "/api/trpc/goals.create",
-      "/api/trpc/tasks.generateToday"
+      "/api/trpc/tasks.generateToday",
+      "/api/trpc/tasks.getStreakTasks"
     ]
   });
 });
@@ -161,8 +167,10 @@ app.notFound((c) => {
         '/api/',
         '/api/trpc/example.hi',
         '/api/trpc/goals.createUltimate',
+        '/api/trpc/goals.updateUltimate',
         '/api/trpc/goals.create',
-        '/api/trpc/tasks.generateToday'
+        '/api/trpc/tasks.generateToday',
+        '/api/trpc/tasks.getStreakTasks'
       ]
     },
     404

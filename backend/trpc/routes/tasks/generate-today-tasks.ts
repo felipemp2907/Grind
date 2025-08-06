@@ -18,6 +18,51 @@ interface AIGeneratedTask {
   xpValue: number;
 }
 
+// Get streak tasks for a specific date
+export const getStreakTasksProcedure = protectedProcedure
+  .input(z.object({
+    targetDate: z.string().min(1, 'Target date is required'), // YYYY-MM-DD format
+  }))
+  .query(async ({ input, ctx }: { input: { targetDate: string }; ctx: ProtectedContext }) => {
+    const user = ctx.user;
+    const { targetDate } = input;
+    
+    try {
+      // Get streak tasks for the target date
+      const { data: streakTasks, error: tasksError } = await ctx.supabase
+        .from('tasks')
+        .select(`
+          *,
+          goals!inner(
+            id,
+            title,
+            description,
+            deadline,
+            status
+          )
+        `)
+        .eq('user_id', user.id)
+        .eq('type', 'streak')
+        .eq('task_date', targetDate)
+        .eq('goals.status', 'active')
+        .order('created_at', { ascending: true });
+        
+      if (tasksError) {
+        console.error('Error fetching streak tasks:', tasksError);
+        throw new Error(`Failed to fetch streak tasks: ${tasksError.message}`);
+      }
+      
+      return {
+        tasks: streakTasks || [],
+        count: (streakTasks || []).length
+      };
+      
+    } catch (error) {
+      console.error('Error in getStreakTasks:', error);
+      throw new Error(error instanceof Error ? error.message : 'Failed to get streak tasks');
+    }
+  });
+
 export const generateTodayTasksProcedure = protectedProcedure
   .input(generateTodayTasksSchema)
   .mutation(async ({ input, ctx }: { input: GenerateTodayTasksInput; ctx: ProtectedContext }) => {
@@ -44,39 +89,26 @@ export const generateTodayTasksProcedure = protectedProcedure
         };
       }
       
-      // 2. Apply deadline guard - get active goals for target date
-      const activeGoalsForDate = getActiveGoalsForDate(targetDate, allGoals.map((g: any) => ({
-        id: g.id,
-        title: g.title,
-        description: g.description || '',
-        deadline: g.deadline,
-        category: g.category || '',
-        milestones: [],
-        createdAt: g.created_at,
-        updatedAt: g.updated_at,
-        progressValue: 0,
-        targetValue: 100,
-        unit: '',
-        xpEarned: 0,
-        streakCount: 0,
-        todayTasksIds: [],
-        streakTaskIds: [],
-        status: g.status as 'active' | 'completed' | 'abandoned',
-        coverImage: undefined,
-        color: undefined,
-        priority: 'medium' as const
-      })));
+      // 2. Apply deadline guard - check if target date is beyond any goal deadline
+      const targetDateObj = new Date(targetDate);
+      targetDateObj.setHours(0, 0, 0, 0);
+      
+      const activeGoalsForDate = allGoals.filter((g: any) => {
+        const goalDeadline = new Date(g.deadline);
+        goalDeadline.setHours(0, 0, 0, 0);
+        return goalDeadline.getTime() >= targetDateObj.getTime();
+      });
       
       if (activeGoalsForDate.length === 0) {
         return {
           tasks: [],
-          notice: 'completed'
+          notice: 'No active goals for this date - all goals have passed their deadline'
         };
       }
       
       // 3. Filter to specific goal if provided
       const goalsToProcess = goalId 
-        ? activeGoalsForDate.filter(g => g.id === goalId)
+        ? activeGoalsForDate.filter((g: any) => g.id === goalId)
         : activeGoalsForDate;
         
       if (goalsToProcess.length === 0) {
@@ -137,7 +169,7 @@ export const generateTodayTasksProcedure = protectedProcedure
           try {
             aiResponse = await generateDailyTasksForGoal(
               goal.title,
-              goal.description,
+              goal.description || '',
               goal.deadline,
               previousTaskTitles,
               targetDate
@@ -149,7 +181,7 @@ export const generateTodayTasksProcedure = protectedProcedure
             aiResponse = JSON.stringify([
               {
                 title: `Work on ${goal.title} - ${new Date(targetDate).toLocaleDateString('en-US', {month: 'short', day: 'numeric'})}`,
-                description: `Make progress on your goal: ${goal.description.substring(0, 50)}...`,
+                description: `Make progress on your goal: ${(goal.description || '').substring(0, 50)}...`,
                 isHabit: false,
                 xpValue: 50
               },
@@ -222,7 +254,7 @@ export const generateTodayTasksProcedure = protectedProcedure
             aiTasks = [
               {
                 title: `Work on ${goal.title} - ${new Date(targetDate).toLocaleDateString('en-US', {month: 'short', day: 'numeric'})}`,
-                description: `Make progress on your goal: ${goal.description.substring(0, 50)}...`,
+                description: `Make progress on your goal: ${(goal.description || '').substring(0, 50)}...`,
                 isHabit: false,
                 xpValue: 50
               },
@@ -250,9 +282,11 @@ export const generateTodayTasksProcedure = protectedProcedure
           
           // Create task objects
           for (const aiTask of todayTasks) {
-            // Ensure task date doesn't exceed goal deadline
+            // Double-check task date doesn't exceed goal deadline
             const goalDeadline = new Date(goal.deadline);
+            goalDeadline.setHours(0, 0, 0, 0);
             const taskDate = new Date(targetDate);
+            taskDate.setHours(0, 0, 0, 0);
             
             if (taskDate.getTime() <= goalDeadline.getTime()) {
               newTasks.push({
