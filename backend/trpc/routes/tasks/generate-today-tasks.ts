@@ -1,7 +1,6 @@
 import { z } from 'zod';
 import { protectedProcedure, type ProtectedContext } from '../../create-context';
-// Remove the supabase import since we get it from context
-import { getActiveGoalsForDate } from '../../../../utils/streakUtils';
+import { buildStreakTemplate, calculateDaysToDeadline } from '../../../../utils/streakUtils';
 import { generateDailyTasksForGoal } from '../../../../utils/aiUtils';
 
 const generateTodayTasksSchema = z.object({
@@ -63,6 +62,181 @@ export const getStreakTasksProcedure = protectedProcedure
     }
   });
 
+// Generate streak tasks for all active goals
+export const generateStreakTasksProcedure = protectedProcedure
+  .input(z.object({
+    targetDate: z.string().min(1, 'Target date is required'), // YYYY-MM-DD format
+    forceRegenerate: z.boolean().default(false) // If true, delete existing and regenerate
+  }))
+  .mutation(async ({ input, ctx }: { input: { targetDate: string; forceRegenerate?: boolean }; ctx: ProtectedContext }) => {
+    const user = ctx.user;
+    const { targetDate, forceRegenerate } = input;
+    
+    try {
+      console.log(`Generating streak tasks for ${targetDate}, forceRegenerate: ${forceRegenerate}`);
+      
+      // 1. Get all active goals
+      const { data: allGoals, error: goalsError } = await ctx.supabase
+        .from('goals')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('status', 'active');
+        
+      if (goalsError) {
+        console.error('Error fetching goals:', goalsError);
+        throw new Error(`Failed to fetch goals: ${goalsError.message}`);
+      }
+      
+      if (!allGoals || allGoals.length === 0) {
+        return {
+          tasks: [],
+          notice: 'No active goals found'
+        };
+      }
+      
+      // 2. Apply deadline guard
+      const targetDateObj = new Date(targetDate);
+      targetDateObj.setHours(0, 0, 0, 0);
+      
+      const activeGoalsForDate = allGoals.filter((g: { deadline: string }) => {
+        const goalDeadline = new Date(g.deadline);
+        goalDeadline.setHours(0, 0, 0, 0);
+        return goalDeadline.getTime() >= targetDateObj.getTime();
+      });
+      
+      if (activeGoalsForDate.length === 0) {
+        return {
+          tasks: [],
+          notice: 'No active goals for this date - all goals have passed their deadline'
+        };
+      }
+      
+      // 3. Check existing streak tasks for this date
+      const { data: existingStreakTasks, error: existingError } = await ctx.supabase
+        .from('tasks')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('type', 'streak')
+        .eq('task_date', targetDate);
+        
+      if (existingError) {
+        console.error('Error checking existing streak tasks:', existingError);
+      }
+      
+      // 4. If tasks exist and not forcing regeneration, return existing
+      if (existingStreakTasks && existingStreakTasks.length > 0 && !forceRegenerate) {
+        console.log(`Found ${existingStreakTasks.length} existing streak tasks for ${targetDate}`);
+        return {
+          tasks: existingStreakTasks,
+          notice: `Found ${existingStreakTasks.length} existing streak tasks for ${targetDate}`
+        };
+      }
+      
+      // 5. Delete existing streak tasks if force regenerating
+      if (forceRegenerate && existingStreakTasks && existingStreakTasks.length > 0) {
+        console.log(`Deleting ${existingStreakTasks.length} existing streak tasks for regeneration`);
+        const { error: deleteError } = await ctx.supabase
+          .from('tasks')
+          .delete()
+          .eq('user_id', user.id)
+          .eq('type', 'streak')
+          .eq('task_date', targetDate);
+          
+        if (deleteError) {
+          console.warn('Error deleting existing streak tasks:', deleteError);
+        }
+      }
+      
+      // 6. Generate new streak tasks
+      const newStreakTasks = [];
+      
+      for (const goal of activeGoalsForDate) {
+        try {
+          // Build streak template for this goal
+          const goalForTemplate = {
+            id: goal.id,
+            title: goal.title,
+            description: goal.description,
+            deadline: goal.deadline,
+            category: goal.category || '',
+            milestones: [],
+            createdAt: goal.created_at,
+            updatedAt: goal.updated_at,
+            progressValue: 0,
+            targetValue: 100,
+            unit: '',
+            xpEarned: 0,
+            streakCount: 0,
+            todayTasksIds: [],
+            streakTaskIds: [],
+            status: 'active' as const,
+            coverImage: undefined,
+            color: undefined,
+            priority: 'medium' as const
+          };
+          
+          const streakTemplate = buildStreakTemplate(goalForTemplate);
+          const limitedStreakTemplate = streakTemplate.slice(0, 3); // Max 3 streak tasks per goal
+          
+          console.log(`Creating ${limitedStreakTemplate.length} streak tasks for goal: ${goal.title}`);
+          
+          for (const streakItem of limitedStreakTemplate) {
+            newStreakTasks.push({
+              user_id: user.id,
+              goal_id: goal.id,
+              title: streakItem.title,
+              description: streakItem.description,
+              type: 'streak',
+              task_date: targetDate,
+              is_habit: true,
+              xp_value: streakItem.xpValue,
+              priority: streakItem.priority,
+              completed: false,
+              due_date: null, // streak tasks use task_date instead
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            });
+          }
+          
+        } catch (error) {
+          console.error(`Error generating streak tasks for goal ${goal.title}:`, error);
+          // Continue with other goals
+        }
+      }
+      
+      // 7. Insert new streak tasks
+      if (newStreakTasks.length > 0) {
+        console.log(`Inserting ${newStreakTasks.length} new streak tasks`);
+        
+        const { data: insertedTasks, error: insertError } = await ctx.supabase
+          .from('tasks')
+          .insert(newStreakTasks)
+          .select();
+          
+        if (insertError) {
+          console.error('Error inserting streak tasks:', insertError);
+          throw new Error(`Failed to create streak tasks: ${insertError.message}`);
+        }
+        
+        console.log(`Successfully created ${insertedTasks?.length || 0} streak tasks`);
+        
+        return {
+          tasks: insertedTasks || [],
+          notice: `Generated ${newStreakTasks.length} new streak tasks for ${targetDate}`
+        };
+      }
+      
+      return {
+        tasks: [],
+        notice: 'No streak tasks needed for this date'
+      };
+      
+    } catch (error) {
+      console.error('Error in generateStreakTasks:', error);
+      throw new Error(error instanceof Error ? error.message : 'Failed to generate streak tasks');
+    }
+  });
+
 export const generateTodayTasksProcedure = protectedProcedure
   .input(generateTodayTasksSchema)
   .mutation(async ({ input, ctx }: { input: GenerateTodayTasksInput; ctx: ProtectedContext }) => {
@@ -93,7 +267,7 @@ export const generateTodayTasksProcedure = protectedProcedure
       const targetDateObj = new Date(targetDate);
       targetDateObj.setHours(0, 0, 0, 0);
       
-      const activeGoalsForDate = allGoals.filter((g: any) => {
+      const activeGoalsForDate = allGoals.filter((g: { deadline: string }) => {
         const goalDeadline = new Date(g.deadline);
         goalDeadline.setHours(0, 0, 0, 0);
         return goalDeadline.getTime() >= targetDateObj.getTime();
@@ -108,7 +282,7 @@ export const generateTodayTasksProcedure = protectedProcedure
       
       // 3. Filter to specific goal if provided
       const goalsToProcess = goalId 
-        ? activeGoalsForDate.filter((g: any) => g.id === goalId)
+        ? activeGoalsForDate.filter((g: { id: string }) => g.id === goalId)
         : activeGoalsForDate;
         
       if (goalsToProcess.length === 0) {
@@ -133,7 +307,7 @@ export const generateTodayTasksProcedure = protectedProcedure
         // Continue anyway
       }
       
-      const existingTasksByGoal = (existingTasks || []).reduce((acc: any, task: any) => {
+      const existingTasksByGoal = (existingTasks || []).reduce((acc: Record<string, any[]>, task: { goal_id: string }) => {
         if (!acc[task.goal_id]) acc[task.goal_id] = [];
         acc[task.goal_id].push(task);
         return acc;
@@ -162,7 +336,7 @@ export const generateTodayTasksProcedure = protectedProcedure
             .order('completed_at', { ascending: false })
             .limit(10);
             
-          const previousTaskTitles = (previousTasks || []).map((t: any) => t.title);
+          const previousTaskTitles = (previousTasks || []).map((t: { title: string }) => t.title);
           
           // Call AI to generate tasks
           let aiResponse: string;

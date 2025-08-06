@@ -53,6 +53,7 @@ interface TaskState {
   deleteTask: (id: string) => Promise<void>;
   fetchTasks: () => Promise<void>;
   generateDailyTasks: (date: string) => Promise<void>;
+  generateStreakTasks: (date: string, forceRegenerate?: boolean) => Promise<void>;
   generateTasksForGoal: (date: string, goalId: string) => Promise<void>;
   setIsGenerating: (isGenerating: boolean) => void;
   resetStreak: (id: string) => void;
@@ -467,6 +468,40 @@ export const useTaskStore = create<TaskState>()(
           );
           
           await Promise.all(promises);
+        } finally {
+          set({ isGenerating: false });
+        }
+      },
+      
+      // Generate streak tasks for all active goals
+      generateStreakTasks: async (date, forceRegenerate = false) => {
+        const { goals } = useGoalStore.getState();
+        
+        // Apply deadline guard - check if date is beyond all goal deadlines
+        if (isDateBeyondDeadlines(date, goals)) {
+          console.log('Date is beyond all goal deadlines, skipping streak task generation');
+          return;
+        }
+        
+        set({ isGenerating: true });
+        
+        try {
+          // Use the new backend function for streak task generation
+          const result = await trpcClient.tasks.generateStreak.mutate({
+            targetDate: date,
+            forceRegenerate
+          });
+          
+          console.log('Streak task generation result:', result);
+          
+          // Refresh tasks from database to get the new ones
+          await get().fetchTasks();
+          
+        } catch (error) {
+          console.error('Error generating streak tasks:', error);
+          
+          // No fallback for streak tasks - they should come from the backend
+          // since they require the streak template logic
         } finally {
           set({ isGenerating: false });
         }

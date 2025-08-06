@@ -47,6 +47,7 @@ export default function DashboardScreen() {
     tasks, 
     getTasks, 
     generateDailyTasks, 
+    generateStreakTasks,
     isGenerating,
     generateDailyAgenda,
     acceptAgenda,
@@ -150,17 +151,26 @@ export default function DashboardScreen() {
   }, [todayDate]);
   
   useEffect(() => {
-    // Generate daily tasks if none exist
+    // Generate daily tasks and streak tasks if none exist
     if (todayTasks.length === 0 && goals.length > 0) {
+      // Generate both daily tasks and streak tasks
       generateDailyTasks(todayDate);
+      generateStreakTasks(todayDate);
+    } else if (goals.length > 0) {
+      // Check if we need streak tasks even if we have some tasks
+      const hasStreakTasks = todayTasks.some(task => task.isHabit);
+      if (!hasStreakTasks) {
+        generateStreakTasks(todayDate);
+      }
     }
   }, [todayDate, goals.length]);
   
   const onRefresh = async () => {
     setRefreshing(true);
     try {
-      // Refresh data
+      // Refresh data - generate both daily and streak tasks
       await generateDailyTasks(todayDate);
+      await generateStreakTasks(todayDate, true); // Force regenerate on refresh
       if (!todayAgenda) {
         await generateDailyAgenda(todayDate);
       }

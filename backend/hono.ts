@@ -15,7 +15,7 @@ app.use("*", logger());
 
 // Enable CORS for all routes
 app.use("*", cors({
-  origin: (origin) => {
+  origin: (origin, c) => {
     // Allow all origins in development
     if (process.env.NODE_ENV === 'development') {
       return origin || '*';
@@ -92,7 +92,8 @@ app.get("/test-trpc-direct", async (c) => {
         "goals.createUltimate": "available",
         "goals.updateUltimate": "available",
         "tasks.generateToday": "available",
-        "tasks.getStreakTasks": "available"
+        "tasks.getStreakTasks": "available",
+        "tasks.generateStreak": "available"
       },
       timestamp: new Date().toISOString()
     });
@@ -116,6 +117,7 @@ app.get("/test-trpc", async (c) => {
         "goals.updateUltimate",
         "tasks.generateToday",
         "tasks.getStreakTasks",
+        "tasks.generateStreak",
         "example.hi"
       ]
     });
@@ -137,7 +139,8 @@ app.get("/debug", (c) => {
       "/api/trpc/goals.updateUltimate",
       "/api/trpc/goals.create",
       "/api/trpc/tasks.generateToday",
-      "/api/trpc/tasks.getStreakTasks"
+      "/api/trpc/tasks.getStreakTasks",
+      "/api/trpc/tasks.generateStreak"
     ]
   });
 });
@@ -155,7 +158,8 @@ app.notFound((c) => {
         '/api/trpc/goals.updateUltimate',
         '/api/trpc/goals.create',
         '/api/trpc/tasks.generateToday',
-        '/api/trpc/tasks.getStreakTasks'
+        '/api/trpc/tasks.getStreakTasks',
+        '/api/trpc/tasks.generateStreak'
       ]
     },
     404

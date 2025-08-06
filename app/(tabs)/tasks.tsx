@@ -39,7 +39,7 @@ import CreateTaskModal from '@/components/CreateTaskModal';
 export default function TasksScreen() {
   const router = useRouter();
   const { goals, activeGoalId, setActiveGoal } = useGoalStore();
-  const { tasks, getTasks, getTasksByGoal, generateDailyTasks, generateTasksForGoal, isGenerating, generateAISuggestions, canAddMoreTasks } = useTaskStore();
+  const { tasks, getTasks, getTasksByGoal, generateDailyTasks, generateStreakTasks, generateTasksForGoal, isGenerating, generateAISuggestions, canAddMoreTasks } = useTaskStore();
   const { entries } = useJournalStore();
   
   const [selectedDate, setSelectedDate] = useState(getTodayDate());
@@ -72,6 +72,7 @@ export default function TasksScreen() {
     // Only generate tasks automatically for today, not when switching dates
     if (selectedTasks.length === 0 && selectedDate === getTodayDate() && goals.length > 0) {
       generateDailyTasks(selectedDate);
+      generateStreakTasks(selectedDate);
     }
   }, [goals.length]); // Removed selectedDate from dependencies to prevent auto-generation when switching dates
   
@@ -79,6 +80,7 @@ export default function TasksScreen() {
     setRefreshing(true);
     try {
       await generateDailyTasks(selectedDate);
+      await generateStreakTasks(selectedDate, true); // Force regenerate on refresh
     } catch (error) {
       console.error('Error refreshing tasks:', error);
     } finally {
