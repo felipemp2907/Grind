@@ -978,7 +978,7 @@ IMPORTANT: Return ONLY the JSON object without markdown formatting.`
   }
 };
 
-// Generate daily tasks based on the user's goal
+// Generate daily tasks based on the user's goal (LEGACY - now replaced by full plan generation)
 export const generateDailyTasksForGoal = async (
   goalTitle: string,
   goalDescription: string,
@@ -1140,5 +1140,200 @@ IMPORTANT: Return ONLY the JSON array without markdown formatting.`
       reason: 'Continue working on this task',
       priority: (task.priority as 'high' | 'medium' | 'low') || 'medium'
     }));
+  }
+};
+
+// Generate full goal plan with streak habits and daily today tasks
+export const generateFullGoalPlan = async (
+  goalTitle: string,
+  goalDescription: string,
+  deadline: string,
+  experienceLevel: string = 'beginner',
+  tzOffset: number = 0
+): Promise<{
+  streak_habits: Array<{
+    title: string;
+    description: string;
+    load: number;
+    proof: 'realtime' | 'flex';
+  }>;
+  daily_plan: Array<{
+    date: string;
+    today_tasks: Array<{
+      title: string;
+      desc: string;
+      load: number;
+      proof: 'realtime' | 'flex';
+    }>;
+  }>;
+}> => {
+  // Calculate days between today and deadline
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const deadlineDate = new Date(deadline);
+  deadlineDate.setHours(0, 0, 0, 0);
+  const daysAvailable = Math.max(1, Math.ceil((deadlineDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)));
+
+  const messages: AIMessage[] = [
+    {
+      role: 'system',
+      content: `You are Hustle Planner, an expert AI coach that creates comprehensive goal achievement plans. 
+
+Your task is to create a complete, day-by-day plan that maximizes the user's chances of success.
+
+Goal: ${goalTitle}
+Description: ${goalDescription}
+Days available: ${daysAvailable}
+Experience level: ${experienceLevel}
+Deadline: ${deadline}
+
+Create a plan with:
+
+1. STREAK HABITS (max 3): Essential daily habits that must be done every single day
+   - These should be fundamental, repeatable actions
+   - Each habit should directly contribute to goal achievement
+   - Load score 1-3 (total daily load from habits should be ≤ 4)
+
+2. DAILY PLAN: Specific today tasks for each day from today to deadline
+   - Each day should have 0-3 today tasks (never exceed 3 per day)
+   - Total load per day (habits + today tasks) should never exceed 5
+   - Today tasks should be unique, one-time actions
+   - Distribute work logically across the timeline
+   - Consider natural progression and dependencies
+   - Front-load preparation tasks, back-load execution tasks
+
+Load scoring guidelines:
+- Load 1: 15-30 minutes, low effort
+- Load 2: 30-60 minutes, moderate effort  
+- Load 3: 60+ minutes, high effort
+
+Proof mode guidelines:
+- 'realtime': For tasks that benefit from photo/immediate proof (workouts, meals, progress shots)
+- 'flex': For tasks that are harder to photograph (research, planning, calls)
+
+Rules:
+- Never schedule tasks past the deadline
+- Each today task title should be unique across all days
+- Streak habits repeat every day, today tasks appear only once
+- Balance workload - some days lighter, some heavier, but never exceed load 5
+- Consider weekends vs weekdays for task types
+- Build momentum with early wins
+
+Return ONLY this JSON structure:
+{
+  "streak_habits": [
+    {
+      "title": "Daily habit name",
+      "description": "What to do every day",
+      "load": 1-3,
+      "proof": "realtime" | "flex"
+    }
+  ],
+  "daily_plan": [
+    {
+      "date": "YYYY-MM-DD",
+      "today_tasks": [
+        {
+          "title": "Unique task name",
+          "desc": "Detailed description",
+          "load": 1-3,
+          "proof": "realtime" | "flex"
+        }
+      ]
+    }
+  ]
+}
+
+IMPORTANT: Return ONLY the JSON object without any markdown formatting or code blocks.`
+    },
+    {
+      role: 'user',
+      content: `Create a complete ${daysAvailable}-day plan for my goal: "${goalTitle}"
+
+Description: ${goalDescription}
+Deadline: ${deadline}
+Experience level: ${experienceLevel}
+
+I need both daily streak habits and a day-by-day breakdown of unique today tasks that will help me achieve this goal by the deadline.`
+    }
+  ];
+
+  try {
+    const response = await callAI(messages);
+    const cleanedResponse = cleanJsonResponse(response);
+    const parsed = JSON.parse(cleanedResponse);
+    
+    // Validate and ensure proper structure
+    const plan = {
+      streak_habits: (parsed.streak_habits || []).slice(0, 3).map((habit: any) => ({
+        title: String(habit.title || 'Daily Progress'),
+        description: String(habit.description || 'Work on your goal'),
+        load: Math.min(Math.max(Number(habit.load) || 1, 1), 3),
+        proof: (habit.proof === 'realtime' || habit.proof === 'flex') ? habit.proof : 'flex'
+      })),
+      daily_plan: (parsed.daily_plan || []).map((day: any) => ({
+        date: String(day.date),
+        today_tasks: (day.today_tasks || []).slice(0, 3).map((task: any) => ({
+          title: String(task.title || 'Work on goal'),
+          desc: String(task.desc || task.description || 'Make progress'),
+          load: Math.min(Math.max(Number(task.load) || 1, 1), 3),
+          proof: (task.proof === 'realtime' || task.proof === 'flex') ? task.proof : 'flex'
+        }))
+      }))
+    };
+    
+    console.log(`Generated full plan: ${plan.streak_habits.length} habits, ${plan.daily_plan.length} days`);
+    return plan;
+    
+  } catch (error) {
+    console.error('Error generating full goal plan:', error);
+    
+    // Fallback plan
+    const fallbackPlan = {
+      streak_habits: [
+        {
+          title: `Daily work on ${goalTitle}`,
+          description: 'Spend focused time working toward your goal',
+          load: 2,
+          proof: 'flex' as const
+        },
+        {
+          title: 'Progress review',
+          description: 'Review and plan your next steps',
+          load: 1,
+          proof: 'flex' as const
+        }
+      ],
+      daily_plan: [] as Array<{
+        date: string;
+        today_tasks: Array<{
+          title: string;
+          desc: string;
+          load: number;
+          proof: 'realtime' | 'flex';
+        }>;
+      }>
+    };
+    
+    // Generate basic daily plan
+    for (let i = 0; i < Math.min(daysAvailable, 30); i++) {
+      const date = new Date(today);
+      date.setDate(today.getDate() + i);
+      const dateString = date.toISOString().split('T')[0];
+      
+      fallbackPlan.daily_plan.push({
+        date: dateString,
+        today_tasks: i === 0 ? [
+          {
+            title: `Plan approach for ${goalTitle}`,
+            desc: 'Create a detailed strategy and action plan',
+            load: 2,
+            proof: 'flex'
+          }
+        ] : []
+      });
+    }
+    
+    return fallbackPlan;
   }
 };

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { protectedProcedure, type ProtectedContext } from '../../create-context';
+import { protectedProcedure, type ProtectedContext } from '../../../create-context';
 import { buildStreakTemplate, calculateDaysToDeadline } from '../../../../utils/streakUtils';
 import { generateDailyTasksForGoal } from '../../../../utils/aiUtils';
 
@@ -98,7 +98,7 @@ export const generateStreakTasksProcedure = protectedProcedure
       const targetDateObj = new Date(targetDate);
       targetDateObj.setHours(0, 0, 0, 0);
       
-      const activeGoalsForDate = allGoals.filter((g: { deadline: string }) => {
+      const activeGoalsForDate = allGoals.filter((g: any) => {
         const goalDeadline = new Date(g.deadline);
         goalDeadline.setHours(0, 0, 0, 0);
         return goalDeadline.getTime() >= targetDateObj.getTime();
@@ -267,7 +267,7 @@ export const generateTodayTasksProcedure = protectedProcedure
       const targetDateObj = new Date(targetDate);
       targetDateObj.setHours(0, 0, 0, 0);
       
-      const activeGoalsForDate = allGoals.filter((g: { deadline: string }) => {
+      const activeGoalsForDate = allGoals.filter((g: any) => {
         const goalDeadline = new Date(g.deadline);
         goalDeadline.setHours(0, 0, 0, 0);
         return goalDeadline.getTime() >= targetDateObj.getTime();
@@ -307,7 +307,7 @@ export const generateTodayTasksProcedure = protectedProcedure
         // Continue anyway
       }
       
-      const existingTasksByGoal = (existingTasks || []).reduce((acc: Record<string, any[]>, task: { goal_id: string }) => {
+      const existingTasksByGoal = (existingTasks || []).reduce((acc: Record<string, any[]>, task: any) => {
         if (!acc[task.goal_id]) acc[task.goal_id] = [];
         acc[task.goal_id].push(task);
         return acc;
@@ -336,7 +336,7 @@ export const generateTodayTasksProcedure = protectedProcedure
             .order('completed_at', { ascending: false })
             .limit(10);
             
-          const previousTaskTitles = (previousTasks || []).map((t: { title: string }) => t.title);
+          const previousTaskTitles = (previousTasks || []).map((t: any) => t.title);
           
           // Call AI to generate tasks
           let aiResponse: string;

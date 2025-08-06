@@ -15,7 +15,7 @@ app.use("*", logger());
 
 // Enable CORS for all routes
 app.use("*", cors({
-  origin: (origin, c) => {
+  origin: (origin) => {
     // Allow all origins in development
     if (process.env.NODE_ENV === 'development') {
       return origin || '*';

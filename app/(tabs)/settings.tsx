@@ -175,19 +175,19 @@ export default function SettingsScreen() {
           </TouchableOpacity>
           
           <View style={styles.statsContainer}>
-            <View key="stat-level" style={styles.statItem}>
+            <View style={styles.statItem}>
               <Text style={styles.statValue}>{profile.level}</Text>
               <Text style={styles.statLabel}>Level</Text>
             </View>
-            <View key="stat-xp" style={styles.statItem}>
+            <View style={styles.statItem}>
               <Text style={styles.statValue}>{profile.xp}</Text>
               <Text style={styles.statLabel}>Total XP</Text>
             </View>
-            <View key="stat-streak" style={styles.statItem}>
+            <View style={styles.statItem}>
               <Text style={styles.statValue}>{profile.streakDays}</Text>
               <Text style={styles.statLabel}>Current Streak</Text>
             </View>
-            <View key="stat-goals" style={styles.statItem}>
+            <View style={styles.statItem}>
               <Text style={styles.statValue}>{goals.length}</Text>
               <Text style={styles.statLabel}>Active Goals</Text>
             </View>
@@ -213,7 +213,7 @@ export default function SettingsScreen() {
           <View style={styles.toneOptions}>
             {(['tough-love', 'data-driven'] as MotivationTone[]).map((tone) => (
               <TouchableOpacity
-                key={`tone-${tone}`}
+                key={tone}
                 style={[
                   styles.toneOption,
                   localSettings.preferredTone === tone && styles.toneOptionSelected
@@ -310,7 +310,7 @@ export default function SettingsScreen() {
           
           <View style={styles.goalsList}>
             {goals.map((goal) => (
-              <View key={`goal-${goal.id}`} style={styles.goalItem}>
+              <View key={goal.id} style={styles.goalItem}>
                 <View style={styles.goalInfo}>
                   <Text style={styles.goalTitle}>{goal.title}</Text>
                   <Text style={styles.goalProgress}>

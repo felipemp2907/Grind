@@ -1,7 +1,8 @@
 import { z } from 'zod';
 import { TRPCError } from '@trpc/server';
-import { protectedProcedure, type ProtectedContext } from '../../create-context';
+import { protectedProcedure, type ProtectedContext } from '../../../create-context';
 import { buildStreakTemplate, calculateDaysToDeadline } from '../../../../utils/streakUtils';
+import { generateFullGoalPlan } from '../../../../utils/aiUtils';
 
 const createUltimateGoalSchema = z.object({
   title: z.string().min(1, 'Title is required'),
@@ -107,6 +108,8 @@ export const updateUltimateGoalProcedure = protectedProcedure
     const { id, ...updateData } = input;
     
     try {
+      console.log('Updating ultimate goal with full plan regeneration...');
+      
       // 1. Update the goal
       const { data: goalData, error: goalError } = await ctx.supabase
         .from('goals')
@@ -147,54 +150,96 @@ export const updateUltimateGoalProcedure = protectedProcedure
         console.warn('Error deleting existing tasks:', deleteTasksError);
       }
       
-      // 3. Build new streak template
-      const goalForTemplate = {
-        id: goalData.id,
-        title: updateData.title,
-        description: updateData.description,
-        deadline: updateData.deadline,
-        category: updateData.category || '',
-        milestones: [],
-        createdAt: goalData.created_at,
-        updatedAt: goalData.updated_at,
-        progressValue: 0,
-        targetValue: updateData.targetValue,
-        unit: updateData.unit || '',
-        xpEarned: 0,
-        streakCount: 0,
-        todayTasksIds: [],
-        streakTaskIds: [],
-        status: 'active' as const,
-        coverImage: updateData.coverImage,
-        color: updateData.color,
-        priority: updateData.priority
-      };
+      console.log('Deleted all existing tasks, regenerating full plan...');
       
-      const streakTemplate = buildStreakTemplate(goalForTemplate);
-      const limitedStreakTemplate = streakTemplate.slice(0, 3);
+      // 3. Generate new full plan using AI
       const daysToDeadline = calculateDaysToDeadline(updateData.deadline);
+      console.log(`Regenerating full plan for ${daysToDeadline} days`);
       
-      // 4. Create new streak tasks
+      let fullPlan;
+      try {
+        // Get user profile for experience level (fallback to 'beginner')
+        const { data: userProfile } = await ctx.supabase
+          .from('profiles')
+          .select('experience_level')
+          .eq('id', user.id)
+          .single();
+          
+        const experienceLevel = userProfile?.experience_level || 'beginner';
+        
+        fullPlan = await generateFullGoalPlan(
+          updateData.title,
+          updateData.description,
+          updateData.deadline,
+          experienceLevel,
+          0 // timezone offset
+        );
+        
+        console.log(`AI regenerated plan with ${fullPlan.streak_habits.length} streak habits and ${fullPlan.daily_plan.length} daily plans`);
+      } catch (aiError) {
+        console.error('AI plan regeneration failed, using fallback:', aiError);
+        
+        // Fallback to basic streak template
+        const goalForTemplate = {
+          id: goalData.id,
+          title: updateData.title,
+          description: updateData.description,
+          deadline: updateData.deadline,
+          category: updateData.category || '',
+          milestones: [],
+          createdAt: goalData.created_at,
+          updatedAt: goalData.updated_at,
+          progressValue: 0,
+          targetValue: updateData.targetValue,
+          unit: updateData.unit || '',
+          xpEarned: 0,
+          streakCount: 0,
+          todayTasksIds: [],
+          streakTaskIds: [],
+          status: 'active' as const,
+          coverImage: updateData.coverImage,
+          color: updateData.color,
+          priority: updateData.priority
+        };
+        
+        const streakTemplate = buildStreakTemplate(goalForTemplate);
+        const limitedStreakTemplate = streakTemplate.slice(0, 3);
+        
+        // Create fallback plan
+        fullPlan = {
+          streak_habits: limitedStreakTemplate.map(item => ({
+            title: item.title,
+            description: item.description,
+            load: Math.min(item.xpValue / 10, 3),
+            proof: 'realtime' as const
+          })),
+          daily_plan: [] // No today tasks in fallback
+        };
+      }
+      
+      // 4. Create all tasks from the new full plan
+      const allTasks = [];
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-      const streakTasks = [];
       
+      // Create streak tasks for every day
       for (let dayOffset = 0; dayOffset < daysToDeadline; dayOffset++) {
         const currentDate = new Date(today);
         currentDate.setDate(today.getDate() + dayOffset);
         const dateString = currentDate.toISOString().split('T')[0];
         
-        for (const streakItem of limitedStreakTemplate) {
-          streakTasks.push({
+        // Add streak habits for this day
+        for (const habit of fullPlan.streak_habits) {
+          allTasks.push({
             user_id: user.id,
             goal_id: goalData.id,
-            title: streakItem.title,
-            description: streakItem.description,
+            title: habit.title,
+            description: habit.description,
             type: 'streak',
             task_date: dateString,
             is_habit: true,
-            xp_value: streakItem.xpValue,
-            priority: streakItem.priority,
+            xp_value: Math.max(10, habit.load * 10),
+            priority: habit.load >= 3 ? 'high' : habit.load >= 2 ? 'medium' : 'low',
             completed: false,
             due_date: null,
             created_at: new Date().toISOString(),
@@ -203,27 +248,53 @@ export const updateUltimateGoalProcedure = protectedProcedure
         }
       }
       
-      // 5. Insert new streak tasks
-      if (streakTasks.length > 0) {
-        const batchSize = 100;
-        let totalInserted = 0;
+      // Add today tasks from daily plan
+      for (const dayPlan of fullPlan.daily_plan) {
+        const planDate = new Date(dayPlan.date);
+        if (planDate >= today && planDate <= new Date(updateData.deadline)) {
+          for (const task of dayPlan.today_tasks) {
+            allTasks.push({
+              user_id: user.id,
+              goal_id: goalData.id,
+              title: task.title,
+              description: task.desc,
+              type: 'today',
+              task_date: null,
+              is_habit: false,
+              xp_value: Math.max(10, task.load * 10),
+              priority: task.load >= 3 ? 'high' : task.load >= 2 ? 'medium' : 'low',
+              completed: false,
+              due_date: new Date(dayPlan.date + 'T12:00:00.000Z').toISOString(),
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            });
+          }
+        }
+      }
+      
+      // 5. Batch insert all new tasks
+      let totalInserted = 0;
+      if (allTasks.length > 0) {
+        console.log(`Inserting ${allTasks.length} new tasks (streak + today)`);
         
-        for (let i = 0; i < streakTasks.length; i += batchSize) {
-          const batch = streakTasks.slice(i, i + batchSize);
+        const batchSize = 100;
+        for (let i = 0; i < allTasks.length; i += batchSize) {
+          const batch = allTasks.slice(i, i + batchSize);
           
           const { error: tasksError } = await ctx.supabase
             .from('tasks')
             .insert(batch);
             
           if (tasksError) {
-            console.error(`Error creating new streak tasks:`, tasksError);
+            console.error(`Error creating new tasks batch ${i}-${i + batch.length}:`, tasksError);
             break;
           } else {
             totalInserted += batch.length;
+            console.log(`Successfully created batch ${i}-${i + batch.length} (${batch.length} tasks)`);
           }
         }
         
-        console.log(`Successfully created ${totalInserted} new streak tasks after goal update`);
+        console.log(`Successfully created ${totalInserted} new tasks after goal update`);
       }
       
       return {
@@ -248,9 +319,11 @@ export const updateUltimateGoalProcedure = protectedProcedure
           priority: updateData.priority,
           milestones: []
         },
-        streakTasksCreated: streakTasks.length,
+        streakTasksCreated: fullPlan.streak_habits.length * daysToDeadline,
+        todayTasksCreated: fullPlan.daily_plan.reduce((sum, day) => sum + day.today_tasks.length, 0),
         totalDays: daysToDeadline,
-        daysToDeadline
+        daysToDeadline,
+        fullPlanRegenerated: true
       };
       
     } catch (error) {
@@ -276,7 +349,9 @@ export const createUltimateGoalProcedure = protectedProcedure
     const user = ctx.user;
     
     try {
-      // 1. Create the goal first with only the columns that definitely exist
+      console.log('Creating ultimate goal with full plan generation...');
+      
+      // 1. Create the goal first
       const goalInsertData: any = {
         user_id: user.id,
         title: input.title,
@@ -292,107 +367,167 @@ export const createUltimateGoalProcedure = protectedProcedure
         
       if (goalError) {
         console.error('Error creating goal:', goalError);
-        throw new Error(`Failed to create goal: ${goalError.message}`);
+        throw new TRPCError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: `Failed to create goal: ${goalError.message}`,
+        });
       }
       
       if (!goalData) {
-        throw new Error('Goal creation returned no data');
+        throw new TRPCError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: 'Goal creation returned no data',
+        });
       }
       
-      // 2. Build streak template for this goal
-      const goalForTemplate = {
-        id: goalData.id,
-        title: input.title,
-        description: input.description,
-        deadline: input.deadline,
-        category: input.category || '',
-        milestones: [],
-        createdAt: goalData.created_at,
-        updatedAt: goalData.updated_at,
-        progressValue: 0,
-        targetValue: input.targetValue,
-        unit: input.unit || '',
-        xpEarned: 0,
-        streakCount: 0,
-        todayTasksIds: [],
-        streakTaskIds: [],
-        status: 'active' as const,
-        coverImage: input.coverImage,
-        color: input.color,
-        priority: input.priority
-      };
+      console.log(`Goal created with ID: ${goalData.id}`);
       
-      const streakTemplate = buildStreakTemplate(goalForTemplate);
-      
-      // Ensure we only have exactly 3 streak tasks
-      const limitedStreakTemplate = streakTemplate.slice(0, 3);
-      
+      // 2. Generate full plan using AI
       const daysToDeadline = calculateDaysToDeadline(input.deadline);
+      console.log(`Generating full plan for ${daysToDeadline} days`);
       
-      console.log(`Creating streak tasks for ${daysToDeadline} days with ${limitedStreakTemplate.length} habits per day`);
+      let fullPlan;
+      try {
+        // Get user profile for experience level (fallback to 'beginner')
+        const { data: userProfile } = await ctx.supabase
+          .from('profiles')
+          .select('experience_level')
+          .eq('id', user.id)
+          .single();
+          
+        const experienceLevel = userProfile?.experience_level || 'beginner';
+        
+        fullPlan = await generateFullGoalPlan(
+          input.title,
+          input.description,
+          input.deadline,
+          experienceLevel,
+          0 // timezone offset, can be enhanced later
+        );
+        
+        console.log(`AI generated plan with ${fullPlan.streak_habits.length} streak habits and ${fullPlan.daily_plan.length} daily plans`);
+      } catch (aiError) {
+        console.error('AI plan generation failed, using fallback:', aiError);
+        
+        // Fallback to basic streak template
+        const goalForTemplate = {
+          id: goalData.id,
+          title: input.title,
+          description: input.description,
+          deadline: input.deadline,
+          category: input.category || '',
+          milestones: [],
+          createdAt: goalData.created_at,
+          updatedAt: goalData.updated_at,
+          progressValue: 0,
+          targetValue: input.targetValue,
+          unit: input.unit || '',
+          xpEarned: 0,
+          streakCount: 0,
+          todayTasksIds: [],
+          streakTaskIds: [],
+          status: 'active' as const,
+          coverImage: input.coverImage,
+          color: input.color,
+          priority: input.priority
+        };
+        
+        const streakTemplate = buildStreakTemplate(goalForTemplate);
+        const limitedStreakTemplate = streakTemplate.slice(0, 3);
+        
+        // Create fallback plan
+        fullPlan = {
+          streak_habits: limitedStreakTemplate.map(item => ({
+            title: item.title,
+            description: item.description,
+            load: Math.min(item.xpValue / 10, 3),
+            proof: 'realtime' as const
+          })),
+          daily_plan: [] // No today tasks in fallback
+        };
+      }
       
-      // 3. Create streak tasks for each day from today to deadline
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      
-      // Delete any existing streak tasks for this goal to avoid duplicates
+      // 3. Delete any existing tasks for this goal
       const { error: deleteError } = await ctx.supabase
         .from('tasks')
         .delete()
         .eq('user_id', user.id)
-        .eq('goal_id', goalData.id)
-        .eq('type', 'streak');
+        .eq('goal_id', goalData.id);
         
       if (deleteError) {
-        console.warn('Error deleting existing streak tasks:', deleteError);
+        console.warn('Error deleting existing tasks:', deleteError);
       }
       
-      const streakTasks = [];
+      // 4. Create all tasks from the full plan
+      const allTasks = [];
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
       
-      // Create streak tasks for every day from today to deadline (inclusive)
+      // Create streak tasks for every day
       for (let dayOffset = 0; dayOffset < daysToDeadline; dayOffset++) {
         const currentDate = new Date(today);
         currentDate.setDate(today.getDate() + dayOffset);
         const dateString = currentDate.toISOString().split('T')[0];
         
-        for (const streakItem of limitedStreakTemplate) {
-          streakTasks.push({
+        // Add streak habits for this day
+        for (const habit of fullPlan.streak_habits) {
+          allTasks.push({
             user_id: user.id,
             goal_id: goalData.id,
-            title: streakItem.title,
-            description: streakItem.description,
+            title: habit.title,
+            description: habit.description,
             type: 'streak',
             task_date: dateString,
             is_habit: true,
-            xp_value: streakItem.xpValue,
-            priority: streakItem.priority,
+            xp_value: Math.max(10, habit.load * 10),
+            priority: habit.load >= 3 ? 'high' : habit.load >= 2 ? 'medium' : 'low',
             completed: false,
-            due_date: null, // streak tasks use task_date instead
+            due_date: null,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
           });
         }
       }
       
-      // 4. Batch insert all streak tasks
-      if (streakTasks.length > 0) {
-        console.log(`Creating ${streakTasks.length} new streak tasks`);
+      // Add today tasks from daily plan
+      for (const dayPlan of fullPlan.daily_plan) {
+        const planDate = new Date(dayPlan.date);
+        if (planDate >= today && planDate <= new Date(input.deadline)) {
+          for (const task of dayPlan.today_tasks) {
+            allTasks.push({
+              user_id: user.id,
+              goal_id: goalData.id,
+              title: task.title,
+              description: task.desc,
+              type: 'today',
+              task_date: null,
+              is_habit: false,
+              xp_value: Math.max(10, task.load * 10),
+              priority: task.load >= 3 ? 'high' : task.load >= 2 ? 'medium' : 'low',
+              completed: false,
+              due_date: new Date(dayPlan.date + 'T12:00:00.000Z').toISOString(),
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            });
+          }
+        }
+      }
+      
+      // 5. Batch insert all tasks
+      let totalInserted = 0;
+      if (allTasks.length > 0) {
+        console.log(`Inserting ${allTasks.length} total tasks (streak + today)`);
         
-        // Insert in smaller batches to avoid potential issues
         const batchSize = 100;
-        let totalInserted = 0;
-        
-        for (let i = 0; i < streakTasks.length; i += batchSize) {
-          const batch = streakTasks.slice(i, i + batchSize);
+        for (let i = 0; i < allTasks.length; i += batchSize) {
+          const batch = allTasks.slice(i, i + batchSize);
           
           const { error: tasksError } = await ctx.supabase
             .from('tasks')
             .insert(batch);
             
           if (tasksError) {
-            console.error(`Error creating streak tasks batch ${i}-${i + batch.length}:`, tasksError);
-            // Don't fail the entire operation, just log the error
-            console.warn(`Goal created but some streak tasks failed to create: ${tasksError.message}`);
+            console.error(`Error creating tasks batch ${i}-${i + batch.length}:`, tasksError);
             break;
           } else {
             totalInserted += batch.length;
@@ -400,12 +535,10 @@ export const createUltimateGoalProcedure = protectedProcedure
           }
         }
         
-        console.log(`Successfully created ${totalInserted} out of ${streakTasks.length} streak tasks`);
-      } else {
-        console.log('No streak tasks to create');
+        console.log(`Successfully created ${totalInserted} out of ${allTasks.length} total tasks`);
       }
       
-      // 5. Return the created goal with additional metadata
+      // 6. Return the created goal with metadata
       return {
         goal: {
           id: goalData.id,
@@ -428,15 +561,20 @@ export const createUltimateGoalProcedure = protectedProcedure
           priority: input.priority,
           milestones: []
         },
-        streakTasksCreated: streakTasks.length,
+        streakTasksCreated: fullPlan.streak_habits.length * daysToDeadline,
+        todayTasksCreated: fullPlan.daily_plan.reduce((sum, day) => sum + day.today_tasks.length, 0),
         totalDays: daysToDeadline,
-        daysToDeadline
+        daysToDeadline,
+        fullPlanGenerated: true
       };
       
     } catch (error) {
       console.error('Error in createUltimateGoal:', error);
       
-      // Return a proper tRPC error to ensure JSON response
+      if (error instanceof TRPCError) {
+        throw error;
+      }
+      
       const errorMessage = error instanceof Error ? error.message : 'Failed to create ultimate goal';
       
       throw new TRPCError({
