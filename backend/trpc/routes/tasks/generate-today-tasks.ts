@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { protectedProcedure, type ProtectedContext } from '../../../create-context';
+import { protectedProcedure, type ProtectedContext } from '../../create-context';
 import { buildStreakTemplate, calculateDaysToDeadline } from '../../../../utils/streakUtils';
 import { generateDailyTasksForGoal } from '../../../../utils/aiUtils';
 
