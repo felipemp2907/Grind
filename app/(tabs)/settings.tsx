@@ -310,7 +310,7 @@ export default function SettingsScreen() {
           
           <View style={styles.goalsList}>
             {goals.map((goal) => (
-              <View key={goal.id} style={styles.goalItem}>
+              <View key={`goal-${goal.id}`} style={styles.goalItem}>
                 <View style={styles.goalInfo}>
                   <Text style={styles.goalTitle}>{goal.title}</Text>
                   <Text style={styles.goalProgress}>
