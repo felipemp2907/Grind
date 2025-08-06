@@ -175,19 +175,19 @@ export default function SettingsScreen() {
           </TouchableOpacity>
           
           <View style={styles.statsContainer}>
-            <View key="level" style={styles.statItem}>
+            <View style={styles.statItem}>
               <Text style={styles.statValue}>{profile.level}</Text>
               <Text style={styles.statLabel}>Level</Text>
             </View>
-            <View key="xp" style={styles.statItem}>
+            <View style={styles.statItem}>
               <Text style={styles.statValue}>{profile.xp}</Text>
               <Text style={styles.statLabel}>Total XP</Text>
             </View>
-            <View key="streak" style={styles.statItem}>
+            <View style={styles.statItem}>
               <Text style={styles.statValue}>{profile.streakDays}</Text>
               <Text style={styles.statLabel}>Current Streak</Text>
             </View>
-            <View key="goals" style={styles.statItem}>
+            <View style={styles.statItem}>
               <Text style={styles.statValue}>{goals.length}</Text>
               <Text style={styles.statLabel}>Active Goals</Text>
             </View>

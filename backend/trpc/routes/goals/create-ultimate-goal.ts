@@ -176,6 +176,16 @@ export const updateUltimateGoalProcedure = protectedProcedure
         );
         
         console.log(`AI regenerated plan with ${fullPlan.streak_habits.length} streak habits and ${fullPlan.daily_plan.length} daily plans`);
+      
+        // Validate the plan structure
+        if (!fullPlan.streak_habits || !Array.isArray(fullPlan.streak_habits)) {
+          console.warn('Invalid streak_habits in AI plan, using fallback');
+          throw new Error('Invalid AI plan structure');
+        }
+        if (!fullPlan.daily_plan || !Array.isArray(fullPlan.daily_plan)) {
+          console.warn('Invalid daily_plan in AI plan, using fallback');
+          throw new Error('Invalid AI plan structure');
+        }
       } catch (aiError) {
         console.error('AI plan regeneration failed, using fallback:', aiError);
         
@@ -276,25 +286,50 @@ export const updateUltimateGoalProcedure = protectedProcedure
       let totalInserted = 0;
       if (allTasks.length > 0) {
         console.log(`Inserting ${allTasks.length} new tasks (streak + today)`);
+        console.log(`Breakdown: ${allTasks.filter(t => t.type === 'streak').length} streak tasks, ${allTasks.filter(t => t.type === 'today').length} today tasks`);
         
         const batchSize = 100;
         for (let i = 0; i < allTasks.length; i += batchSize) {
           const batch = allTasks.slice(i, i + batchSize);
           
-          const { error: tasksError } = await ctx.supabase
+          const { data: insertedData, error: tasksError } = await ctx.supabase
             .from('tasks')
-            .insert(batch);
+            .insert(batch)
+            .select('id, type, task_date, due_date');
             
           if (tasksError) {
             console.error(`Error creating new tasks batch ${i}-${i + batch.length}:`, tasksError);
+            console.error('Sample task from failed batch:', JSON.stringify(batch[0], null, 2));
             break;
           } else {
             totalInserted += batch.length;
             console.log(`Successfully created batch ${i}-${i + batch.length} (${batch.length} tasks)`);
+            if (insertedData && insertedData.length > 0) {
+              console.log(`Sample inserted task:`, insertedData[0]);
+            }
           }
         }
         
         console.log(`Successfully created ${totalInserted} new tasks after goal update`);
+        
+        // Verify the insertion by counting tasks in database
+        const { count: streakCount } = await ctx.supabase
+          .from('tasks')
+          .select('*', { count: 'exact', head: true })
+          .eq('user_id', user.id)
+          .eq('goal_id', goalData.id)
+          .eq('type', 'streak');
+          
+        const { count: todayCount } = await ctx.supabase
+          .from('tasks')
+          .select('*', { count: 'exact', head: true })
+          .eq('user_id', user.id)
+          .eq('goal_id', goalData.id)
+          .eq('type', 'today');
+          
+        console.log(`Verification: ${streakCount} streak tasks and ${todayCount} today tasks in database`);
+      } else {
+        console.warn('No tasks to insert - this should not happen!');
       }
       
       return {
@@ -406,6 +441,16 @@ export const createUltimateGoalProcedure = protectedProcedure
         );
         
         console.log(`AI generated plan with ${fullPlan.streak_habits.length} streak habits and ${fullPlan.daily_plan.length} daily plans`);
+      
+      // Validate the plan structure
+      if (!fullPlan.streak_habits || !Array.isArray(fullPlan.streak_habits)) {
+        console.warn('Invalid streak_habits in AI plan, using fallback');
+        throw new Error('Invalid AI plan structure');
+      }
+      if (!fullPlan.daily_plan || !Array.isArray(fullPlan.daily_plan)) {
+        console.warn('Invalid daily_plan in AI plan, using fallback');
+        throw new Error('Invalid AI plan structure');
+      }
       } catch (aiError) {
         console.error('AI plan generation failed, using fallback:', aiError);
         
@@ -517,25 +562,50 @@ export const createUltimateGoalProcedure = protectedProcedure
       let totalInserted = 0;
       if (allTasks.length > 0) {
         console.log(`Inserting ${allTasks.length} total tasks (streak + today)`);
+        console.log(`Breakdown: ${allTasks.filter(t => t.type === 'streak').length} streak tasks, ${allTasks.filter(t => t.type === 'today').length} today tasks`);
         
         const batchSize = 100;
         for (let i = 0; i < allTasks.length; i += batchSize) {
           const batch = allTasks.slice(i, i + batchSize);
           
-          const { error: tasksError } = await ctx.supabase
+          const { data: insertedData, error: tasksError } = await ctx.supabase
             .from('tasks')
-            .insert(batch);
+            .insert(batch)
+            .select('id, type, task_date, due_date');
             
           if (tasksError) {
             console.error(`Error creating tasks batch ${i}-${i + batch.length}:`, tasksError);
+            console.error('Sample task from failed batch:', JSON.stringify(batch[0], null, 2));
             break;
           } else {
             totalInserted += batch.length;
             console.log(`Successfully created batch ${i}-${i + batch.length} (${batch.length} tasks)`);
+            if (insertedData && insertedData.length > 0) {
+              console.log(`Sample inserted task:`, insertedData[0]);
+            }
           }
         }
         
         console.log(`Successfully created ${totalInserted} out of ${allTasks.length} total tasks`);
+        
+        // Verify the insertion by counting tasks in database
+        const { count: streakCount } = await ctx.supabase
+          .from('tasks')
+          .select('*', { count: 'exact', head: true })
+          .eq('user_id', user.id)
+          .eq('goal_id', goalData.id)
+          .eq('type', 'streak');
+          
+        const { count: todayCount } = await ctx.supabase
+          .from('tasks')
+          .select('*', { count: 'exact', head: true })
+          .eq('user_id', user.id)
+          .eq('goal_id', goalData.id)
+          .eq('type', 'today');
+          
+        console.log(`Verification: ${streakCount} streak tasks and ${todayCount} today tasks in database`);
+      } else {
+        console.warn('No tasks to insert - this should not happen!');
       }
       
       // 6. Return the created goal with metadata
