@@ -84,6 +84,10 @@ app.get("/ping", (c) => {
 app.get("/test-trpc-direct", async (c) => {
   try {
     // Test if tRPC router is accessible
+    console.log('Testing tRPC router accessibility...');
+    console.log('appRouter type:', typeof appRouter);
+    console.log('appRouter keys:', Object.keys(appRouter._def.procedures || {}));
+    
     return c.json({
       status: "tRPC router accessible",
       procedures: {
@@ -95,12 +99,19 @@ app.get("/test-trpc-direct", async (c) => {
         "tasks.getStreakTasks": "available",
         "tasks.generateStreak": "available"
       },
+      routerInfo: {
+        type: typeof appRouter,
+        hasDefinition: !!appRouter._def,
+        procedureKeys: Object.keys(appRouter._def.procedures || {})
+      },
       timestamp: new Date().toISOString()
     });
   } catch (error) {
+    console.error('Error in test-trpc-direct:', error);
     return c.json({
       status: "error",
       error: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined,
       timestamp: new Date().toISOString()
     }, 500);
   }
