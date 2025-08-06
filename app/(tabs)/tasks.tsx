@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { 
   View, 
   Text, 
@@ -7,10 +7,10 @@ import {
   TouchableOpacity,
   RefreshControl,
   ScrollView,
-  ActivityIndicator
+
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
+
 import { 
   Calendar, 
   ChevronLeft, 
@@ -18,7 +18,7 @@ import {
   Plus,
   Target,
   Flame,
-  Zap
+
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { useGoalStore } from '@/store/goalStore';
@@ -38,8 +38,8 @@ import CreateTaskModal from '@/components/CreateTaskModal';
 
 export default function TasksScreen() {
   const router = useRouter();
-  const { goals, activeGoalId, setActiveGoal } = useGoalStore();
-  const { tasks, getTasks, getTasksByGoal, generateDailyTasks, generateStreakTasks, generateTasksForGoal, isGenerating, generateAISuggestions, canAddMoreTasks } = useTaskStore();
+  const { goals } = useGoalStore();
+  const { getTasks, getTasksByGoal } = useTaskStore();
   const { entries } = useJournalStore();
   
   const [selectedDate, setSelectedDate] = useState(getTodayDate());
@@ -68,19 +68,17 @@ export default function TasksScreen() {
     return entries.find(entry => entry.taskId === taskId);
   };
   
-  useEffect(() => {
-    // Only generate tasks automatically for today, not when switching dates
-    if (selectedTasks.length === 0 && selectedDate === getTodayDate() && goals.length > 0) {
-      generateDailyTasks(selectedDate);
-      generateStreakTasks(selectedDate);
-    }
-  }, [goals.length]); // Removed selectedDate from dependencies to prevent auto-generation when switching dates
+  // Tasks are now pre-generated when goals are created, no need for auto-generation
   
   const onRefresh = async () => {
     setRefreshing(true);
     try {
-      await generateDailyTasks(selectedDate);
-      await generateStreakTasks(selectedDate, true); // Force regenerate on refresh
+      // Simply reload tasks from database
+      if (filterByGoal) {
+        await getTasksByGoal(filterByGoal, selectedDate);
+      } else {
+        await getTasks(selectedDate);
+      }
     } catch (error) {
       console.error('Error refreshing tasks:', error);
     } finally {
@@ -130,14 +128,12 @@ export default function TasksScreen() {
           ? "No active goals cover this date."
           : "Add tasks to make progress toward your goal."}
       </Text>
-      {!isPastDate(selectedDate) && goals.length > 0 && !isDateBeyondGoalDeadlines && (
+      {!isPastDate(selectedDate) && goals.length === 0 && (
         <Button 
-          title={isGenerating ? "Generating..." : "Generate AI Tasks"}
-          onPress={() => generateDailyTasks(selectedDate)}
+          title="Create Your First Goal"
+          onPress={() => router.push('/goals/create')}
           style={styles.emptyStateButton}
           size="small"
-          loading={isGenerating}
-          disabled={isGenerating}
         />
       )}
     </View>
@@ -286,28 +282,7 @@ export default function TasksScreen() {
             <Calendar size={20} color={Colors.dark.text} />
           </TouchableOpacity>
           
-          {!isPastDate(selectedDate) && goals.length > 0 && !isDateBeyondGoalDeadlines && (
-            <TouchableOpacity 
-              style={[
-                styles.aiSuggestButton,
-                isDateBeyondGoalDeadlines && styles.disabledButton
-              ]}
-              onPress={async () => {
-                if (isDateBeyondGoalDeadlines) return;
-                
-                const activeGoal = goals.find(g => g.id === activeGoalId) || goals[0];
-                if (activeGoal) {
-                  const taskLimits = canAddMoreTasks(selectedDate, filterByGoal || activeGoal.id);
-                  if (taskLimits.canAddToday || taskLimits.canAddHabits) {
-                    await generateAISuggestions(selectedDate, filterByGoal || activeGoal.id);
-                  }
-                }
-              }}
-              disabled={isGenerating || isDateBeyondGoalDeadlines}
-            >
-              <Zap size={18} color={isDateBeyondGoalDeadlines ? Colors.dark.inactive : Colors.dark.secondary} />
-            </TouchableOpacity>
-          )}
+
           
           {!isPastDate(selectedDate) && (
             <TouchableOpacity 
@@ -320,12 +295,7 @@ export default function TasksScreen() {
         </View>
       </View>
       
-      {isGenerating && selectedTasks.length === 0 ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={Colors.dark.primary} />
-          <Text style={styles.loadingText}>Hustle is generating high-quality tasks...</Text>
-        </View>
-      ) : selectedTasks.length > 0 ? (
+      {selectedTasks.length > 0 ? (
         <FlatList
           data={[...incompleteTasks, ...completedTasks]}
           keyExtractor={(item) => item.id}
@@ -338,7 +308,7 @@ export default function TasksScreen() {
           contentContainerStyle={styles.listContent}
           refreshControl={
             <RefreshControl 
-              refreshing={refreshing || isGenerating} 
+              refreshing={refreshing} 
               onRefresh={onRefresh}
               tintColor={Colors.dark.primary}
             />

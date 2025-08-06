@@ -5,10 +5,10 @@ import {
   StyleSheet, 
   TouchableOpacity, 
   ScrollView,
-  ActivityIndicator
+
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
+
 import { 
   ChevronLeft, 
   ChevronRight, 
@@ -22,7 +22,7 @@ import Colors from '@/constants/colors';
 import { useGoalStore } from '@/store/goalStore';
 import { useTaskStore } from '@/store/taskStore';
 import { formatDate, getTodayDate } from '@/utils/dateUtils';
-import { isDateBeyondDeadlines } from '@/utils/streakUtils';
+
 import { Task } from '@/types';
 import CreateTaskModal from '@/components/CreateTaskModal';
 
@@ -59,7 +59,7 @@ interface GoalDeadline {
 export default function CalendarScreen() {
   const router = useRouter();
   const { goals } = useGoalStore();
-  const { tasks, generateTasksForGoal, isGenerating } = useTaskStore();
+  const { tasks } = useTaskStore();
   
   const today = new Date();
   const [currentMonth, setCurrentMonth] = useState(today.getMonth());
@@ -150,30 +150,9 @@ export default function CalendarScreen() {
     setShowCreateTaskModal(true);
   }, []);
   
-  const handleGenerateTasks = useCallback(async () => {
-    // Check if selected date is beyond all goal deadlines
-    if (isDateBeyondDeadlines(selectedDate, goals)) {
-      console.log('Cannot generate tasks - selected date is beyond all goal deadlines');
-      return;
-    }
-    
-    // Find goals that don't have tasks for this date
-    const goalsWithoutTasks = goals.filter(goal => {
-      return !tasks.some(task => 
-        task.date === selectedDate && task.goalId === goal.id
-      );
-    });
-    
-    // Generate tasks for each goal
-    for (const goal of goalsWithoutTasks) {
-      await generateTasksForGoal(selectedDate, goal.id);
-    }
-  }, [goals, tasks, selectedDate, generateTasksForGoal]);
+
   
-  // Check if generate button should be disabled
-  const isGenerateDisabled = useMemo(() => {
-    return isDateBeyondDeadlines(selectedDate, goals);
-  }, [selectedDate, goals]);
+
   
   const renderCalendarDay = (day: number) => {
     const dateString = formatDate(new Date(currentYear, currentMonth, day));
@@ -362,12 +341,7 @@ export default function CalendarScreen() {
         </TouchableOpacity>
       </View>
       
-      {isGenerating ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={Colors.dark.primary} />
-          <Text style={styles.loadingText}>Hustle is generating tasks...</Text>
-        </View>
-      ) : selectedTasks.length === 0 && selectedDateDeadlines.length === 0 ? (
+      {selectedTasks.length === 0 && selectedDateDeadlines.length === 0 ? (
         <View style={styles.emptyState}>
           <Text style={styles.emptyStateText}>No events for this day</Text>
           <View style={styles.emptyStateButtons}>
@@ -378,21 +352,7 @@ export default function CalendarScreen() {
               <Text style={styles.addTaskText}>Add Task</Text>
             </TouchableOpacity>
             
-            {goals.length > 0 && selectedDate >= getTodayDate() && (
-              <TouchableOpacity 
-                style={[
-                  styles.generateTasksButton,
-                  isGenerateDisabled && styles.generateTasksButtonDisabled
-                ]}
-                onPress={handleGenerateTasks}
-                disabled={isGenerateDisabled}
-              >
-                <Text style={[
-                  styles.generateTasksText,
-                  isGenerateDisabled && styles.generateTasksTextDisabled
-                ]}>Generate AI Tasks</Text>
-              </TouchableOpacity>
-            )}
+
           </View>
         </View>
       ) : (
