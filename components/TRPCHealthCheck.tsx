@@ -101,7 +101,7 @@ export const TRPCHealthCheck: React.FC = () => {
       
       const today = new Date().toISOString().split('T')[0];
       const result = await trpcClient.tasks.generateToday.mutate({
-        targetDate: today
+        date: today
       });
       
       console.log('Task generation test result:', result);
