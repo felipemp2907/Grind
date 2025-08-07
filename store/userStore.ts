@@ -361,27 +361,39 @@ export const useUserStore = create<UserState>()(
           }
           
           // First, ensure the user profile exists using the RPC function
-          const { data: ensureResult, error: ensureError } = await supabase.rpc('ensure_user_profile', {
-            user_id: user.id,
-            user_name: updates.name || profile.name || user.email?.split('@')[0] || 'User'
-          });
-          
-          if (ensureError) {
-            console.error('Error ensuring profile exists:', serializeError(ensureError));
-            // Continue with upsert as fallback
-          } else if (!ensureResult) {
-            console.error('User does not exist in auth.users table');
-            throw new Error('User authentication error. Please sign out and sign in again.');
+          try {
+            const { data: ensureResult, error: ensureError } = await supabase.rpc('ensure_user_profile', {
+              user_id: user.id,
+              user_name: updates.name || profile.name || user.email?.split('@')[0] || 'User'
+            });
+            
+            if (ensureError) {
+              const errorMessage = serializeError(ensureError);
+              console.error('Error ensuring profile exists:', errorMessage);
+              
+              // Check if it's a schema cache issue
+              if (errorMessage.includes('Could not find the') || 
+                  errorMessage.includes('schema cache') ||
+                  errorMessage.includes('column') ||
+                  errorMessage.includes('level')) {
+                console.log('Schema cache issue detected, using direct upsert fallback');
+              }
+            } else if (!ensureResult) {
+              console.error('User does not exist in auth.users table');
+              throw new Error('User authentication error. Please sign out and sign in again.');
+            }
+          } catch (rpcError) {
+            console.error('RPC call failed:', serializeError(rpcError));
           }
           
           // Now update the profile with all the data
           const profileData = {
             id: user.id,
             name: updates.name !== undefined ? updates.name : profile.name || 'User',
-            level: updates.level !== undefined ? updates.level : profile.level,
-            xp: updates.xp !== undefined ? updates.xp : profile.xp,
-            streak_days: updates.streakDays !== undefined ? updates.streakDays : profile.streakDays,
-            longest_streak: updates.longestStreak !== undefined ? updates.longestStreak : profile.longestStreak,
+            level: updates.level !== undefined ? updates.level : profile.level || 1,
+            xp: updates.xp !== undefined ? updates.xp : profile.xp || 0,
+            streak_days: updates.streakDays !== undefined ? updates.streakDays : profile.streakDays || 0,
+            longest_streak: updates.longestStreak !== undefined ? updates.longestStreak : profile.longestStreak || 0,
             avatar_url: updates.avatarUrl !== undefined ? updates.avatarUrl : profile.avatarUrl
           };
           
@@ -394,8 +406,15 @@ export const useUserStore = create<UserState>()(
             });
             
           if (error) {
-            console.error("Error saving profile:", serializeError(error));
-            throw new Error(`Failed to save profile: ${serializeError(error)}`);
+            const errorMessage = serializeError(error);
+            console.error("Error saving profile:", errorMessage);
+            
+            // Check if it's a schema cache issue with the level column
+            if (errorMessage.includes('Could not find the') && errorMessage.includes('level')) {
+              throw new Error('Database schema cache issue detected. Please run the fix-schema-cache-and-level-column.sql script in your Supabase SQL editor to refresh the schema cache.');
+            }
+            
+            throw new Error(`Failed to save profile: ${errorMessage}`);
           }
           
           console.log('Profile updated successfully');
