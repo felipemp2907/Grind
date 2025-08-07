@@ -55,6 +55,7 @@ export const protectedProcedure = t.procedure.use(async ({ ctx, next }) => {
       // For development, use a demo user
       if (process.env.NODE_ENV === 'development' || process.env.NODE_ENV !== 'production') {
         console.log('Development mode: using demo user');
+        await ensureDemoUserProfile();
         return next({
           ctx: {
             ...ctx,
@@ -81,6 +82,7 @@ export const protectedProcedure = t.procedure.use(async ({ ctx, next }) => {
       // For development, use a demo user if auth fails
       if (process.env.NODE_ENV === 'development' || process.env.NODE_ENV !== 'production') {
         console.log('Development mode: auth failed, using demo user');
+        await ensureDemoUserProfile();
         return next({
           ctx: {
             ...ctx,
@@ -108,6 +110,7 @@ export const protectedProcedure = t.procedure.use(async ({ ctx, next }) => {
     // For development, use a demo user if anything fails
     if (process.env.NODE_ENV === 'development' || process.env.NODE_ENV !== 'production') {
       console.log('Development mode: error in auth, using demo user:', error);
+      await ensureDemoUserProfile();
       return next({
         ctx: {
           ...ctx,
@@ -127,6 +130,42 @@ export const protectedProcedure = t.procedure.use(async ({ ctx, next }) => {
     });
   }
 });
+
+// Helper function to ensure demo user profile exists
+async function ensureDemoUserProfile() {
+  try {
+    // Check if profile exists
+    const { data: existingProfile } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('id', 'demo-user-id')
+      .single();
+    
+    if (!existingProfile) {
+      console.log('Creating demo user profile...');
+      
+      // Create the profile
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .insert({
+          id: 'demo-user-id',
+          name: 'Demo User',
+          level: 1,
+          xp: 0,
+          streak_days: 0,
+          longest_streak: 0
+        });
+      
+      if (profileError) {
+        console.error('Error creating demo user profile:', profileError);
+      } else {
+        console.log('Demo user profile created successfully');
+      }
+    }
+  } catch (error) {
+    console.error('Error ensuring demo user profile:', error);
+  }
+}
 
 export type ProtectedContext = {
   user: { id: string };
