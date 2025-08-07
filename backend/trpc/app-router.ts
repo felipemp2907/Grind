@@ -1,6 +1,7 @@
 import { createTRPCRouter } from "./create-context";
 import { hiProcedure, testProtectedProcedure } from "./routes/example/hi/route";
 import { createUltimateGoalProcedure, createGoalProcedure, updateUltimateGoalProcedure } from "./routes/goals/create-ultimate-goal";
+import { generateTodayTasksProcedure } from "./routes/tasks/generate-today-tasks";
 
 export const appRouter = createTRPCRouter({
   example: createTRPCRouter({
@@ -12,8 +13,9 @@ export const appRouter = createTRPCRouter({
     createUltimate: createUltimateGoalProcedure,
     updateUltimate: updateUltimateGoalProcedure,
   }),
-  // Task generation is now handled automatically when goals are created
-  // No separate task generation endpoints needed
+  tasks: createTRPCRouter({
+    generateToday: generateTodayTasksProcedure,
+  }),
 });
 
 export type AppRouter = typeof appRouter;
