@@ -384,7 +384,8 @@ export const createUltimateGoalProcedure = protectedProcedure
     const user = ctx.user;
     
     try {
-      console.log('Creating ultimate goal with full plan generation...');
+      console.log('🎯 Creating ultimate goal with FULL PLAN generation...');
+      console.log(`Goal: "${input.title}" | Deadline: ${input.deadline}`);
       
       // 1. Create the goal first
       const goalInsertData: any = {
@@ -401,7 +402,7 @@ export const createUltimateGoalProcedure = protectedProcedure
         .single();
         
       if (goalError) {
-        console.error('Error creating goal:', goalError);
+        console.error('❌ Error creating goal:', goalError);
         throw new TRPCError({
           code: 'INTERNAL_SERVER_ERROR',
           message: `Failed to create goal: ${goalError.message}`,
@@ -415,11 +416,11 @@ export const createUltimateGoalProcedure = protectedProcedure
         });
       }
       
-      console.log(`Goal created with ID: ${goalData.id}`);
+      console.log(`✅ Goal created with ID: ${goalData.id}`);
       
-      // 2. Generate full plan using AI
+      // 2. Calculate timeline and generate COMPLETE plan
       const daysToDeadline = calculateDaysToDeadline(input.deadline);
-      console.log(`Generating full plan for ${daysToDeadline} days`);
+      console.log(`📅 Generating COMPLETE plan for ${daysToDeadline} days (today → deadline)`);
       
       let fullPlan;
       try {
@@ -431,7 +432,9 @@ export const createUltimateGoalProcedure = protectedProcedure
           .single();
           
         const experienceLevel = userProfile?.experience_level || 'beginner';
+        console.log(`👤 User experience level: ${experienceLevel}`);
         
+        console.log('🤖 Calling AI to generate full goal plan...');
         fullPlan = await generateFullGoalPlan(
           input.title,
           input.description,
@@ -440,19 +443,22 @@ export const createUltimateGoalProcedure = protectedProcedure
           0 // timezone offset, can be enhanced later
         );
         
-        console.log(`AI generated plan with ${fullPlan.streak_habits.length} streak habits and ${fullPlan.daily_plan.length} daily plans`);
+        console.log(`🎉 AI generated plan:`);
+        console.log(`   • ${fullPlan.streak_habits.length} streak habits (will repeat every day)`);
+        console.log(`   • ${fullPlan.daily_plan.length} daily plans with today tasks`);
+        console.log(`   • Total today tasks: ${fullPlan.daily_plan.reduce((sum, day) => sum + day.today_tasks.length, 0)}`);
       
-      // Validate the plan structure
-      if (!fullPlan.streak_habits || !Array.isArray(fullPlan.streak_habits)) {
-        console.warn('Invalid streak_habits in AI plan, using fallback');
-        throw new Error('Invalid AI plan structure');
-      }
-      if (!fullPlan.daily_plan || !Array.isArray(fullPlan.daily_plan)) {
-        console.warn('Invalid daily_plan in AI plan, using fallback');
-        throw new Error('Invalid AI plan structure');
-      }
+        // Validate the plan structure
+        if (!fullPlan.streak_habits || !Array.isArray(fullPlan.streak_habits)) {
+          console.warn('⚠️ Invalid streak_habits in AI plan, using fallback');
+          throw new Error('Invalid AI plan structure');
+        }
+        if (!fullPlan.daily_plan || !Array.isArray(fullPlan.daily_plan)) {
+          console.warn('⚠️ Invalid daily_plan in AI plan, using fallback');
+          throw new Error('Invalid AI plan structure');
+        }
       } catch (aiError) {
-        console.error('AI plan generation failed, using fallback:', aiError);
+        console.error('❌ AI plan generation failed, using fallback:', aiError);
         
         // Fallback to basic streak template
         const goalForTemplate = {
@@ -480,19 +486,21 @@ export const createUltimateGoalProcedure = protectedProcedure
         const streakTemplate = buildStreakTemplate(goalForTemplate);
         const limitedStreakTemplate = streakTemplate.slice(0, 3);
         
+        console.log(`🔄 Using fallback plan with ${limitedStreakTemplate.length} streak habits`);
+        
         // Create fallback plan
         fullPlan = {
           streak_habits: limitedStreakTemplate.map(item => ({
             title: item.title,
             description: item.description,
             load: Math.min(item.xpValue / 10, 3),
-            proof: 'realtime' as const
+            proof: 'flex' as const
           })),
           daily_plan: [] // No today tasks in fallback
         };
       }
       
-      // 3. Delete any existing tasks for this goal
+      // 3. Delete any existing tasks for this goal (cleanup)
       const { error: deleteError } = await ctx.supabase
         .from('tasks')
         .delete()
@@ -500,21 +508,23 @@ export const createUltimateGoalProcedure = protectedProcedure
         .eq('goal_id', goalData.id);
         
       if (deleteError) {
-        console.warn('Error deleting existing tasks:', deleteError);
+        console.warn('⚠️ Error deleting existing tasks:', deleteError);
       }
       
-      // 4. Create all tasks from the full plan
+      // 4. Create ALL TASKS for the ENTIRE timeline
+      console.log('📝 Creating ALL tasks for the entire timeline...');
       const allTasks = [];
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       
-      // Create streak tasks for every day
+      // Create streak tasks for EVERY SINGLE DAY until deadline
+      console.log(`🔄 Creating streak tasks for ${daysToDeadline} days...`);
       for (let dayOffset = 0; dayOffset < daysToDeadline; dayOffset++) {
         const currentDate = new Date(today);
         currentDate.setDate(today.getDate() + dayOffset);
         const dateString = currentDate.toISOString().split('T')[0];
         
-        // Add streak habits for this day
+        // Add ALL streak habits for this day
         for (const habit of fullPlan.streak_habits) {
           allTasks.push({
             user_id: user.id,
@@ -534,7 +544,8 @@ export const createUltimateGoalProcedure = protectedProcedure
         }
       }
       
-      // Add today tasks from daily plan
+      // Add today tasks from daily plan (each task appears only on its assigned day)
+      console.log(`📋 Adding today tasks from daily plan...`);
       for (const dayPlan of fullPlan.daily_plan) {
         const planDate = new Date(dayPlan.date);
         if (planDate >= today && planDate <= new Date(input.deadline)) {
@@ -558,12 +569,16 @@ export const createUltimateGoalProcedure = protectedProcedure
         }
       }
       
-      // 5. Batch insert all tasks
+      // 5. BATCH INSERT ALL TASKS AT ONCE
       let totalInserted = 0;
+      const streakTaskCount = allTasks.filter(t => t.type === 'streak').length;
+      const todayTaskCount = allTasks.filter(t => t.type === 'today').length;
+      
+      console.log(`💾 BATCH INSERTING ${allTasks.length} total tasks:`);
+      console.log(`   • ${streakTaskCount} streak tasks (${fullPlan.streak_habits.length} habits × ${daysToDeadline} days)`);
+      console.log(`   • ${todayTaskCount} today tasks (distributed across timeline)`);
+      
       if (allTasks.length > 0) {
-        console.log(`Inserting ${allTasks.length} total tasks (streak + today)`);
-        console.log(`Breakdown: ${allTasks.filter(t => t.type === 'streak').length} streak tasks, ${allTasks.filter(t => t.type === 'today').length} today tasks`);
-        
         const batchSize = 100;
         for (let i = 0; i < allTasks.length; i += batchSize) {
           const batch = allTasks.slice(i, i + batchSize);
@@ -574,19 +589,19 @@ export const createUltimateGoalProcedure = protectedProcedure
             .select('id, type, task_date, due_date');
             
           if (tasksError) {
-            console.error(`Error creating tasks batch ${i}-${i + batch.length}:`, tasksError);
+            console.error(`❌ Error creating tasks batch ${i}-${i + batch.length}:`, tasksError);
             console.error('Sample task from failed batch:', JSON.stringify(batch[0], null, 2));
             break;
           } else {
             totalInserted += batch.length;
-            console.log(`Successfully created batch ${i}-${i + batch.length} (${batch.length} tasks)`);
+            console.log(`✅ Successfully created batch ${i}-${i + batch.length} (${batch.length} tasks)`);
             if (insertedData && insertedData.length > 0) {
-              console.log(`Sample inserted task:`, insertedData[0]);
+              console.log(`   Sample inserted task:`, insertedData[0]);
             }
           }
         }
         
-        console.log(`Successfully created ${totalInserted} out of ${allTasks.length} total tasks`);
+        console.log(`🎉 SUCCESSFULLY CREATED ${totalInserted} out of ${allTasks.length} total tasks`);
         
         // Verify the insertion by counting tasks in database
         const { count: streakCount } = await ctx.supabase
@@ -603,13 +618,22 @@ export const createUltimateGoalProcedure = protectedProcedure
           .eq('goal_id', goalData.id)
           .eq('type', 'today');
           
-        console.log(`Verification: ${streakCount} streak tasks and ${todayCount} today tasks in database`);
+        console.log(`🔍 DATABASE VERIFICATION:`);
+        console.log(`   • ${streakCount} streak tasks in database`);
+        console.log(`   • ${todayCount} today tasks in database`);
+        console.log(`   • Expected: ${streakTaskCount} streak + ${todayTaskCount} today = ${streakTaskCount + todayTaskCount} total`);
+        
+        if ((streakCount || 0) + (todayCount || 0) !== allTasks.length) {
+          console.warn(`⚠️ MISMATCH: Expected ${allTasks.length} tasks, but database has ${(streakCount || 0) + (todayCount || 0)}`);
+        } else {
+          console.log(`✅ PERFECT MATCH: All ${allTasks.length} tasks successfully created!`);
+        }
       } else {
-        console.warn('No tasks to insert - this should not happen!');
+        console.error('❌ NO TASKS TO INSERT - This should NEVER happen!');
       }
       
-      // 6. Return the created goal with metadata
-      return {
+      // 6. Return the created goal with comprehensive metadata
+      const result = {
         goal: {
           id: goalData.id,
           title: input.title,
@@ -631,15 +655,27 @@ export const createUltimateGoalProcedure = protectedProcedure
           priority: input.priority,
           milestones: []
         },
-        streakTasksCreated: fullPlan.streak_habits.length * daysToDeadline,
-        todayTasksCreated: fullPlan.daily_plan.reduce((sum, day) => sum + day.today_tasks.length, 0),
+        streakTasksCreated: streakTaskCount,
+        todayTasksCreated: todayTaskCount,
+        totalTasksCreated: totalInserted,
         totalDays: daysToDeadline,
         daysToDeadline,
-        fullPlanGenerated: true
+        fullPlanGenerated: true,
+        streakHabitsCount: fullPlan.streak_habits.length,
+        dailyPlansCount: fullPlan.daily_plan.length
       };
       
+      console.log(`🎯 ULTIMATE GOAL CREATION COMPLETE!`);
+      console.log(`   Goal: "${input.title}"`);
+      console.log(`   Timeline: ${daysToDeadline} days`);
+      console.log(`   Streak habits: ${fullPlan.streak_habits.length}`);
+      console.log(`   Total tasks created: ${totalInserted}`);
+      console.log(`   ✅ User now has a COMPLETE plan from today to deadline!`);
+      
+      return result;
+      
     } catch (error) {
-      console.error('Error in createUltimateGoal:', error);
+      console.error('❌ CRITICAL ERROR in createUltimateGoal:', error);
       
       if (error instanceof TRPCError) {
         throw error;
