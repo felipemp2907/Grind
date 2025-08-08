@@ -97,3 +97,149 @@ export const generateTodayTasksProcedure = protectedProcedure
       });
     }
   });
+
+// Get streak tasks for a specific date
+export const getStreakTasksProcedure = protectedProcedure
+  .input(z.object({
+    date: z.string().optional(),
+    goalId: z.string().optional()
+  }))
+  .query(async ({ input, ctx }: { input: { date?: string; goalId?: string }; ctx: ProtectedContext }) => {
+    const user = ctx.user;
+    const date = input.date || new Date().toISOString().split('T')[0];
+    
+    try {
+      console.log('🔄 Fetching streak tasks for date:', date);
+      
+      let query = ctx.supabase
+        .from('tasks')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('type', 'streak')
+        .eq('task_date', date);
+      
+      if (input.goalId) {
+        query = query.eq('goal_id', input.goalId);
+      }
+      
+      const { data: tasks, error } = await query.order('created_at', { ascending: false });
+      
+      if (error) {
+        console.error('Error fetching streak tasks:', error);
+        throw new TRPCError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: `Failed to fetch streak tasks: ${error.message}`,
+        });
+      }
+      
+      console.log(`Found ${tasks?.length || 0} streak tasks for ${date}`);
+      
+      return {
+        tasks: tasks || [],
+        totalTasks: tasks?.length || 0,
+        date
+      };
+      
+    } catch (error) {
+      console.error('Error in getStreakTasks:', error);
+      
+      if (error instanceof TRPCError) {
+        throw error;
+      }
+      
+      const errorMessage = error instanceof Error ? error.message : 'Failed to fetch streak tasks';
+      
+      throw new TRPCError({
+        code: 'INTERNAL_SERVER_ERROR',
+        message: `Streak task fetch failed: ${errorMessage}`,
+        cause: error,
+      });
+    }
+  });
+
+// Generate streak tasks (legacy support - now just returns existing tasks)
+export const generateStreakTasksProcedure = protectedProcedure
+  .input(z.object({
+    goalId: z.string().optional(),
+    date: z.string().optional()
+  }))
+  .mutation(async ({ input, ctx }: { input: { goalId?: string; date?: string }; ctx: ProtectedContext }) => {
+    const user = ctx.user;
+    const date = input.date || new Date().toISOString().split('T')[0];
+    
+    try {
+      console.log('🔄 Generating/fetching streak tasks for date:', date);
+      
+      // Just fetch existing streak tasks since they're pre-generated
+      let query = ctx.supabase
+        .from('tasks')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('type', 'streak')
+        .eq('task_date', date);
+      
+      if (input.goalId) {
+        query = query.eq('goal_id', input.goalId);
+      }
+      
+      const { data: tasks, error } = await query.order('created_at', { ascending: false });
+      
+      if (error) {
+        console.error('Error fetching streak tasks:', error);
+        throw new TRPCError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: `Failed to fetch streak tasks: ${error.message}`,
+        });
+      }
+      
+      console.log(`Found ${tasks?.length || 0} streak tasks for ${date}`);
+      
+      if (!tasks || tasks.length === 0) {
+        // Check if user has any active goals
+        const { data: goals, error: goalsError } = await ctx.supabase
+          .from('goals')
+          .select('id, title')
+          .eq('user_id', user.id)
+          .eq('status', 'active')
+          .limit(1);
+          
+        if (goalsError) {
+          console.error('Error checking goals:', goalsError);
+        }
+        
+        if (!goals || goals.length === 0) {
+          return {
+            notice: 'No active goals found',
+            tasks: []
+          };
+        }
+        
+        return {
+          notice: 'No streak tasks found for this date. Tasks should have been generated when your Ultimate Goal was created.',
+          tasks: [],
+          suggestion: 'Try creating a new Ultimate Goal to generate streak tasks.'
+        };
+      }
+      
+      return {
+        tasks: tasks || [],
+        totalTasks: tasks?.length || 0,
+        date
+      };
+      
+    } catch (error) {
+      console.error('Error in generateStreakTasks:', error);
+      
+      if (error instanceof TRPCError) {
+        throw error;
+      }
+      
+      const errorMessage = error instanceof Error ? error.message : 'Failed to generate streak tasks';
+      
+      throw new TRPCError({
+        code: 'INTERNAL_SERVER_ERROR',
+        message: `Streak task generation failed: ${errorMessage}`,
+        cause: error,
+      });
+    }
+  });
