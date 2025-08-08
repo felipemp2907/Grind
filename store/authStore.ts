@@ -2,11 +2,10 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Alert, Platform } from 'react-native';
-import { router } from 'expo-router';
 import { supabase, createUserProfile, serializeError } from '@/lib/supabase';
 import { signInWithGoogle } from '@/lib/googleAuth';
 import { AuthUser, LoginCredentials, RegisterCredentials } from '@/types';
-import { AuthError, Session, User } from '@supabase/supabase-js';
+import { Session } from '@supabase/supabase-js';
 
 interface AuthState {
   user: AuthUser | null;
@@ -83,7 +82,7 @@ export const useAuthStore = create<AuthState>()(
               isLoading: false,
             });
             
-            router.replace('/(tabs)');
+            // Navigation is handled by NavigationGate
           }
         } catch (error: any) {
           const errorMessage = serializeError(error);
@@ -148,7 +147,7 @@ export const useAuthStore = create<AuthState>()(
               isLoading: false,
             });
             
-            router.replace('/(tabs)');
+            // Navigation is handled by NavigationGate
           } else {
             set({ isLoading: false });
           }
@@ -194,7 +193,7 @@ export const useAuthStore = create<AuthState>()(
                 "We've sent a confirmation email to your address. Please check your inbox and spam folder, then confirm your email before logging in.",
                 [{ text: 'OK' }]
               );
-              router.replace('/login');
+              // Navigation is handled by NavigationGate
               return;
             }
             
@@ -232,7 +231,7 @@ export const useAuthStore = create<AuthState>()(
               // The profile should be created by the database trigger
             }
             
-            router.replace('/onboarding');
+            // Navigation is handled by NavigationGate
           }
         } catch (error: any) {
           const errorMessage = serializeError(error);
@@ -258,7 +257,7 @@ export const useAuthStore = create<AuthState>()(
             isLoading: false,
           });
           
-          router.replace('/login');
+          // Navigation is handled by NavigationGate
         } catch (error: any) {
           const errorMessage = serializeError(error);
           console.error("Logout error:", errorMessage);

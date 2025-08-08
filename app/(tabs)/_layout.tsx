@@ -11,7 +11,6 @@ import {
   Settings
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
-import AuthGuard from '@/components/AuthGuard';
 import 'react-native-reanimated';
 
 const TabLayout = memo(function TabLayout() {
@@ -27,8 +26,7 @@ const TabLayout = memo(function TabLayout() {
   };
 
   return (
-    <AuthGuard>
-      <Tabs
+    <Tabs
       screenOptions={{
         tabBarActiveTintColor: Colors.dark.primary,
         tabBarInactiveTintColor: Colors.dark.inactive,
@@ -267,7 +265,6 @@ const TabLayout = memo(function TabLayout() {
         }}
       />
       </Tabs>
-    </AuthGuard>
   );
 });
 

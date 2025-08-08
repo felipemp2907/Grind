@@ -8,13 +8,12 @@ import {
   KeyboardAvoidingView, 
   Platform,
   TouchableOpacity,
-  ActivityIndicator,
   Alert
 } from 'react-native';
-import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { ArrowRight, Calendar, Target, Brain } from 'lucide-react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import Colors from '@/constants/colors';
 import Button from '@/components/Button';
 import { useGoalStore } from '@/store/goalStore';
@@ -24,8 +23,9 @@ import { useAuthStore } from '@/store/authStore';
 import { formatDate, getDatePlusDays, getTodayDate } from '@/utils/dateUtils';
 import DateTimePicker from '@/components/DateTimePicker';
 
+const ONBOARDING_KEY = '@grind/hasSeenOnboarding';
+
 export default function OnboardingScreen() {
-  const router = useRouter();
   const { addGoal, setOnboarded } = useGoalStore();
   const { updateProfile } = useUserStore();
   const { generateTasksForGoal, isGenerating } = useTaskStore();
@@ -81,14 +81,24 @@ export default function OnboardingScreen() {
       // Mark as onboarded
       setOnboarded(true);
       
-      // Navigate to main app
-      router.replace('/(tabs)');
+      // Set the onboarding flag in AsyncStorage
+      await AsyncStorage.setItem(ONBOARDING_KEY, 'true');
+      
+      // Navigation is handled by NavigationGate
     } catch (error) {
       console.error('Error during onboarding completion:', error);
       
-      // Still mark as onboarded and navigate to main app
+      // Still mark as onboarded
       setOnboarded(true);
-      router.replace('/(tabs)');
+      
+      // Set the onboarding flag in AsyncStorage
+      try {
+        await AsyncStorage.setItem(ONBOARDING_KEY, 'true');
+      } catch (storageError) {
+        console.error('Error setting onboarding flag:', storageError);
+      }
+      
+      // Navigation is handled by NavigationGate
       
       // Show error message after navigation
       setTimeout(() => {

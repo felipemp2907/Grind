@@ -9,11 +9,16 @@ import TargetBackdrop from './TargetBackdrop';
 export default function WelcomeScreen() {
   const { markWelcomeSeen } = useUserStore();
   
-  const handleStart = () => {
+  const handleStart = async () => {
     if (Platform.OS !== 'web') {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
+    
+    // Mark welcome as seen
     markWelcomeSeen();
+    
+    // Don't set onboarding flag yet - that happens after successful auth + goal creation
+    // Just navigate to auth
     router.replace('/login');
   };
 
