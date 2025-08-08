@@ -144,22 +144,30 @@ async function ensureDemoUserProfile() {
     if (!existingProfile) {
       console.log('Creating demo user profile...');
       
-      // Create the profile
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .insert({
-          id: 'demo-user-id',
-          name: 'Demo User',
-          level: 1,
-          xp: 0,
-          streak_days: 0,
-          longest_streak: 0
-        });
+      // Try using RPC function first
+      const { error: rpcError } = await supabase.rpc('ensure_user_profile', {
+        user_id: 'demo-user-id',
+        user_name: 'Demo User'
+      });
       
-      if (profileError) {
-        console.error('Error creating demo user profile:', profileError);
+      if (rpcError) {
+        console.log('RPC failed, trying direct insert:', rpcError.message);
+        
+        // Fallback to direct insert with minimal required fields
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .insert({
+            id: 'demo-user-id',
+            name: 'Demo User'
+          });
+        
+        if (profileError) {
+          console.error('Error creating demo user profile:', profileError);
+        } else {
+          console.log('Demo user profile created successfully via direct insert');
+        }
       } else {
-        console.log('Demo user profile created successfully');
+        console.log('Demo user profile created successfully via RPC');
       }
     }
   } catch (error) {

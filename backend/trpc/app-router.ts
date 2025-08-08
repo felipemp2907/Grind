@@ -13,6 +13,14 @@ console.log('Available procedures:', {
   'tasks.generateToday': !!generateTodayTasksProcedure,
 });
 
+// Verify all procedures are properly imported
+if (!hiProcedure) console.error('❌ hiProcedure is undefined');
+if (!testProtectedProcedure) console.error('❌ testProtectedProcedure is undefined');
+if (!createGoalProcedure) console.error('❌ createGoalProcedure is undefined');
+if (!createUltimateGoalProcedure) console.error('❌ createUltimateGoalProcedure is undefined');
+if (!updateUltimateGoalProcedure) console.error('❌ updateUltimateGoalProcedure is undefined');
+if (!generateTodayTasksProcedure) console.error('❌ generateTodayTasksProcedure is undefined');
+
 export const appRouter = createTRPCRouter({
   example: createTRPCRouter({
     hi: hiProcedure,
@@ -29,6 +37,13 @@ export const appRouter = createTRPCRouter({
 });
 
 console.log('✅ tRPC app router built successfully');
-console.log('Router procedures:', Object.keys(appRouter._def.procedures || {}));
+console.log('Router procedures available:', {
+  'example.hi': 'available',
+  'example.test': 'available',
+  'goals.create': 'available',
+  'goals.createUltimate': 'available',
+  'goals.updateUltimate': 'available',
+  'tasks.generateToday': 'available',
+});
 
 export type AppRouter = typeof appRouter;
