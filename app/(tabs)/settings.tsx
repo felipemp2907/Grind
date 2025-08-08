@@ -309,8 +309,8 @@ export default function SettingsScreen() {
           </TouchableOpacity>
           
           <View style={styles.goalsList}>
-            {goals.map((goal) => (
-              <View key={goal.id} style={styles.goalItem}>
+            {goals.map((goal, index) => (
+              <View key={`goal-${goal.id || index}`} style={styles.goalItem}>
                 <View style={styles.goalInfo}>
                   <Text style={styles.goalTitle}>{goal.title}</Text>
                   <Text style={styles.goalProgress}>
