@@ -3,7 +3,7 @@ import { useFonts } from "expo-font";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { useEffect, useCallback } from "react";
-import { Platform, StatusBar, Alert } from "react-native";
+import { StatusBar } from "react-native";
 import { useGoalStore } from "@/store/goalStore";
 import { useAuthStore } from "@/store/authStore";
 import { useUserStore } from "@/store/userStore";
@@ -19,7 +19,7 @@ import { TabTransitionProvider } from '@/components/TabTransitionProvider';
 import 'react-native-reanimated';
 
 export const unstable_settings = {
-  initialRouteName: "(tabs)",
+  initialRouteName: "login",
 };
 
 // Create a client for React Query
@@ -33,7 +33,7 @@ export default function RootLayout() {
     ...FontAwesome.font,
   });
   
-  const { refreshSession, user } = useAuthStore();
+  const { refreshSession } = useAuthStore();
   const { fetchProfile } = useUserStore();
   const { fetchTasks } = useTaskStore();
   const { fetchGoals } = useGoalStore();
@@ -229,7 +229,7 @@ export default function RootLayout() {
         }
       }
     };
-  }, [checkSession]);
+  }, [checkSession, fetchProfile, fetchTasks, fetchGoals, fetchEntries]);
   
   useEffect(() => {
     if (error) {
@@ -252,14 +252,11 @@ export default function RootLayout() {
 }
 
 function RootLayoutNav() {
-  const { isOnboarded } = useGoalStore();
-  const { isAuthenticated } = useAuthStore();
+  const { isAuthenticated, isLoading } = useAuthStore();
   
-  // Determine initial route based on auth and onboarding status
-  let initialRoute = 'login';
-  
-  if (isAuthenticated) {
-    initialRoute = isOnboarded ? '(tabs)' : 'onboarding';
+  // Show loading screen while checking authentication
+  if (isLoading) {
+    return null; // or a loading screen component
   }
 
   return (
