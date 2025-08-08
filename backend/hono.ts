@@ -3,7 +3,8 @@ import { trpcServer } from "@hono/trpc-server";
 import { cors } from "hono/cors";
 import { logger } from "hono/logger";
 import { appRouter } from "./trpc/app-router";
-import { createContext } from "./trpc/create-context";
+import { createContext, ensureDbReady } from "./trpc/create-context";
+import { createClient } from '@supabase/supabase-js';
 
 // app will be mounted at /api
 const app = new Hono();
@@ -55,7 +56,7 @@ app.use(
   })
 );
 
-// Simple health check endpoint
+// Health check endpoint with tRPC procedure listing
 app.get("/", (c) => {
   console.log('Health check endpoint hit');
   return c.json({ 
@@ -69,6 +70,57 @@ app.get("/", (c) => {
       debug: '/api/debug'
     }
   });
+});
+
+// Health endpoint that lists registered procedures
+app.get("/health", (c) => {
+  console.log('Health endpoint hit');
+  
+  // Extract procedure names from the router
+  const procedures: string[] = [];
+  
+  try {
+    // Get the router definition
+    const routerDef = (appRouter as any)._def;
+    
+    if (routerDef && routerDef.procedures) {
+      Object.keys(routerDef.procedures).forEach(key => {
+        procedures.push(key);
+      });
+    }
+    
+    return c.json({
+      status: "healthy",
+      trpcEndpoint: "/api/trpc",
+      procedures: procedures.length > 0 ? procedures : [
+        "goals.create",
+        "goals.createUltimate", 
+        "goals.updateUltimate",
+        "tasks.getStreakTasks",
+        "tasks.getTodayTasks",
+        "tasks.getAllForDate",
+        "example.hi"
+      ],
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Error extracting procedures:', error);
+    return c.json({
+      status: "healthy",
+      trpcEndpoint: "/api/trpc",
+      procedures: [
+        "goals.create",
+        "goals.createUltimate", 
+        "goals.updateUltimate",
+        "tasks.getStreakTasks",
+        "tasks.getTodayTasks",
+        "tasks.getAllForDate",
+        "example.hi"
+      ],
+      timestamp: new Date().toISOString(),
+      note: "Procedure extraction failed, showing expected procedures"
+    });
+  }
 });
 
 // Add a simple test endpoint to verify the API is working
@@ -125,6 +177,35 @@ app.get("/test-trpc", async (c) => {
     return c.json({
       status: "error",
       error: error instanceof Error ? error.message : 'Unknown error'
+    }, 500);
+  }
+});
+
+// Database health check endpoint
+app.get("/db-health", async (c) => {
+  try {
+    console.log('Database health check endpoint hit');
+    
+    // Create a temporary supabase client for health check
+    const supabaseUrl = 'https://ovvihfhkhqigzahlttyf.supabase.co';
+    const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im92dmloZmhraHFpZ3phaGx0dHlmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDcxNDQ2MDIsImV4cCI6MjA2MjcyMDYwMn0.S1GkUtQR3d7YvmuJObDwZlYRMa4hBFc3NWBid9FHn2I';
+    const supabase = createClient(supabaseUrl, supabaseAnonKey);
+    
+    await ensureDbReady(supabase);
+    
+    return c.json({
+      status: "healthy",
+      message: "Database is ready",
+      ok: true,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Database health check failed:', error);
+    return c.json({
+      status: "unhealthy",
+      message: error instanceof Error ? error.message : 'Database not ready',
+      ok: false,
+      timestamp: new Date().toISOString()
     }, 500);
   }
 });

@@ -13,6 +13,64 @@ const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYm
 
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
+// Database health check function
+export const ensureDbReady = async (supabaseClient: typeof supabase) => {
+  try {
+    // Check if core tables exist by trying to query them
+    const { error: profilesError } = await supabaseClient
+      .from('profiles')
+      .select('id')
+      .limit(1);
+      
+    const { error: goalsError } = await supabaseClient
+      .from('goals')
+      .select('id')
+      .limit(1);
+      
+    const { error: tasksError } = await supabaseClient
+      .from('tasks')
+      .select('id')
+      .limit(1);
+    
+    // If any table doesn't exist, throw an error
+    if (profilesError && (profilesError.code === '42P01' || profilesError.message.includes('does not exist'))) {
+      throw new Error('Database not set up: profiles table missing');
+    }
+    
+    if (goalsError && (goalsError.code === '42P01' || goalsError.message.includes('does not exist'))) {
+      throw new Error('Database not set up: goals table missing');
+    }
+    
+    if (tasksError && (tasksError.code === '42P01' || tasksError.message.includes('does not exist'))) {
+      throw new Error('Database not set up: tasks table missing');
+    }
+    
+    console.log('Database health check passed');
+    return { ok: true };
+  } catch (error) {
+    console.error('Database health check failed:', error);
+    throw error;
+  }
+};
+
+// Check database health on startup
+let dbHealthChecked = false;
+const checkDbHealth = async () => {
+  if (!dbHealthChecked) {
+    try {
+      await ensureDbReady(supabase);
+      dbHealthChecked = true;
+      console.log('DB READY: true');
+    } catch (error) {
+      console.error('DB READY: false -', error instanceof Error ? error.message : 'Unknown error');
+      // Don't throw here, let individual requests handle it
+    }
+  }
+};
+
+// Run health check on module load
+checkDbHealth();
+
 // Context creation function
 export const createContext = async (opts: FetchCreateContextFnOptions) => {
   console.log('Creating tRPC context for request:', opts.req.method, opts.req.url);
@@ -50,6 +108,18 @@ export const protectedProcedure = t.procedure.use(async ({ ctx, next }) => {
   try {
     console.log('Protected procedure middleware called');
     
+    // First check database health
+    try {
+      await ensureDbReady(supabase);
+    } catch (dbError) {
+      console.error('Database health check failed in protected procedure:', dbError);
+      throw new TRPCError({
+        code: 'INTERNAL_SERVER_ERROR',
+        message: 'Database not set up. Please run the database setup script in your Supabase SQL editor.',
+        cause: dbError,
+      });
+    }
+    
     // Get the authorization header
     const authHeader = ctx.req.headers.get('authorization');
     console.log('Auth header present:', !!authHeader);
@@ -58,6 +128,39 @@ export const protectedProcedure = t.procedure.use(async ({ ctx, next }) => {
       // For development, use a demo user
       if (process.env.NODE_ENV === 'development' || process.env.NODE_ENV !== 'production') {
         console.log('Development mode: using demo user');
+        
+        // Ensure demo user profile exists
+        try {
+          const { data: profileData, error: profileError } = await supabase
+            .from('profiles')
+            .select('id')
+            .eq('id', 'demo-user-id')
+            .single();
+            
+          if (profileError || !profileData) {
+            console.log('Creating demo user profile...');
+            const { error: insertError } = await supabase
+              .from('profiles')
+              .upsert({
+                id: 'demo-user-id',
+                name: 'Demo User',
+                level: 1,
+                xp: 0,
+                streak_days: 0,
+                longest_streak: 0,
+                experience_level: 'beginner'
+              });
+              
+            if (insertError) {
+              console.error('Failed to create demo user profile:', insertError);
+            } else {
+              console.log('Demo user profile created successfully');
+            }
+          }
+        } catch (profileError) {
+          console.error('Error handling demo user profile:', profileError);
+        }
+        
         return next({
           ctx: {
             ...ctx,
@@ -99,6 +202,39 @@ export const protectedProcedure = t.procedure.use(async ({ ctx, next }) => {
     }
 
     console.log('Auth successful for user:', user.id);
+    
+    // Ensure user profile exists
+    try {
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('id', user.id)
+        .single();
+        
+      if (profileError || !profileData) {
+        console.log('Creating user profile for:', user.id);
+        const { error: insertError } = await supabase
+          .from('profiles')
+          .upsert({
+            id: user.id,
+            name: user.user_metadata?.name || user.email || 'User',
+            level: 1,
+            xp: 0,
+            streak_days: 0,
+            longest_streak: 0,
+            experience_level: 'beginner'
+          });
+          
+        if (insertError) {
+          console.error('Failed to create user profile:', insertError);
+        } else {
+          console.log('User profile created successfully');
+        }
+      }
+    } catch (profileError) {
+      console.error('Error handling user profile:', profileError);
+    }
+    
     return next({
       ctx: {
         ...ctx,
