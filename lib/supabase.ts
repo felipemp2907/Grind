@@ -193,7 +193,9 @@ export const createUserProfile = async (userId: string, userData: { name?: strin
       .upsert({
         id: userId,
         name: userData.name || 'User',
+        full_name: userData.name || 'User',
         avatar_url: userData.avatar_url || null,
+        experience_level: 'beginner',
         level: 1,
         xp: 0,
         streak_days: 0,
@@ -297,6 +299,8 @@ export const ensureUserProfile = async (userId: string, userData: { name?: strin
       const profileData = {
         id: userId,
         name: userName,
+        full_name: userName,
+        experience_level: 'beginner',
         level: 1,
         xp: 0,
         streak_days: 0,
