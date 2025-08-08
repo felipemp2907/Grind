@@ -264,7 +264,7 @@ const TabLayout = memo(function TabLayout() {
           }
         }}
       />
-      </Tabs>
+    </Tabs>
   );
 });
 

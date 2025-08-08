@@ -436,39 +436,74 @@ export const useTaskStore = create<TaskState>()(
         return get().dailyAgendas.find(a => a.date === date);
       },
       
-      // DEPRECATED: Tasks are now generated automatically when Ultimate Goals are created
-      // This function now just fetches existing tasks from the database
+      // Generate tasks for all goals with deadline guard
       generateDailyTasks: async (date) => {
-        console.log('⚠️ generateDailyTasks is deprecated. Tasks are now pre-generated when goals are created.');
-        console.log('Fetching existing tasks for date:', date);
+        const { goals } = useGoalStore.getState();
         
-        // Just fetch existing tasks - they should already be in the database
-        await get().fetchTasks();
+        // Apply deadline guard - check if date is beyond all goal deadlines
+        if (isDateBeyondDeadlines(date, goals)) {
+          console.log('Date is beyond all goal deadlines, skipping task generation');
+          return;
+        }
         
-        const tasksForDate = get().getTasks(date);
-        console.log(`Found ${tasksForDate.length} existing tasks for ${date}`);
+        set({ isGenerating: true });
         
-        if (tasksForDate.length === 0) {
-          console.log('No tasks found for this date. Tasks should have been generated when the Ultimate Goal was created.');
-          console.log('If you see this message, it means the full-plan generation system is not working correctly.');
+        try {
+          // Use the new backend function with deadline guard
+          const result = await trpcClient.tasks.generateToday.mutate({
+            targetDate: date
+          });
+          
+          console.log('Task generation result:', result);
+          
+          // Refresh tasks from database to get the new ones
+          await get().fetchTasks();
+          
+        } catch (error) {
+          console.error('Error generating daily tasks:', error);
+          
+          // Fallback to old method if backend fails
+          const promises = goals.map((goal: any) => 
+            get().generateTasksForGoal(date, goal.id)
+          );
+          
+          await Promise.all(promises);
+        } finally {
+          set({ isGenerating: false });
         }
       },
       
-      // DEPRECATED: Streak tasks are now generated automatically when Ultimate Goals are created
-      // This function now just fetches existing streak tasks from the database
+      // Generate streak tasks for all active goals
       generateStreakTasks: async (date, forceRegenerate = false) => {
-        console.log('⚠️ generateStreakTasks is deprecated. Streak tasks are now pre-generated when goals are created.');
-        console.log('Fetching existing streak tasks for date:', date);
+        const { goals } = useGoalStore.getState();
         
-        // Just fetch existing tasks - they should already be in the database
-        await get().fetchTasks();
+        // Apply deadline guard - check if date is beyond all goal deadlines
+        if (isDateBeyondDeadlines(date, goals)) {
+          console.log('Date is beyond all goal deadlines, skipping streak task generation');
+          return;
+        }
         
-        const streakTasksForDate = get().getStreakTasks(date);
-        console.log(`Found ${streakTasksForDate.length} existing streak tasks for ${date}`);
+        set({ isGenerating: true });
         
-        if (streakTasksForDate.length === 0) {
-          console.log('No streak tasks found for this date. Streak tasks should have been generated when the Ultimate Goal was created.');
-          console.log('If you see this message, it means the full-plan generation system is not working correctly.');
+        try {
+          // Use the new backend function for streak task generation
+          const result = await trpcClient.tasks.generateStreak.mutate({
+            targetDate: date,
+            forceRegenerate
+          });
+          
+          console.log('Streak task generation result:', result);
+          
+          // Refresh tasks from database to get the new ones
+          await get().fetchTasks();
+          
+        } catch (error) {
+          console.error('Error generating streak tasks:', error);
+          
+          // No fallback for streak tasks - they should come from the backend
+          // since they require the streak template logic
+        } finally {
+          set({ isGenerating: false });
         }
       },
       

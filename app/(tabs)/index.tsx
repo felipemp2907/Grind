@@ -46,7 +46,8 @@ export default function DashboardScreen() {
   const { 
     tasks, 
     getTasks, 
-    fetchTasks,
+    generateDailyTasks, 
+    generateStreakTasks,
     isGenerating,
     generateDailyAgenda,
     acceptAgenda,
@@ -150,17 +151,26 @@ export default function DashboardScreen() {
   }, [todayDate]);
   
   useEffect(() => {
-    // Fetch tasks from database - they should already be pre-generated when goals were created
-    if (goals.length > 0) {
-      fetchTasks();
+    // Generate daily tasks and streak tasks if none exist
+    if (todayTasks.length === 0 && goals.length > 0) {
+      // Generate both daily tasks and streak tasks
+      generateDailyTasks(todayDate);
+      generateStreakTasks(todayDate);
+    } else if (goals.length > 0) {
+      // Check if we need streak tasks even if we have some tasks
+      const hasStreakTasks = todayTasks.some(task => task.isHabit);
+      if (!hasStreakTasks) {
+        generateStreakTasks(todayDate);
+      }
     }
-  }, [todayDate, goals.length, fetchTasks]);
+  }, [todayDate, goals.length]);
   
   const onRefresh = async () => {
     setRefreshing(true);
     try {
-      // Refresh data - fetch existing tasks from database
-      await fetchTasks();
+      // Refresh data - generate both daily and streak tasks
+      await generateDailyTasks(todayDate);
+      await generateStreakTasks(todayDate, true); // Force regenerate on refresh
       if (!todayAgenda) {
         await generateDailyAgenda(todayDate);
       }
@@ -362,8 +372,8 @@ export default function DashboardScreen() {
           <View style={styles.emptyState}>
             <Text style={styles.emptyStateText}>No tasks for today</Text>
             <Button 
-              title={"Refresh Tasks"}
-              onPress={() => fetchTasks()}
+              title={isGenerating ? "Generating..." : "Generate Tasks"}
+              onPress={() => generateDailyTasks(todayDate)}
               size="small"
               loading={isGenerating}
               disabled={isGenerating}

@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
-import { Link } from 'expo-router';
+import { Link, useRouter } from 'expo-router';
 import { Target, Mail, Lock, Eye, EyeOff, AlertCircle } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import Button from '@/components/Button';
@@ -21,7 +21,8 @@ import GoogleSignInButton from '@/components/GoogleSignInButton';
 import { useAuthStore } from '@/store/authStore';
 
 export default function LoginScreen() {
-  const { login, loginWithGoogle, resetPassword, resendConfirmationEmail, isLoading, error, clearError } = useAuthStore();
+  const router = useRouter();
+  const { login, loginWithGoogle, resetPassword, resendConfirmationEmail, isLoading, error, clearError, isAuthenticated } = useAuthStore();
   
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -29,7 +30,12 @@ export default function LoginScreen() {
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [showResendConfirmation, setShowResendConfirmation] = useState(false);
   
-  // Navigation is handled by NavigationGate
+  // If already authenticated, redirect to main app
+  useEffect(() => {
+    if (isAuthenticated) {
+      router.replace('/(tabs)');
+    }
+  }, [isAuthenticated]);
   
   // Handle deep links for email confirmation
   useEffect(() => {
@@ -81,7 +87,7 @@ export default function LoginScreen() {
         ]);
       }
     }
-  }, [error, clearError]);
+  }, [error]);
   
   const handleLogin = async () => {
     if (!email.trim() || !password.trim()) {
@@ -220,7 +226,7 @@ export default function LoginScreen() {
             </View>
             
             <View style={styles.footer}>
-              <Text style={styles.footerText}>Don&apos;t have an account? </Text>
+              <Text style={styles.footerText}>Don't have an account? </Text>
               <Link href="/register" asChild>
                 <TouchableOpacity>
                   <Text style={styles.signupLink}>Sign Up</Text>
@@ -237,7 +243,7 @@ export default function LoginScreen() {
           <View style={styles.modalContainer}>
             <Text style={styles.modalTitle}>Reset Password</Text>
             <Text style={styles.modalSubtitle}>
-              Enter your email address and we&apos;ll send you a link to reset your password.
+              Enter your email address and we'll send you a link to reset your password.
             </Text>
             
             <View style={styles.inputContainer}>
@@ -277,7 +283,7 @@ export default function LoginScreen() {
           <View style={styles.modalContainer}>
             <Text style={styles.modalTitle}>Resend Confirmation Email</Text>
             <Text style={styles.modalSubtitle}>
-              Enter your email address and we&apos;ll send you a new confirmation email.
+              Enter your email address and we'll send you a new confirmation email.
             </Text>
             
             <View style={styles.inputContainer}>

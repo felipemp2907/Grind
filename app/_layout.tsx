@@ -1,8 +1,9 @@
 import FontAwesome from "@expo/vector-icons/FontAwesome";
 import { useFonts } from "expo-font";
+import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { useEffect, useCallback } from "react";
-import { StatusBar } from "react-native";
+import { Platform, StatusBar, Alert } from "react-native";
 import { useGoalStore } from "@/store/goalStore";
 import { useAuthStore } from "@/store/authStore";
 import { useUserStore } from "@/store/userStore";
@@ -15,8 +16,11 @@ import { supabase } from "@/lib/supabase";
 import { AuthChangeEvent, Session } from "@supabase/supabase-js";
 import Toast from 'react-native-toast-message';
 import { TabTransitionProvider } from '@/components/TabTransitionProvider';
-import NavigationGate from '@/components/NavigationGate';
 import 'react-native-reanimated';
+
+export const unstable_settings = {
+  initialRouteName: "index",
+};
 
 // Create a client for React Query
 const queryClient = new QueryClient();
@@ -29,7 +33,7 @@ export default function RootLayout() {
     ...FontAwesome.font,
   });
   
-  const { refreshSession } = useAuthStore();
+  const { refreshSession, user } = useAuthStore();
   const { fetchProfile } = useUserStore();
   const { fetchTasks } = useTaskStore();
   const { fetchGoals } = useGoalStore();
@@ -225,7 +229,7 @@ export default function RootLayout() {
         }
       }
     };
-  }, [checkSession, fetchProfile, fetchTasks, fetchGoals, fetchEntries]);
+  }, [checkSession]);
   
   useEffect(() => {
     if (error) {
@@ -248,12 +252,94 @@ export default function RootLayout() {
 }
 
 function RootLayoutNav() {
+  const { isOnboarded } = useGoalStore();
+  const { isAuthenticated } = useAuthStore();
+  
+  // Determine initial route based on auth and onboarding status
+  let initialRoute = 'login';
+  
+  if (isAuthenticated) {
+    initialRoute = isOnboarded ? '(tabs)' : 'onboarding';
+  }
+
   return (
     <trpc.Provider client={trpcClient} queryClient={queryClient}>
       <QueryClientProvider client={queryClient}>
         <TabTransitionProvider>
           <StatusBar barStyle="light-content" backgroundColor={Colors.dark.background} />
-          <NavigationGate />
+          <Stack
+          screenOptions={{
+            headerStyle: {
+              backgroundColor: Colors.dark.background,
+            },
+            headerTintColor: Colors.dark.text,
+            headerTitleStyle: {
+              fontWeight: 'bold',
+            },
+            contentStyle: {
+              backgroundColor: Colors.dark.background,
+            },
+          }}
+        >
+          <Stack.Screen name="index" options={{ headerShown: false }} />
+          <Stack.Screen name="welcome" options={{ headerShown: false }} />
+          <Stack.Screen name="login" options={{ headerShown: false }} />
+          <Stack.Screen name="register" options={{ headerShown: false }} />
+          <Stack.Screen name="onboarding" options={{ headerShown: false }} />
+          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          <Stack.Screen 
+            name="profile/edit" 
+            options={{ 
+              title: "Edit Profile",
+              headerBackTitle: "Back",
+            }} 
+          />
+          <Stack.Screen 
+            name="validate-task" 
+            options={{ 
+              title: "Validate Task",
+              presentation: "modal",
+              headerBackTitle: "Back",
+            }} 
+          />
+          <Stack.Screen 
+            name="journal/[id]" 
+            options={{ 
+              title: "Journal Entry",
+              headerBackTitle: "Back",
+            }} 
+          />
+          <Stack.Screen 
+            name="ai-coach" 
+            options={{ 
+              title: "AI",
+              presentation: "modal",
+              headerBackTitle: "Back",
+            }} 
+          />
+
+          <Stack.Screen 
+            name="goals/create" 
+            options={{ 
+              title: "Create Ultimate Goal",
+              headerBackTitle: "Back",
+            }} 
+          />
+          <Stack.Screen 
+            name="goals/edit" 
+            options={{ 
+              title: "Edit Goal",
+              headerBackTitle: "Back",
+            }} 
+          />
+          <Stack.Screen 
+            name="challenges" 
+            options={{ 
+              title: "Challenges",
+              headerBackTitle: "Back",
+            }} 
+          />
+          </Stack>
           <Toast />
         </TabTransitionProvider>
       </QueryClientProvider>
