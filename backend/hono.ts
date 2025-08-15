@@ -3,7 +3,7 @@ import { trpcServer } from "@hono/trpc-server";
 import { cors } from "hono/cors";
 import { logger } from "hono/logger";
 import { appRouter } from "./trpc/app-router";
-import { createContext, ensureDbReady } from "./trpc/create-context";
+import { createContext } from "./trpc/create-context";
 import { createClient } from '@supabase/supabase-js';
 
 // app will be mounted at /api
@@ -56,6 +56,8 @@ app.use(
   })
 );
 
+console.log('tRPC mounted at /trpc with appRouter');
+
 // Health check endpoint with tRPC procedure listing
 app.get("/", (c) => {
   console.log('Health check endpoint hit');
@@ -80,43 +82,57 @@ app.get("/health", (c) => {
   const procedures: string[] = [];
   
   try {
-    // Get the router definition
+    // Get the router definition and extract nested procedures
     const routerDef = (appRouter as any)._def;
     
     if (routerDef && routerDef.procedures) {
-      Object.keys(routerDef.procedures).forEach(key => {
-        procedures.push(key);
-      });
+      // Handle nested router structure
+      const extractProcedures = (obj: any, prefix = '') => {
+        for (const [key, value] of Object.entries(obj)) {
+          if (value && typeof value === 'object' && (value as any)._def) {
+            if ((value as any)._def.procedures) {
+              // This is a nested router
+              extractProcedures((value as any)._def.procedures, prefix + key + '.');
+            } else if ((value as any)._def.query || (value as any)._def.mutation) {
+              // This is a procedure
+              procedures.push(prefix + key);
+            }
+          }
+        }
+      };
+      
+      extractProcedures(routerDef.procedures);
     }
     
     return c.json({
       status: "healthy",
-      trpcEndpoint: "/api/trpc",
-      procedures: procedures.length > 0 ? procedures : [
-        "goals.create",
-        "goals.createUltimate", 
-        "goals.updateUltimate",
-        "tasks.getStreakTasks",
-        "tasks.getTodayTasks",
-        "tasks.getAllForDate",
-        "example.hi"
-      ],
+      trpcEndpoint: "/trpc",
+      procedures: procedures.length > 0 ? procedures : Object.keys((appRouter as any)._def.procedures || {}),
+      env: {
+        hasSupabaseUrl: !!process.env.SUPABASE_URL,
+        nodeEnv: process.env.NODE_ENV || 'development'
+      },
       timestamp: new Date().toISOString()
     });
   } catch (error) {
     console.error('Error extracting procedures:', error);
     return c.json({
       status: "healthy",
-      trpcEndpoint: "/api/trpc",
+      trpcEndpoint: "/trpc",
       procedures: [
+        "example.hi",
+        "example.test",
         "goals.create",
         "goals.createUltimate", 
         "goals.updateUltimate",
         "tasks.getStreakTasks",
         "tasks.getTodayTasks",
-        "tasks.getAllForDate",
-        "example.hi"
+        "tasks.getAllForDate"
       ],
+      env: {
+        hasSupabaseUrl: !!process.env.SUPABASE_URL,
+        nodeEnv: process.env.NODE_ENV || 'development'
+      },
       timestamp: new Date().toISOString(),
       note: "Procedure extraction failed, showing expected procedures"
     });
@@ -181,30 +197,184 @@ app.get("/test-trpc", async (c) => {
   }
 });
 
-// Database health check endpoint
-app.get("/db-health", async (c) => {
+// Database diagnostics endpoint
+app.get("/diag/db", async (c) => {
   try {
-    console.log('Database health check endpoint hit');
+    console.log('Database diagnostics endpoint hit');
     
-    // Create a temporary supabase client for health check
+    // Create a temporary supabase client for diagnostics
     const supabaseUrl = 'https://ovvihfhkhqigzahlttyf.supabase.co';
     const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im92dmloZmhraHFpZ3phaGx0dHlmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDcxNDQ2MDIsImV4cCI6MjA2MjcyMDYwMn0.S1GkUtQR3d7YvmuJObDwZlYRMa4hBFc3NWBid9FHn2I';
     const supabase = createClient(supabaseUrl, supabaseAnonKey);
     
-    await ensureDbReady(supabase);
+    // Check core tables function
+    let coreTablesResult: { ok: boolean; error?: string } = { ok: false };
+    try {
+      const { data, error } = await supabase.rpc('grind_check_core_tables');
+      if (error) {
+        console.error('grind_check_core_tables RPC error:', error);
+        coreTablesResult = { ok: false, error: error.message };
+      } else {
+        coreTablesResult = data || { ok: false };
+      }
+    } catch (rpcError) {
+      console.error('grind_check_core_tables RPC exception:', rpcError);
+      coreTablesResult = { ok: false, error: 'RPC function not found or failed' };
+    }
+    
+    // Get column information for tasks table
+    let tasksColumns: any[] = [];
+    try {
+      const { data: tasksInfo, error: tasksError } = await supabase
+        .from('information_schema.columns')
+        .select('column_name, data_type, is_nullable')
+        .eq('table_name', 'tasks')
+        .eq('table_schema', 'public');
+      
+      if (!tasksError && tasksInfo) {
+        tasksColumns = tasksInfo;
+      }
+    } catch (error) {
+      console.error('Error getting tasks columns:', error);
+    }
+    
+    // Get column information for profiles table
+    let profilesColumns: any[] = [];
+    try {
+      const { data: profilesInfo, error: profilesError } = await supabase
+        .from('information_schema.columns')
+        .select('column_name, data_type, is_nullable')
+        .eq('table_name', 'profiles')
+        .eq('table_schema', 'public');
+      
+      if (!profilesError && profilesInfo) {
+        profilesColumns = profilesInfo;
+      }
+    } catch (error) {
+      console.error('Error getting profiles columns:', error);
+    }
+    
+    // Get counts
+    const { count: goalsCount } = await supabase
+      .from('goals')
+      .select('*', { count: 'exact', head: true });
+      
+    const { count: tasksCount } = await supabase
+      .from('tasks')
+      .select('*', { count: 'exact', head: true });
     
     return c.json({
-      status: "healthy",
-      message: "Database is ready",
-      ok: true,
+      coreTablesCheck: coreTablesResult,
+      columns: {
+        tasks: tasksColumns,
+        profiles: profilesColumns
+      },
+      counts: {
+        goals: goalsCount || 0,
+        tasks: tasksCount || 0
+      },
       timestamp: new Date().toISOString()
     });
   } catch (error) {
-    console.error('Database health check failed:', error);
+    console.error('Database diagnostics failed:', error);
     return c.json({
-      status: "unhealthy",
-      message: error instanceof Error ? error.message : 'Database not ready',
-      ok: false,
+      error: error instanceof Error ? error.message : 'Database diagnostics failed',
+      timestamp: new Date().toISOString()
+    }, 500);
+  }
+});
+
+// Plan dry-run diagnostics endpoint
+app.get("/diag/plan-dry-run", async (c) => {
+  try {
+    const title = c.req.query('title') || 'Test Goal';
+    const description = c.req.query('description') || 'Test goal description';
+    const deadline = c.req.query('deadline') || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    const daysPreview = parseInt(c.req.query('daysPreview') || '7');
+    
+    console.log(`Plan dry-run for: ${title}, deadline: ${deadline}, preview: ${daysPreview} days`);
+    
+    // Import the planner service
+    const { GoalPlannerService } = await import('./services/goalPlanner');
+    const planner = new GoalPlannerService();
+    
+    // Generate the plan without inserting
+    const fullPlan = await planner.generateFullPlan(
+      title,
+      description,
+      deadline,
+      'beginner',
+      0
+    );
+    
+    // Calculate statistics
+    const days = Math.min(fullPlan.daily_plan.length, daysPreview);
+    const streakCount = fullPlan.streak_habits.length;
+    const totalToday = fullPlan.daily_plan.reduce((sum, day) => sum + day.today_tasks.length, 0);
+    
+    // Analyze per-day breakdown
+    const perDay = fullPlan.daily_plan.slice(0, daysPreview).map(day => {
+      const streaksN = streakCount;
+      const todayN = day.today_tasks.length;
+      const streakLoad = fullPlan.streak_habits.reduce((sum, h) => sum + h.load, 0);
+      const todayLoad = day.today_tasks.reduce((sum, t) => sum + t.load, 0);
+      const load = streakLoad + todayLoad;
+      
+      return {
+        date: day.date,
+        streaksN,
+        todayN,
+        load
+      };
+    });
+    
+    // Check for duplicates (simplified)
+    const allTodayTitles = fullPlan.daily_plan.flatMap(day => day.today_tasks.map(t => t.title));
+    const uniqueTitles = new Set(allTodayTitles);
+    const duplicatesTrimmed = allTodayTitles.length - uniqueTitles.size;
+    
+    // Validation errors
+    const validationErrors = [];
+    if (streakCount > 3) validationErrors.push(`Too many streak habits: ${streakCount} > 3`);
+    if (perDay.some(day => day.todayN > 3)) validationErrors.push('Some days have > 3 today tasks');
+    if (perDay.some(day => day.load > 5)) validationErrors.push('Some days have load > 5');
+    
+    const result = {
+      days,
+      streak_count: streakCount,
+      total_today: totalToday,
+      per_day: perDay,
+      duplicatesTrimmed,
+      validationErrors,
+      plan: {
+        streak_habits: fullPlan.streak_habits,
+        daily_plan_preview: fullPlan.daily_plan.slice(0, daysPreview)
+      }
+    };
+    
+    // Log the full summary to console
+    console.log('=== PLAN DRY-RUN SUMMARY ===');
+    console.log(`Goal: ${title}`);
+    console.log(`Deadline: ${deadline}`);
+    console.log(`Days: ${days}`);
+    console.log(`Streak habits: ${streakCount}`);
+    console.log(`Total today tasks: ${totalToday}`);
+    console.log(`Duplicates trimmed: ${duplicatesTrimmed}`);
+    console.log(`Validation errors: ${validationErrors.length}`);
+    if (validationErrors.length > 0) {
+      console.log('Errors:', validationErrors);
+    }
+    console.log('Per-day breakdown:');
+    perDay.forEach(day => {
+      console.log(`  ${day.date}: ${day.streaksN} streaks + ${day.todayN} today = load ${day.load}`);
+    });
+    console.log('=== END SUMMARY ===');
+    
+    return c.json(result);
+  } catch (error) {
+    console.error('Plan dry-run failed:', error);
+    return c.json({
+      error: error instanceof Error ? error.message : 'Plan dry-run failed',
       timestamp: new Date().toISOString()
     }, 500);
   }
@@ -219,9 +389,9 @@ app.get("/debug", (c) => {
       "/api/trpc/goals.createUltimate",
       "/api/trpc/goals.updateUltimate",
       "/api/trpc/goals.create",
-      "/api/trpc/tasks.generateToday",
       "/api/trpc/tasks.getStreakTasks",
-      "/api/trpc/tasks.generateStreak"
+      "/api/trpc/tasks.getTodayTasks",
+      "/api/trpc/tasks.getAllForDate"
     ]
   });
 });

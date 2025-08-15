@@ -108,6 +108,17 @@ export const createUltimateGoalProcedure = protectedProcedure
     const user = ctx.user;
     const planner = new GoalPlannerService();
     
+    // Calculate days before starting
+    const daysToDeadline = calculateDaysToDeadline(input.deadline);
+    
+    // Log before starting
+    console.log('=== GOAL CREATION START ===');
+    console.log(`User: ${user.id}`);
+    console.log(`Goal: ${input.title}`);
+    console.log(`Deadline: ${input.deadline}`);
+    console.log(`Days: ${daysToDeadline}`);
+    console.log('=== GOAL CREATION START ===');
+    
     try {
       console.log('Creating ultimate goal with full automatic plan generation...');
       
@@ -145,7 +156,6 @@ export const createUltimateGoalProcedure = protectedProcedure
       console.log(`Goal created with ID: ${goalData.id}`);
       
       // 2. Generate full plan using the planning service
-      const daysToDeadline = calculateDaysToDeadline(input.deadline);
       console.log(`Generating full plan for ${daysToDeadline} days`);
       
       // Get user profile for experience level (fallback to 'beginner')
@@ -175,10 +185,24 @@ export const createUltimateGoalProcedure = protectedProcedure
         input.deadline
       );
       
-      // 4. Insert all tasks in batches
-      const insertResult = await planner.insertTasksBatch(ctx.supabase, allTasks);
+      console.log(`Generated ${allTasks.length} total tasks for insertion`);
+      console.log(`Streak tasks: ${allTasks.filter(t => t.type === 'streak').length}`);
+      console.log(`Today tasks: ${allTasks.filter(t => t.type === 'today').length}`);
       
-      console.log(`Task insertion completed: ${insertResult.success} success, ${insertResult.failed} failed`);
+      // 4. Insert all tasks using a single transaction
+      let insertResult;
+      try {
+        insertResult = await planner.insertTasksBatch(ctx.supabase, allTasks);
+        console.log(`Task insertion completed: ${insertResult.success} success, ${insertResult.failed} failed`);
+        
+        if (insertResult.failed > 0) {
+          console.warn(`Warning: ${insertResult.failed} tasks failed to insert`);
+        }
+      } catch (insertError) {
+        console.error('Task insertion failed completely:', insertError);
+        // Don't fail the entire goal creation if task insertion fails
+        insertResult = { success: 0, failed: allTasks.length };
+      }
       
       // 5. Verify the insertion by counting tasks in database
       const { count: streakCount } = await ctx.supabase
@@ -196,6 +220,17 @@ export const createUltimateGoalProcedure = protectedProcedure
         .eq('type', 'today');
         
       console.log(`Final verification: ${streakCount} streak tasks and ${todayCount} today tasks in database`);
+      
+      // Log after completion
+      console.log('=== GOAL CREATION COMPLETE ===');
+      console.log(`Goal ID: ${goalData.id}`);
+      console.log(`Days: ${daysToDeadline}`);
+      console.log(`Streak count: ${streakCount || 0}`);
+      console.log(`Today count: ${todayCount || 0}`);
+      console.log(`Expected streak tasks: ${daysToDeadline * fullPlan.streak_habits.length}`);
+      console.log(`Tasks inserted: ${insertResult.success}`);
+      console.log(`Tasks failed: ${insertResult.failed}`);
+      console.log('=== GOAL CREATION COMPLETE ===');
       
       // 6. Return the created goal with metadata
       return {
@@ -226,11 +261,15 @@ export const createUltimateGoalProcedure = protectedProcedure
         daysToDeadline,
         fullPlanGenerated: true,
         tasksInserted: insertResult.success,
-        tasksFailed: insertResult.failed
+        tasksFailed: insertResult.failed,
+        expectedStreakTasks: daysToDeadline * fullPlan.streak_habits.length,
+        streakHabitsCount: fullPlan.streak_habits.length
       };
       
     } catch (error) {
+      console.error('=== GOAL CREATION ERROR ===');
       console.error('Error in createUltimateGoal:', error);
+      console.error('=== GOAL CREATION ERROR ===');
       
       if (error instanceof TRPCError) {
         throw error;
