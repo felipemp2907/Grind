@@ -179,6 +179,14 @@ export class GoalPlannerService {
 
       const todayTasks: TodayTask[] = [];
       
+      // Always add a small daily actionable to guarantee at least one today-task per day
+      todayTasks.push({
+        title: `Key step for ${goalTitle}`,
+        desc: 'Make a concrete, bite-sized step toward the goal (10–20 min).',
+        load: 1,
+        proof_mode: 'flex' as const
+      });
+      
       // Add milestone tasks on specific days
       const milestone = milestones[Math.floor((dayOffset / daysToDeadline) * milestones.length)];
       if (milestone && dayOffset % Math.max(1, Math.floor(daysToDeadline / milestones.length)) === 0) {
@@ -346,21 +354,20 @@ export class GoalPlannerService {
    * Insert tasks in batches using admin client to avoid RLS issues
    */
   async insertTasksBatch(
-    _supabase: any, // Ignored, we use admin client
+    client: any,
     tasks: TaskInsertData[],
     batchSize: number = 100
   ): Promise<{ success: number; failed: number }> {
     let successCount = 0;
     let failedCount = 0;
 
-    console.log(`Inserting ${tasks.length} tasks in batches of ${batchSize} using admin client`);
+    console.log(`Inserting ${tasks.length} tasks in batches of ${batchSize}`);
 
     for (let i = 0; i < tasks.length; i += batchSize) {
       const batch = tasks.slice(i, i + batchSize);
       
       try {
-        // Use admin client to bypass RLS
-        const { data, error } = await supabaseAdmin
+        const { data, error } = await client
           .from('tasks')
           .insert(batch)
           .select('id, type, task_date, due_at');

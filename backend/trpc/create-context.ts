@@ -2,7 +2,7 @@ import { FetchCreateContextFnOptions } from "@trpc/server/adapters/fetch";
 import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
 import { ZodError } from "zod";
-import { createClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
 // Create a server-side Supabase client
 const supabaseUrl = 'https://ovvihfhkhqigzahlttyf.supabase.co';
@@ -82,10 +82,16 @@ export const createContext = async (opts: FetchCreateContextFnOptions) => {
   const authHeader = opts.req.headers.get('authorization') || opts.req.headers.get('Authorization');
   const bearer = authHeader && authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
   let userId: string | null = null;
+  let supabaseUser: SupabaseClient | null = null;
   if (bearer) {
     try {
       const { data: { user } } = await supabase.auth.getUser(bearer);
       userId = user?.id ?? null;
+      // Create a per-request user client so all queries run with the user's RLS context
+      supabaseUser = createClient(supabaseUrl, supabaseAnonKey, {
+        auth: { persistSession: false },
+        global: { headers: { Authorization: `Bearer ${bearer}` } as Record<string, string> }
+      });
     } catch (e) {
       console.log('Token validation failed in context');
     }
@@ -93,6 +99,7 @@ export const createContext = async (opts: FetchCreateContextFnOptions) => {
   return {
     req: opts.req,
     supabase,
+    supabaseUser,
     userId,
   };
 };
@@ -166,7 +173,11 @@ export const protectedProcedure = t.procedure.use(async ({ ctx, next }) => {
   return next({
     ctx: {
       ...ctx,
-      user: { id: user.id }
+      user: { id: user.id },
+      supabaseUser: createClient(supabaseUrl, supabaseAnonKey, {
+        auth: { persistSession: false },
+        global: { headers: { Authorization: `Bearer ${token}` } as Record<string, string> }
+      })
     }
   });
 });
@@ -174,4 +185,5 @@ export const protectedProcedure = t.procedure.use(async ({ ctx, next }) => {
 export type ProtectedContext = {
   user: { id: string };
   supabase: typeof supabase;
+  supabaseUser: SupabaseClient | null;
 } & Context;

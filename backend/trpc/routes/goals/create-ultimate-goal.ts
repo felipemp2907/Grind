@@ -192,7 +192,7 @@ export const createUltimateGoalProcedure = protectedProcedure
       // 4. Insert all tasks using a single transaction
       let insertResult;
       try {
-        insertResult = await planner.insertTasksBatch(ctx.supabase, allTasks);
+        insertResult = await planner.insertTasksBatch(supabaseAdmin, allTasks);
         console.log(`Task insertion completed: ${insertResult.success} success, ${insertResult.failed} failed`);
         
         if (insertResult.failed > 0) {
@@ -371,7 +371,7 @@ export const updateUltimateGoalProcedure = protectedProcedure
       );
       
       // 5. Insert all new tasks in batches
-      const insertResult = await planner.insertTasksBatch(ctx.supabase, allTasks);
+      const insertResult = await planner.insertTasksBatch(supabaseAdmin, allTasks);
       
       console.log(`Task insertion completed: ${insertResult.success} success, ${insertResult.failed} failed`);
       
