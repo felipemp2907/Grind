@@ -10,6 +10,8 @@ import { createClient } from '@supabase/supabase-js';
 const app = new Hono();
 
 console.log('Hono app initialized');
+console.log('Environment:', process.env.NODE_ENV || 'development');
+console.log('Supabase URL configured:', !!process.env.SUPABASE_URL);
 
 // Add logging middleware
 app.use("*", logger());
@@ -52,11 +54,17 @@ app.use(
     createContext,
     onError({ error, path }) {
       console.error(`tRPC Error on ${path}:`, error);
+      console.error('Error details:', {
+        code: error.code,
+        message: error.message,
+        cause: error.cause
+      });
     },
   })
 );
 
 console.log('tRPC mounted at /trpc with appRouter');
+console.log('Available procedures:', Object.keys((appRouter as any)._def?.procedures || {}));
 
 // Health check endpoint with tRPC procedure listing
 app.get("/", (c) => {
@@ -104,15 +112,30 @@ app.get("/health", (c) => {
       extractProcedures(routerDef.procedures);
     }
     
+    // Log the procedures for debugging
+    console.log('Extracted procedures:', procedures);
+    
     return c.json({
       status: "healthy",
       trpcEndpoint: "/trpc",
-      procedures: procedures.length > 0 ? procedures : Object.keys((appRouter as any)._def.procedures || {}),
+      procedures: procedures.length > 0 ? procedures : [
+        "example.hi",
+        "example.test",
+        "goals.create",
+        "goals.createUltimate", 
+        "goals.updateUltimate",
+        "tasks.getStreakTasks",
+        "tasks.getTodayTasks",
+        "tasks.getAllForDate",
+        "tasks.generateToday",
+        "tasks.generateStreak"
+      ],
       env: {
         hasSupabaseUrl: !!process.env.SUPABASE_URL,
         nodeEnv: process.env.NODE_ENV || 'development'
       },
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      note: procedures.length === 0 ? "Procedure extraction failed, showing expected procedures" : "Procedures extracted successfully"
     });
   } catch (error) {
     console.error('Error extracting procedures:', error);
@@ -127,7 +150,9 @@ app.get("/health", (c) => {
         "goals.updateUltimate",
         "tasks.getStreakTasks",
         "tasks.getTodayTasks",
-        "tasks.getAllForDate"
+        "tasks.getAllForDate",
+        "tasks.generateToday",
+        "tasks.generateStreak"
       ],
       env: {
         hasSupabaseUrl: !!process.env.SUPABASE_URL,
@@ -208,7 +233,7 @@ app.get("/diag/db", async (c) => {
     const supabase = createClient(supabaseUrl, supabaseAnonKey);
     
     // Check core tables function
-    let coreTablesResult: { ok: boolean; error?: string } = { ok: false };
+    let coreTablesResult: { ok: boolean; error?: string; tables?: any } = { ok: false };
     try {
       const { data, error } = await supabase.rpc('grind_check_core_tables');
       if (error) {
@@ -219,7 +244,51 @@ app.get("/diag/db", async (c) => {
       }
     } catch (rpcError) {
       console.error('grind_check_core_tables RPC exception:', rpcError);
-      coreTablesResult = { ok: false, error: 'RPC function not found or failed' };
+      // Fallback to direct table checks
+      try {
+        const { error: profilesError } = await supabase
+          .from('profiles')
+          .select('id')
+          .limit(1);
+          
+        const { error: goalsError } = await supabase
+          .from('goals')
+          .select('id')
+          .limit(1);
+          
+        const { error: tasksError } = await supabase
+          .from('tasks')
+          .select('id')
+          .limit(1);
+        
+        const tablesExist = (
+          !profilesError || !profilesError.message.includes('does not exist')
+        ) && (
+          !goalsError || !goalsError.message.includes('does not exist')
+        ) && (
+          !tasksError || !tasksError.message.includes('does not exist')
+        );
+        
+        coreTablesResult = { 
+          ok: tablesExist,
+          tables: {
+            profiles: !profilesError || !profilesError.message.includes('does not exist'),
+            goals: !goalsError || !goalsError.message.includes('does not exist'),
+            tasks: !tasksError || !tasksError.message.includes('does not exist')
+          }
+        };
+        
+        if (!tablesExist) {
+          const missingTables = [];
+          if (profilesError?.message.includes('does not exist')) missingTables.push('profiles');
+          if (goalsError?.message.includes('does not exist')) missingTables.push('goals');
+          if (tasksError?.message.includes('does not exist')) missingTables.push('tasks');
+          coreTablesResult.error = `Missing tables: ${missingTables.join(', ')}`;
+        }
+      } catch (fallbackError) {
+        console.error('Fallback table check failed:', fallbackError);
+        coreTablesResult = { ok: false, error: 'Failed to check core tables' };
+      }
     }
     
     // Get column information for tasks table
