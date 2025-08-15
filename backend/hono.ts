@@ -47,26 +47,61 @@ app.onError((err, c) => {
 });
 
 // Mount tRPC router at /trpc using fetchRequestHandler
+console.log('Mounting tRPC at /trpc/*');
+console.log('appRouter type:', typeof appRouter);
+console.log('appRouter keys:', Object.keys(appRouter));
 
-app.all('/trpc/*', (c) => {
-  return fetchRequestHandler({
-    endpoint: '/trpc',
-    router: appRouter,
-    req: c.req.raw,
-    createContext,
-    onError({ error, path }) {
-      console.error(`tRPC Error on ${path}:`, error);
-      console.error('Error details:', {
-        code: error.code,
-        message: error.message,
-        cause: error.cause
-      });
-    },
-  });
+app.all('/trpc/*', async (c) => {
+  console.log('tRPC request received:', c.req.method, c.req.url);
+  
+  try {
+    const response = await fetchRequestHandler({
+      endpoint: '/trpc',
+      router: appRouter,
+      req: c.req.raw,
+      createContext,
+      onError({ error, path }) {
+        console.error(`tRPC Error on ${path}:`, error);
+        console.error('Error details:', {
+          code: error.code,
+          message: error.message,
+          cause: error.cause
+        });
+      },
+    });
+    
+    console.log('tRPC response status:', response.status);
+    return response;
+  } catch (error) {
+    console.error('tRPC handler error:', error);
+    return c.json({ error: 'tRPC handler failed', details: error instanceof Error ? error.message : 'Unknown error' }, 500);
+  }
 });
 
 console.log('tRPC mounted at /trpc with appRouter');
-console.log('Available procedures:', Object.keys((appRouter as any)._def?.procedures || {}));
+try {
+  const routerDef = (appRouter as any)._def;
+  if (routerDef) {
+    console.log('Router definition found');
+    console.log('Router type:', routerDef.type);
+    if (routerDef.record) {
+      console.log('Router record keys:', Object.keys(routerDef.record));
+      // Log nested procedures
+      Object.entries(routerDef.record).forEach(([key, value]) => {
+        if (value && typeof value === 'object' && (value as any)._def?.record) {
+          console.log(`  ${key} procedures:`, Object.keys((value as any)._def.record));
+        }
+      });
+    }
+    if (routerDef.procedures) {
+      console.log('Available procedures:', Object.keys(routerDef.procedures));
+    }
+  } else {
+    console.log('No router definition found');
+  }
+} catch (error) {
+  console.error('Error inspecting router:', error);
+}
 
 // Health check endpoint with tRPC procedure listing
 app.get("/", (c) => {
