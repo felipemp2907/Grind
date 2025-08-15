@@ -49,7 +49,7 @@ const TabLayout = memo(function TabLayout() {
       }}
     >
       <Tabs.Screen
-        name="index"
+        name="home"
         options={{
           title: "Home",
           tabBarIcon: ({ color, size }) => <Home size={size} color={color} />,
