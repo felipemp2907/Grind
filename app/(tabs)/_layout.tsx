@@ -192,8 +192,9 @@ const TabLayout = memo(function TabLayout() {
           }
         }}
       />
+
       <Tabs.Screen
-        name="ai"
+        name="coach"
         options={{
           title: "AI",
           tabBarIcon: ({ color, size }) => <Brain size={size} color={color} />,
