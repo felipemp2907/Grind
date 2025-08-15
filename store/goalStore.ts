@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import { Goal, Milestone, ProgressUpdate, MilestoneAlert, GoalShareCard } from '@/types';
 import { supabase, setupDatabase, serializeError, getCurrentUser, ensureUserProfile } from '@/lib/supabase';
 import { useAuthStore } from './authStore';
@@ -313,6 +315,16 @@ export const useGoalStore = create<GoalState>()(
           });
           
           console.log(`Ultimate goal created successfully with ${result.streakTasksCreated} streak tasks for ${result.totalDays} days`);
+          
+          // Trigger heavy haptic feedback on successful goal creation
+          if (Platform.OS !== 'web') {
+            try {
+              await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+              console.log('Heavy haptic feedback triggered for goal creation');
+            } catch (hapticError) {
+              console.log('Haptic feedback failed:', hapticError);
+            }
+          }
           
         } catch (error) {
           console.error('Error creating ultimate goal:', error);

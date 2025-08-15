@@ -121,14 +121,16 @@ export const useTaskStore = create<TaskState>()(
             title: task.title,
             description: task.description,
             completed: task.completed,
-            due_date: task.date && !task.isHabit ? new Date(task.date).toISOString() : null,
+            due_at: task.date && !task.isHabit ? new Date(task.date + 'T12:00:00.000Z').toISOString() : null,
             task_date: task.isHabit && task.date ? task.date : null, // For streak tasks
             type: task.isHabit ? 'streak' : 'today',
             priority: task.priority || 'medium',
             xp_value: task.xpValue || 30,
             is_habit: task.isHabit || false,
             streak: task.streak || 0,
-            completed_at: task.completedAt ? new Date(task.completedAt).toISOString() : null
+            completed_at: task.completedAt ? new Date(task.completedAt).toISOString() : null,
+            load_score: 1,
+            proof_mode: 'flex'
           };
           
           console.log('Inserting task data:', insertData);
@@ -183,7 +185,15 @@ export const useTaskStore = create<TaskState>()(
           if (updates.title !== undefined) supabaseUpdates.title = updates.title;
           if (updates.description !== undefined) supabaseUpdates.description = updates.description;
           if (updates.completed !== undefined) supabaseUpdates.completed = updates.completed;
-          if (updates.date !== undefined) supabaseUpdates.due_date = updates.date ? new Date(updates.date).toISOString() : null;
+          if (updates.date !== undefined) {
+            // Update the appropriate date field based on task type
+            const task = get().getTaskById(id);
+            if (task?.isHabit) {
+              supabaseUpdates.task_date = updates.date;
+            } else {
+              supabaseUpdates.due_at = updates.date ? new Date(updates.date + 'T12:00:00.000Z').toISOString() : null;
+            }
+          }
           if (updates.priority !== undefined) supabaseUpdates.priority = updates.priority;
           if (updates.goalId !== undefined) supabaseUpdates.goal_id = updates.goalId;
           if (updates.xpValue !== undefined) supabaseUpdates.xp_value = updates.xpValue;
@@ -334,55 +344,11 @@ export const useTaskStore = create<TaskState>()(
         return get().getTasks(date).filter(task => !task.completed);
       },
       
-      // Generate daily agenda (proactive morning plan)
+      // Generate daily agenda (proactive morning plan) - DEPRECATED
+      // Tasks are now generated at goal creation, not on-demand
       generateDailyAgenda: async (date) => {
-        const { goals, activeGoalId } = useGoalStore.getState();
-        const { coachSettings } = useUserStore.getState();
-        
-        const activeGoal = goals.find((g: any) => g.id === activeGoalId) || goals[0];
-        if (!activeGoal) return;
-        
-        // Check if agenda already exists for this date
-        const existingAgenda = get().dailyAgendas.find(a => a.date === date);
-        if (existingAgenda && existingAgenda.status !== 'regenerated') return;
-        
-        set({ isGeneratingAgenda: true });
-        
-        try {
-          // Get recent completed tasks for context
-          const recentTasks = get().tasks
-            .filter(task => task.goalId === activeGoal.id && task.completed)
-            .slice(-10)
-            .map(task => task.title);
-          
-          const agendaData = await generateDailyAgenda(
-            activeGoal.title,
-            activeGoal.description,
-            recentTasks,
-            date,
-            coachSettings.preferredTone
-          );
-          
-          const newAgenda: DailyAgenda = {
-            date,
-            tasks: agendaData.tasks,
-            motivation: agendaData.motivation,
-            status: 'pending',
-            createdAt: new Date().toISOString()
-          };
-          
-          set((state) => ({
-            dailyAgendas: [
-              ...state.dailyAgendas.filter(a => a.date !== date),
-              newAgenda
-            ]
-          }));
-          
-        } catch (error) {
-          console.error('Error generating daily agenda:', error);
-        } finally {
-          set({ isGeneratingAgenda: false });
-        }
+        console.log('generateDailyAgenda called but deprecated - tasks are now pre-generated at goal creation');
+        return;
       },
       
       acceptAgenda: async (date) => {
@@ -751,12 +717,12 @@ export const useTaskStore = create<TaskState>()(
                 id: task.id,
                 title: task.title,
                 description: task.description || '',
-                // For streak tasks, use task_date; for today tasks, use due_date
-                date: task.task_date || (task.due_date ? task.due_date.split('T')[0] : new Date().toISOString().split('T')[0]),
+                // For streak tasks, use task_date; for today tasks, use due_at or due_date as fallback
+                date: task.task_date || (task.due_at ? task.due_at.split('T')[0] : (task.due_date ? task.due_date.split('T')[0] : new Date().toISOString().split('T')[0])),
                 goalId: task.goal_id || '',
                 completed: task.completed || false,
                 xpValue: task.xp_value || 30,
-                isHabit: task.is_habit || false,
+                isHabit: task.is_habit || (task.type === 'streak'),
                 streak: task.streak || 0,
                 isUserCreated: true,
                 requiresValidation: true,
