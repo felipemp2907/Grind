@@ -83,7 +83,7 @@ export const useAuthStore = create<AuthState>()(
               isLoading: false,
             });
             
-            router.replace('/home');
+            router.replace('/(tabs)/home');
           }
         } catch (error: any) {
           const errorMessage = serializeError(error);
@@ -148,7 +148,7 @@ export const useAuthStore = create<AuthState>()(
               isLoading: false,
             });
             
-            router.replace('/home');
+            router.replace('/(tabs)/home');
           } else {
             set({ isLoading: false });
           }
@@ -194,7 +194,7 @@ export const useAuthStore = create<AuthState>()(
                 "We've sent a confirmation email to your address. Please check your inbox and spam folder, then confirm your email before logging in.",
                 [{ text: 'OK' }]
               );
-              router.replace('/login');
+              router.replace('/welcome');
               return;
             }
             
@@ -258,7 +258,7 @@ export const useAuthStore = create<AuthState>()(
             isLoading: false,
           });
           
-          router.replace('/login');
+          router.replace('/welcome');
         } catch (error: any) {
           const errorMessage = serializeError(error);
           console.error("Logout error:", errorMessage);

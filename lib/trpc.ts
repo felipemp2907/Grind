@@ -48,12 +48,15 @@ export const trpcClient = createTRPCClient<AppRouter>({
         
         // Try to get the current user's session token
         try {
-          // Import supabase dynamically to avoid circular dependencies
-          const { supabase } = await import('./supabase');
-          const { data: { session } } = await supabase.auth.getSession();
+          // Import auth store dynamically to avoid circular dependencies
+          const { useAuthStore } = await import('@/store/authStore');
+          const authState = useAuthStore.getState();
           
-          if (session?.access_token) {
-            headers['Authorization'] = `Bearer ${session.access_token}`;
+          if (authState.session?.access_token) {
+            headers['Authorization'] = `Bearer ${authState.session.access_token}`;
+            console.log('tRPC: Added auth header');
+          } else {
+            console.log('tRPC: No auth token available');
           }
         } catch (error) {
           console.log('Could not get auth token for tRPC request:', error);

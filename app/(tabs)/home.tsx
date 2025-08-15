@@ -45,15 +45,7 @@ export default function DashboardScreen() {
   const { goals, activeGoalId, setActiveGoal } = useGoalStore();
   const { 
     tasks, 
-    getTasks, 
-    generateDailyTasks, 
-    generateStreakTasks,
-    isGenerating,
-    generateDailyAgenda,
-    acceptAgenda,
-    regenerateAgenda,
-    getAgenda,
-    isGeneratingAgenda
+    getTasks
   } = useTaskStore();
   const { 
     profile, 
@@ -85,97 +77,24 @@ export default function DashboardScreen() {
     .sort((a, b) => b.xpValue - a.xpValue)
     .slice(0, 3);
   
-  // Get today's agenda
-  const todayAgenda = getAgenda(todayDate);
+  // Agenda functionality removed
   
 
   
-  // Generate daily agenda at 7 AM (simulated for demo)
-  useEffect(() => {
-    const now = new Date();
-    const currentHour = now.getHours();
-    
-    // Generate agenda if it's morning and no agenda exists
-    if (currentHour >= 7 && currentHour < 10 && !todayAgenda && goals.length > 0) {
-      generateDailyAgenda(todayDate);
-    }
-  }, [todayDate, goals.length, todayAgenda]);
+  // Tasks are now generated automatically when goals are created
   
-  // Check for missed tasks and show motivation
-  useEffect(() => {
-    const checkMissedTasks = async () => {
-      const yesterday = new Date();
-      yesterday.setDate(yesterday.getDate() - 1);
-      const yesterdayDate = yesterday.toISOString().split('T')[0];
-      
-      const yesterdayTasks = getTasks(yesterdayDate);
-      const missedTasks = yesterdayTasks.filter(task => !task.completed);
-      
-      if (missedTasks.length > 0 && coachSettings.notificationsEnabled) {
-        // Check if we should show motivation based on time since last one
-        const lastMotivation = coachSettings.lastMotivationSent;
-        const now = Date.now();
-        const hoursSinceLastMotivation = lastMotivation 
-          ? (now - new Date(lastMotivation).getTime()) / (1000 * 60 * 60)
-          : 24;
-        
-        if (hoursSinceLastMotivation >= 4) { // Show motivation every 4 hours max
-          try {
-            const activeGoal = goals.find(g => g.id === activeGoalId) || goals[0];
-            if (activeGoal) {
-              const message = await generateMotivationMessage(
-                coachSettings.missedTaskCount,
-                coachSettings.missedStreakCount,
-                coachSettings.preferredTone,
-                activeGoal.title,
-                profile.streakDays
-              );
-              
-              setMotivationMessage(message);
-              setMotivationVisible(true);
-              
-              updateCoachSettings({
-                lastMotivationSent: new Date().toISOString()
-              });
-            }
-          } catch (error) {
-            console.error('Error generating motivation message:', error);
-          }
-        }
-      }
-    };
-    
-    // Check for missed tasks after a delay to avoid blocking initial render
-    const timer = setTimeout(checkMissedTasks, 2000);
-    return () => clearTimeout(timer);
-  }, [todayDate]);
+  // Motivation system disabled for now
   
-  useEffect(() => {
-    // Generate daily tasks and streak tasks if none exist
-    if (todayTasks.length === 0 && goals.length > 0) {
-      // Generate both daily tasks and streak tasks
-      generateDailyTasks(todayDate);
-      generateStreakTasks(todayDate);
-    } else if (goals.length > 0) {
-      // Check if we need streak tasks even if we have some tasks
-      const hasStreakTasks = todayTasks.some(task => task.isHabit);
-      if (!hasStreakTasks) {
-        generateStreakTasks(todayDate);
-      }
-    }
-  }, [todayDate, goals.length]);
+  // Tasks are now generated automatically when goals are created
   
   const onRefresh = async () => {
     setRefreshing(true);
     try {
-      // Refresh data - generate both daily and streak tasks
-      await generateDailyTasks(todayDate);
-      await generateStreakTasks(todayDate, true); // Force regenerate on refresh
-      if (!todayAgenda) {
-        await generateDailyAgenda(todayDate);
-      }
+      // Just refresh the data from stores
+      // Tasks are generated when goals are created/updated
+      console.log('Refreshing home screen data');
     } catch (error) {
-      console.error('Error refreshing tasks:', error);
+      console.error('Error refreshing:', error);
     } finally {
       setRefreshing(false);
     }
@@ -189,17 +108,7 @@ export default function DashboardScreen() {
     router.push('/settings');
   };
   
-  const handleAcceptAgenda = () => {
-    if (todayAgenda) {
-      acceptAgenda(todayDate);
-    }
-  };
-  
-  const handleRegenerateAgenda = async () => {
-    if (todayAgenda) {
-      await regenerateAgenda(todayDate);
-    }
-  };
+  // Agenda functionality removed
   
 
   
@@ -234,7 +143,7 @@ export default function DashboardScreen() {
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl 
-            refreshing={refreshing || isGenerating} 
+            refreshing={refreshing} 
             onRefresh={onRefresh}
             tintColor={Colors.dark.primary}
           />
@@ -242,15 +151,7 @@ export default function DashboardScreen() {
       >
 
         
-        {/* Daily Agenda Card */}
-        {todayAgenda && (
-          <AgendaCard
-            agenda={todayAgenda}
-            onAccept={handleAcceptAgenda}
-            onRegenerate={handleRegenerateAgenda}
-            isGenerating={isGeneratingAgenda}
-          />
-        )}
+        {/* Agenda functionality removed */}
         
         {priorityTasks.length > 0 && (
           <View style={styles.priorityContainer}>
@@ -342,14 +243,7 @@ export default function DashboardScreen() {
           </Text>
         </View>
         
-        {isGenerating && todayTasks.length === 0 ? (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color={Colors.dark.primary} />
-            <Text style={styles.loadingText}>
-              Hustle is generating high-quality tasks for your goals...
-            </Text>
-          </View>
-        ) : todayTasks.length > 0 ? (
+        {todayTasks.length > 0 ? (
           <View style={styles.tasksContainer}>
             {todayTasks
               .filter(task => !task.isHabit) // Show only non-habit tasks here
@@ -371,13 +265,7 @@ export default function DashboardScreen() {
         ) : (
           <View style={styles.emptyState}>
             <Text style={styles.emptyStateText}>No tasks for today</Text>
-            <Button 
-              title={isGenerating ? "Generating..." : "Generate Tasks"}
-              onPress={() => generateDailyTasks(todayDate)}
-              size="small"
-              loading={isGenerating}
-              disabled={isGenerating}
-            />
+            <Text style={styles.emptyStateText}>Tasks are generated when you create goals</Text>
           </View>
         )}
         

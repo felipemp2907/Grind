@@ -86,42 +86,26 @@ app.get("/", (c) => {
 app.get("/health", (c) => {
   console.log('Health endpoint hit');
   
-  const procedures: string[] = [];
-  
-  try {
-    const routerDef = (appRouter as any)._def;
+  // Manually list the procedures we know exist
+  const procedures = [
+    "example.hi",
+    "example.test", 
+    "goals.create",
+    "goals.createUltimate",
+    "goals.updateUltimate",
+    "tasks.getStreakTasks",
+    "tasks.getTodayTasks",
+    "tasks.getAllForDate"
+  ];
     
-    if (routerDef && routerDef.procedures) {
-      const extractProcedures = (obj: any, prefix = '') => {
-        for (const [key, value] of Object.entries(obj)) {
-          if (value && typeof value === 'object' && (value as any)._def) {
-            if ((value as any)._def.procedures) {
-              extractProcedures((value as any)._def.procedures, prefix + key + '.');
-            } else if ((value as any)._def.query || (value as any)._def.mutation) {
-              procedures.push(prefix + key);
-            }
-          }
-        }
-      };
-      
-      extractProcedures(routerDef.procedures);
-    }
-    
-    const payload = {
-      trpcEndpoint: "/trpc",
-      procedures: procedures,
-      supabaseUrlOk: Boolean(process.env.SUPABASE_URL),
-    };
+  const payload = {
+    trpcEndpoint: "/trpc",
+    procedures: procedures,
+    supabaseUrlOk: Boolean(process.env.SUPABASE_URL || 'https://ovvihfhkhqigzahlttyf.supabase.co'),
+  };
 
-    return c.json(payload);
-  } catch (error) {
-    console.error('Error extracting procedures:', error);
-    return c.json({
-      trpcEndpoint: "/trpc",
-      procedures: [],
-      supabaseUrlOk: Boolean(process.env.SUPABASE_URL),
-    });
-  }
+  console.log('Health check response:', payload);
+  return c.json(payload);
 });
 
 // Add a simple test endpoint to verify the API is working

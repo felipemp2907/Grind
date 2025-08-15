@@ -18,14 +18,17 @@ import Colors from '@/constants/colors';
 import Button from '@/components/Button';
 import { useGoalStore } from '@/store/goalStore';
 import { useTaskStore } from '@/store/taskStore';
+import { trpc } from '@/lib/trpc';
 import { formatDate, getDatePlusDays, getTodayDate } from '@/utils/dateUtils';
 import { generateGoalBreakdown } from '@/utils/aiUtils';
 import DateTimePicker from '@/components/DateTimePicker';
 
 export default function CreateGoalScreen() {
   const router = useRouter();
-  const { goals, createUltimateGoal } = useGoalStore();
+  const { goals, addGoal } = useGoalStore();
   const { fetchTasks } = useTaskStore();
+  
+  const createUltimateGoalMutation = trpc.goals.createUltimate.useMutation();
   
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -49,25 +52,26 @@ export default function CreateGoalScreen() {
     setCreating(true);
     
     try {
-      // Use the new createUltimateGoal method that generates streak tasks automatically
-      await createUltimateGoal({
+      console.log('Creating ultimate goal with batch planner...');
+      
+      // Use the new tRPC createUltimate endpoint that generates all tasks automatically
+      const result = await createUltimateGoalMutation.mutateAsync({
         title,
         description,
-        deadline,
-        category: 'personal',
-        targetValue: 100,
-        unit: 'progress',
-        priority: 'high',
-        color: undefined,
-        coverImage: undefined
+        deadline: deadline
       });
       
-      // Refresh tasks to get the newly created streak tasks
+      console.log('Goal creation result:', result);
+      
+      // Add the goal to the store
+      addGoal(result.goal);
+      
+      // Refresh tasks to get the newly created tasks
       await fetchTasks();
       
       Alert.alert(
         "Ultimate Goal Created! 🎯",
-        `Your goal "${title}" has been created and Hustle has generated streak tasks for every day until your deadline. These will help you build consistent daily habits to achieve your goal!`,
+        `Your goal "${title}" has been created and tasks have been generated for every day until your deadline (${result.streakTasksCreated} streak tasks and ${result.todayTasksCreated} today tasks)!`,
         [{ text: "Let's Go!" }]
       );
       

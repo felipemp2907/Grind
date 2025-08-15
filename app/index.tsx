@@ -7,26 +7,35 @@ import { useGoalStore } from '@/store/goalStore';
 
 export default function IndexGate() {
   const router = useRouter();
-  const { isAuthenticated } = useAuthStore();
+  const { isAuthenticated, isLoading } = useAuthStore();
   const { isOnboarded } = useGoalStore();
 
   useEffect(() => {
+    // Don't navigate while auth is still loading
+    if (isLoading) {
+      console.log('[IndexGate] Auth still loading, waiting...');
+      return;
+    }
+
     try {
       console.log('[IndexGate] auth:', isAuthenticated, 'onboarded:', isOnboarded);
       if (!isAuthenticated) {
+        console.log('[IndexGate] Not authenticated, going to welcome');
         router.replace('/welcome');
         return;
       }
       if (isOnboarded) {
-        router.replace('/home');
+        console.log('[IndexGate] Authenticated and onboarded, going to home tab');
+        router.replace('/(tabs)/home');
       } else {
+        console.log('[IndexGate] Authenticated but not onboarded, going to onboarding');
         router.replace('/onboarding');
       }
     } catch (e) {
       console.log('[IndexGate] navigation error', e);
       router.replace('/welcome');
     }
-  }, [isAuthenticated, isOnboarded, router]);
+  }, [isAuthenticated, isOnboarded, isLoading, router]);
 
   return (
     <View style={styles.container} testID="index-gate-loading">
