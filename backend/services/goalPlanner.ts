@@ -390,40 +390,23 @@ export class GoalPlannerService {
   async insertTasksBatch(
     client: any,
     tasks: TaskInsertData[],
-    batchSize: number = 100
   ): Promise<{ success: number; failed: number }> {
-    let successCount = 0;
-    let failedCount = 0;
-
-    console.log(`Inserting ${tasks.length} tasks in batches of ${batchSize}`);
-
-    for (let i = 0; i < tasks.length; i += batchSize) {
-      const batch = tasks.slice(i, i + batchSize);
-      
-      try {
-        const { data, error } = await client
-          .from('tasks')
-          .insert(batch)
-          .select('id, type, task_date, due_at');
-          
-        if (error) {
-          console.error(`Error inserting batch ${i}-${i + batch.length}:`, error);
-          console.error('Sample task from failed batch:', JSON.stringify(batch[0], null, 2));
-          failedCount += batch.length;
-        } else {
-          successCount += batch.length;
-          console.log(`Successfully inserted batch ${i}-${i + batch.length} (${batch.length} tasks)`);
-          if (data && data.length > 0) {
-            console.log(`Sample inserted task:`, data[0]);
-          }
-        }
-      } catch (error) {
-        console.error(`Exception inserting batch ${i}-${i + batch.length}:`, error);
-        failedCount += batch.length;
+    console.log(`Inserting ${tasks.length} tasks in a single atomic request`);
+    try {
+      const { data, error } = await client
+        .from('tasks')
+        .insert(tasks)
+        .select('id');
+      if (error) {
+        console.error('Error inserting tasks atomically:', error);
+        throw error;
       }
+      const inserted = Array.isArray(data) ? data.length : tasks.length;
+      console.log(`Inserted ${inserted} tasks`);
+      return { success: inserted, failed: 0 };
+    } catch (e) {
+      console.error('Task insertion exception (atomic):', e);
+      throw e;
     }
-
-    console.log(`Task insertion completed: ${successCount} success, ${failedCount} failed`);
-    return { success: successCount, failed: failedCount };
   }
 }
