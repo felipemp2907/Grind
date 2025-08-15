@@ -46,17 +46,17 @@ app.onError((err, c) => {
   );
 });
 
-// Mount tRPC router at /trpc using fetchRequestHandler
-console.log('Mounting tRPC at /trpc/*');
+// Mount tRPC router at /api/trpc using fetchRequestHandler
+console.log('Mounting tRPC at /api/trpc/*');
 console.log('appRouter type:', typeof appRouter);
 console.log('appRouter keys:', Object.keys(appRouter));
 
-app.all('/trpc/*', async (c) => {
+app.all('/api/trpc/*', async (c) => {
   console.log('tRPC request received:', c.req.method, c.req.url);
   
   try {
     const response = await fetchRequestHandler({
-      endpoint: '/trpc',
+      endpoint: '/api/trpc',
       router: appRouter,
       req: c.req.raw,
       createContext,
@@ -78,7 +78,7 @@ app.all('/trpc/*', async (c) => {
   }
 });
 
-console.log('tRPC mounted at /trpc with appRouter');
+console.log('tRPC mounted at /api/trpc with appRouter');
 try {
   const routerDef = (appRouter as any)._def;
   if (routerDef) {
@@ -113,7 +113,7 @@ app.get("/", (c) => {
     environment: process.env.NODE_ENV || 'development',
     routes: {
       trpc: '/api/trpc',
-      health: '/api/',
+      health: '/api/health',
       debug: '/api/debug'
     }
   });
@@ -164,7 +164,7 @@ app.get("/health", (c) => {
   ];
     
   const payload = {
-    trpcEndpoint: "/trpc",
+    trpcEndpoint: "/api/trpc",
     procedures: procedures,
     actualProceduresFound: actualProcedures.length,
     supabaseUrlOk: Boolean(process.env.SUPABASE_URL || 'https://ovvihfhkhqigzahlttyf.supabase.co'),
@@ -180,7 +180,7 @@ app.get("/health", (c) => {
 app.get("/health-simple", (c) => {
   return c.json({
     status: "ok",
-    trpcEndpoint: "/trpc",
+    trpcEndpoint: "/api/trpc",
     procedures: ["goals.createUltimate", "goals.updateUltimate"],
     timestamp: new Date().toISOString()
   });
