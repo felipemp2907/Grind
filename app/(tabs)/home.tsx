@@ -118,7 +118,7 @@ export default function DashboardScreen() {
   };
   
   const handleAICoachPress = () => {
-    router.push('/coach');
+    router.push('/(tabs)/ai');
   };
 
   const handleSettingsPress = () => {
