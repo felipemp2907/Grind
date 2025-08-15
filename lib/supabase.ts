@@ -167,51 +167,41 @@ export const setupDatabaseLegacy = async (): Promise<boolean> => {
 // Helper function to create user profile after signup
 export const createUserProfile = async (userId: string, userData: { name?: string; avatar_url?: string } = {}) => {
   try {
-    // First try using the RPC function which has better error handling
+    const profilePayload = {
+      id: userId,
+      name: userData.name || 'User',
+      avatar_url: userData.avatar_url || null,
+      level: 1,
+      xp: 0,
+      streak_days: 0,
+      longest_streak: 0,
+    } as const;
+
+    const { data, error } = await supabase
+      .from('profiles')
+      .upsert(profilePayload, { onConflict: 'id', ignoreDuplicates: false })
+      .select()
+      .single();
+
+    if (!error && data) {
+      console.log('User profile ensured via direct upsert:', data?.id ?? userId);
+      return { data, error: null };
+    }
+
+    console.log('Direct upsert failed, falling back to RPC ensure_user_profile:', serializeError(error));
+
     const { data: rpcResult, error: rpcError } = await supabase.rpc('ensure_user_profile', {
       user_id: userId,
       user_name: userData.name || 'User'
     });
-    
-    if (!rpcError && rpcResult) {
-      console.log('Profile ensured via RPC for user:', userId);
-      return { data: { id: userId }, error: null };
-    }
-    
-    // Fallback to direct insert if RPC fails
-    const errorMessage = rpcError ? serializeError(rpcError) : 'Unknown RPC error';
-    if (errorMessage.includes('Could not find the function') || 
-        errorMessage.includes('function public.ensure_user_profile') ||
-        errorMessage.includes('schema cache')) {
-      console.log('Function not found in schema cache, using direct upsert:', errorMessage);
-    } else {
-      console.log('RPC failed with other error, trying direct upsert:', errorMessage);
-    }
-    
-    const { data, error } = await supabase
-      .from('profiles')
-      .upsert({
-        id: userId,
-        name: userData.name || 'User',
-        avatar_url: userData.avatar_url || null,
-        level: 1,
-        xp: 0,
-        streak_days: 0,
-        longest_streak: 0,
-      }, {
-        onConflict: 'id',
-        ignoreDuplicates: false
-      })
-      .select()
-      .single();
 
-    if (error) {
-      console.error('Error creating user profile:', error.message);
-      return { data: null, error };
+    if (rpcError) {
+      console.error('RPC ensure_user_profile failed:', serializeError(rpcError));
+      return { data: null, error: rpcError };
     }
 
-    console.log('User profile created successfully:', data);
-    return { data, error: null };
+    console.log('Profile ensured via RPC for user:', userId);
+    return { data: { id: userId }, error: null };
   } catch (error) {
     console.error('Error in createUserProfile:', error);
     return { data: null, error };
@@ -264,65 +254,49 @@ export const getCurrentUser = async (): Promise<{ user: any | null; error?: stri
 // Helper function to ensure user profile exists using RPC
 export const ensureUserProfile = async (userId: string, userData: { name?: string; email?: string } = {}): Promise<{ success: boolean; error?: string }> => {
   try {
-    // First check if user exists in auth.users
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user || user.id !== userId) {
       console.error('User not found in auth.users:', authError);
       return { success: false, error: 'User not authenticated or user ID mismatch' };
     }
-    
-    // Use the RPC function to ensure profile exists
+
     const userName = userData.name || userData.email?.split('@')[0] || user.user_metadata?.name || user.email || 'User';
-    
-    console.log('Ensuring profile exists for user:', userId, 'with name:', userName);
-    
-    const { data: rpcResult, error: rpcError } = await supabase.rpc('ensure_user_profile', {
-      user_id: userId,
-      user_name: userName
-    });
-    
-    if (rpcError) {
-      console.error('RPC error ensuring profile:', serializeError(rpcError));
-      
-      // Check if it's a function not found error
-      const errorMessage = serializeError(rpcError);
-      if (errorMessage.includes('Could not find the function') || 
-          errorMessage.includes('function public.ensure_user_profile') ||
-          errorMessage.includes('schema cache')) {
-        console.log('Function not found in schema cache, using direct upsert...');
-      } else {
-        console.log('RPC failed with other error, falling back to direct upsert...');
-      }
-      
-      const profileData = {
-        id: userId,
-        name: userName,
-        level: 1,
-        xp: 0,
-        streak_days: 0,
-        longest_streak: 0
-      };
-      
-      const { error: upsertError } = await supabase
-        .from('profiles')
-        .upsert(profileData, {
-          onConflict: 'id'
-        });
-      
-      if (upsertError) {
-        console.error('Error in fallback upsert:', serializeError(upsertError));
-        return { success: false, error: `Database function not available. Please run the database setup script. Error: ${serializeError(upsertError)}` };
-      }
-      
-      console.log('Profile ensured via fallback upsert');
+
+    const profileData = {
+      id: userId,
+      name: userName,
+      level: 1,
+      xp: 0,
+      streak_days: 0,
+      longest_streak: 0,
+    } as const;
+
+    const { error: upsertError } = await supabase
+      .from('profiles')
+      .upsert(profileData, { onConflict: 'id' });
+
+    if (!upsertError) {
+      console.log('Profile ensured via direct upsert');
       return { success: true };
     }
-    
-    if (!rpcResult) {
-      console.error('User does not exist in auth.users table');
-      return { success: false, error: 'User authentication error. Please sign out and sign in again.' };
+
+    console.log('Direct upsert failed, trying RPC ensure_user_profile:', serializeError(upsertError));
+
+    const { error: rpcError, data: rpcResult } = await supabase.rpc('ensure_user_profile', {
+      user_id: userId,
+      user_name: userName,
+    });
+
+    if (rpcError) {
+      console.error('RPC ensure_user_profile failed:', serializeError(rpcError));
+      return { success: false, error: serializeError(rpcError) };
     }
-    
+
+    if (!rpcResult) {
+      console.error('ensure_user_profile returned false (auth user missing)');
+      return { success: false, error: 'Auth user missing. Please sign out and in again.' };
+    }
+
     console.log('Profile ensured successfully via RPC');
     return { success: true };
   } catch (error) {

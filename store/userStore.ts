@@ -360,20 +360,37 @@ export const useUserStore = create<UserState>()(
             throw new Error(`Database not set up: ${dbResult.error}`);
           }
           
-          // First, ensure the user profile exists using the RPC function
-          const { data: ensureResult, error: ensureError } = await supabase.rpc('ensure_user_profile', {
-            user_id: user.id,
-            user_name: updates.name || profile.name || user.email?.split('@')[0] || 'User'
-          });
-          
-          if (ensureError) {
-            console.error('Error ensuring profile exists:', serializeError(ensureError));
-            // Continue with upsert as fallback
-          } else if (!ensureResult) {
-            console.error('User does not exist in auth.users table');
-            throw new Error('User authentication error. Please sign out and sign in again.');
+          // Ensure profile via direct upsert first to avoid RPC schema mismatch
+          const ensureProfileData = {
+            id: user.id,
+            name: updates.name !== undefined ? updates.name : profile.name || 'User',
+            level: updates.level !== undefined ? updates.level : profile.level,
+            xp: updates.xp !== undefined ? updates.xp : profile.xp,
+            streak_days: updates.streakDays !== undefined ? updates.streakDays : profile.streakDays,
+            longest_streak: updates.longestStreak !== undefined ? updates.longestStreak : profile.longestStreak,
+            avatar_url: updates.avatarUrl !== undefined ? updates.avatarUrl : profile.avatarUrl
+          } as const;
+
+          const { error: ensureUpsertError } = await supabase
+            .from('profiles')
+            .upsert(ensureProfileData, { onConflict: 'id' });
+
+          if (ensureUpsertError) {
+            console.log('Direct profile ensure upsert failed; trying RPC fallback ensure_user_profile:', serializeError(ensureUpsertError));
+            const { data: ensureResult, error: ensureError } = await supabase.rpc('ensure_user_profile', {
+              user_id: user.id,
+              user_name: ensureProfileData.name
+            });
+            if (ensureError) {
+              console.error('RPC ensure_user_profile failed:', serializeError(ensureError));
+              throw new Error(`Failed to ensure profile: ${serializeError(ensureError)}`);
+            }
+            if (!ensureResult) {
+              console.error('User does not exist in auth.users table');
+              throw new Error('User authentication error. Please sign out and sign in again.');
+            }
           }
-          
+
           // Now update the profile with all the data
           const profileData = {
             id: user.id,
@@ -383,15 +400,13 @@ export const useUserStore = create<UserState>()(
             streak_days: updates.streakDays !== undefined ? updates.streakDays : profile.streakDays,
             longest_streak: updates.longestStreak !== undefined ? updates.longestStreak : profile.longestStreak,
             avatar_url: updates.avatarUrl !== undefined ? updates.avatarUrl : profile.avatarUrl
-          };
+          } as const;
           
           console.log('Updating profile with data:', profileData);
           
           const { error } = await supabase
             .from('profiles')
-            .upsert(profileData, {
-              onConflict: 'id'
-            });
+            .upsert(profileData, { onConflict: 'id' });
             
           if (error) {
             console.error("Error saving profile:", serializeError(error));
