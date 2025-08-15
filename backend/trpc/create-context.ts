@@ -11,7 +11,7 @@ const supabaseServiceKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXB
 // For now, use the anon key since we don't have the service role key
 const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im92dmloZmhraHFpZ3phaGx0dHlmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDcxNDQ2MDIsImV4cCI6MjA2MjcyMDYwMn0.S1GkUtQR3d7YvmuJObDwZlYRMa4hBFc3NWBid9FHn2I';
 
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
+const supabase = createClient(supabaseUrl, supabaseAnonKey, { auth: { persistSession: false } });
 
 // Create admin client for server-side operations (bypasses RLS)
 export const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
@@ -79,10 +79,21 @@ checkDbHealth();
 // Context creation function
 export const createContext = async (opts: FetchCreateContextFnOptions) => {
   console.log('Creating tRPC context for request:', opts.req.method, opts.req.url);
-  
+  const authHeader = opts.req.headers.get('authorization') || opts.req.headers.get('Authorization');
+  const bearer = authHeader && authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+  let userId: string | null = null;
+  if (bearer) {
+    try {
+      const { data: { user } } = await supabase.auth.getUser(bearer);
+      userId = user?.id ?? null;
+    } catch (e) {
+      console.log('Token validation failed in context');
+    }
+  }
   return {
     req: opts.req,
     supabase,
+    userId,
   };
 };
 
@@ -110,166 +121,54 @@ export const publicProcedure = t.procedure;
 
 // Protected procedure that gets the authenticated user from Supabase
 export const protectedProcedure = t.procedure.use(async ({ ctx, next }) => {
+  console.log('Protected procedure middleware called');
+
   try {
-    console.log('Protected procedure middleware called');
-    
-    // First check database health
-    try {
-      await ensureDbReady(supabase);
-    } catch (dbError) {
-      console.error('Database health check failed in protected procedure:', dbError);
-      throw new TRPCError({
-        code: 'INTERNAL_SERVER_ERROR',
-        message: 'Database not set up. Please run the database setup script in your Supabase SQL editor.',
-        cause: dbError,
-      });
-    }
-    
-    // Get the authorization header
-    const authHeader = ctx.req.headers.get('authorization');
-    console.log('Auth header present:', !!authHeader);
-    
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      // For development, use a demo user
-      if (process.env.NODE_ENV === 'development' || process.env.NODE_ENV !== 'production') {
-        console.log('Development mode: using demo user');
-        
-        // Ensure demo user profile exists
-        try {
-          const { data: profileData, error: profileError } = await supabase
-            .from('profiles')
-            .select('id')
-            .eq('id', 'demo-user-id')
-            .single();
-            
-          if (profileError || !profileData) {
-            console.log('Creating demo user profile...');
-            const { error: insertError } = await supabase
-              .from('profiles')
-              .upsert({
-                id: 'demo-user-id',
-                name: 'Demo User',
-                level: 1,
-                xp: 0,
-                streak_days: 0,
-                longest_streak: 0,
-                experience_level: 'beginner'
-              });
-              
-            if (insertError) {
-              console.error('Failed to create demo user profile:', insertError);
-            } else {
-              console.log('Demo user profile created successfully');
-            }
-          }
-        } catch (profileError) {
-          console.error('Error handling demo user profile:', profileError);
-        }
-        
-        return next({
-          ctx: {
-            ...ctx,
-            user: { id: 'demo-user-id' }
-          }
-        });
-      }
-      
-      throw new TRPCError({
-        code: 'UNAUTHORIZED',
-        message: 'No authorization token provided',
-      });
-    }
-
-    const token = authHeader.substring(7); // Remove 'Bearer ' prefix
-    console.log('Token extracted, length:', token.length);
-    
-    // Verify the token with Supabase
-    const { data: { user }, error } = await supabase.auth.getUser(token);
-    
-    if (error || !user) {
-      console.log('Auth verification failed:', error?.message);
-      
-      // For development, use a demo user if auth fails
-      if (process.env.NODE_ENV === 'development' || process.env.NODE_ENV !== 'production') {
-        console.log('Development mode: auth failed, using demo user');
-        return next({
-          ctx: {
-            ...ctx,
-            user: { id: 'demo-user-id' }
-          }
-        });
-      }
-      
-      throw new TRPCError({
-        code: 'UNAUTHORIZED',
-        message: 'Invalid or expired token',
-      });
-    }
-
-    console.log('Auth successful for user:', user.id);
-    
-    // Ensure user profile exists
-    try {
-      const { data: profileData, error: profileError } = await supabase
-        .from('profiles')
-        .select('id')
-        .eq('id', user.id)
-        .single();
-        
-      if (profileError || !profileData) {
-        console.log('Creating user profile for:', user.id);
-        const { error: insertError } = await supabase
-          .from('profiles')
-          .upsert({
-            id: user.id,
-            name: user.user_metadata?.name || user.email || 'User',
-            level: 1,
-            xp: 0,
-            streak_days: 0,
-            longest_streak: 0,
-            experience_level: 'beginner'
-          });
-          
-        if (insertError) {
-          console.error('Failed to create user profile:', insertError);
-        } else {
-          console.log('User profile created successfully');
-        }
-      }
-    } catch (profileError) {
-      console.error('Error handling user profile:', profileError);
-    }
-    
-    return next({
-      ctx: {
-        ...ctx,
-        user: { id: user.id }
-      }
-    });
-  } catch (error) {
-    console.log('Error in protected procedure middleware:', error);
-    
-    // For development, use a demo user if anything fails
-    if (process.env.NODE_ENV === 'development' || process.env.NODE_ENV !== 'production') {
-      console.log('Development mode: error in auth, using demo user:', error);
-      return next({
-        ctx: {
-          ...ctx,
-          user: { id: 'demo-user-id' }
-        }
-      });
-    }
-    
-    if (error instanceof TRPCError) {
-      throw error;
-    }
-    
-    throw new TRPCError({
-      code: 'INTERNAL_SERVER_ERROR',
-      message: 'Authentication error',
-      cause: error,
-    });
+    await ensureDbReady(supabase);
+  } catch (dbError) {
+    console.warn('DB health check failed:', dbError);
   }
+
+  const authHeader = ctx.req.headers.get('authorization') || ctx.req.headers.get('Authorization');
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Missing Authorization bearer token' });
+  }
+
+  const token = authHeader.substring(7);
+  const { data: { user }, error } = await supabase.auth.getUser(token);
+  if (error || !user) {
+    throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Invalid or expired token' });
+  }
+
+  try {
+    const { data: profileData, error: profileError } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('id', user.id)
+      .single();
+    if (profileError || !profileData) {
+      await supabase
+        .from('profiles')
+        .upsert({
+          id: user.id,
+          name: user.user_metadata?.name || user.email || 'User',
+          level: 1,
+          xp: 0,
+          streak_days: 0,
+          longest_streak: 0,
+          experience_level: 'beginner'
+        });
+    }
+  } catch (e) {
+    console.warn('Profile ensure failed:', e);
+  }
+
+  return next({
+    ctx: {
+      ...ctx,
+      user: { id: user.id }
+    }
+  });
 });
 
 export type ProtectedContext = {

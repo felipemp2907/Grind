@@ -1,9 +1,8 @@
-import { createTRPCRouter, publicProcedure } from "./create-context";
+import { createTRPCRouter } from "./create-context";
 import { hiProcedure, testProtectedProcedure } from "./routes/example/hi/route";
 import { createUltimateGoalProcedure, createGoalProcedure, updateUltimateGoalProcedure } from "./routes/goals/create-ultimate-goal";
 import { getStreakTasksProcedure, getTodayTasksProcedure, getAllTasksForDateProcedure } from "./routes/tasks/get-tasks";
-import { z } from 'zod';
-// Legacy generate procedures removed - tasks are now generated automatically on goal creation
+// Tasks are generated automatically on goal creation/update; no manual generation routes remain.
 
 export const appRouter = createTRPCRouter({
   example: createTRPCRouter({
@@ -19,15 +18,6 @@ export const appRouter = createTRPCRouter({
     getStreakTasks: getStreakTasksProcedure,
     getTodayTasks: getTodayTasksProcedure,
     getAllForDate: getAllTasksForDateProcedure,
-    // Legacy generate procedures - deprecated, tasks are now generated automatically on goal creation
-    generateToday: publicProcedure.input(z.any()).mutation(() => ({ 
-      tasks: [], 
-      notice: 'Task generation is now automatic on goal creation. This endpoint is deprecated.' 
-    })),
-    generateStreak: publicProcedure.input(z.any()).mutation(() => ({ 
-      tasks: [], 
-      notice: 'Task generation is now automatic on goal creation. This endpoint is deprecated.' 
-    })),
   }),
 });
 
