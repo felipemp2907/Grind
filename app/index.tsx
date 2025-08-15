@@ -18,7 +18,7 @@ export default function IndexGate() {
         return;
       }
       if (isOnboarded) {
-        router.replace('/(tabs)');
+        router.replace('/home');
       } else {
         router.replace('/onboarding');
       }
