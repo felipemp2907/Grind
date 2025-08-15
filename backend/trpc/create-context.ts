@@ -160,7 +160,7 @@ export const protectedProcedure = t.procedure.use(async ({ ctx, next }) => {
         .from('profiles')
         .upsert({
           id: user.id,
-          name: user.user_metadata?.name || user.email || 'User',
+          full_name: user.user_metadata?.name || user.email || 'User',
           level: 1,
           xp: 0,
           streak_days: 0,

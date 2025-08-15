@@ -58,7 +58,7 @@ export default function CreateGoalScreen() {
       const result = await createUltimateGoalMutation.mutateAsync({
         title,
         description,
-        deadline: deadline
+        deadlineISO: deadline
       });
       
       console.log('Goal creation result:', result);

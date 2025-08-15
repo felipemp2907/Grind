@@ -2,6 +2,7 @@ import { createTRPCReact } from "@trpc/react-query";
 import { createTRPCClient, httpBatchLink } from "@trpc/client";
 import type { AppRouter } from "@/backend/trpc/app-router";
 import superjson from "superjson";
+import { useAuthStore } from '@/store/authStore';
 
 export const trpc = createTRPCReact<AppRouter>();
 
@@ -41,15 +42,13 @@ export const trpcClient = createTRPCClient<AppRouter>({
     httpBatchLink({
       url: `${getBaseUrl()}/api/trpc`,
       transformer: superjson,
-      headers: async () => {
+      headers() {
         const headers: Record<string, string> = {
           'Content-Type': 'application/json',
         };
         
         // Try to get the current user's session token
         try {
-          // Import auth store dynamically to avoid circular dependencies
-          const { useAuthStore } = await import('@/store/authStore');
           const authState = useAuthStore.getState();
           
           if (authState.session?.access_token) {
@@ -94,7 +93,7 @@ export const trpcClient = createTRPCClient<AppRouter>({
             try {
               const errorData = JSON.parse(text);
               throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`);
-            } catch (parseError) {
+            } catch {
               throw new Error(`HTTP ${response.status}: ${text.substring(0, 200)}`);
             }
           }

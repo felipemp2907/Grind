@@ -7,8 +7,7 @@ import { GoalPlannerService } from '../../../services/goalPlanner';
 const createUltimateGoalSchema = z.object({
   title: z.string().min(1, 'Title is required'),
   description: z.string().optional(),
-  deadline: z.string().min(1, 'Deadline is required'),
-  deadlineISO: z.string().optional(), // Alternative field name for compatibility
+  deadlineISO: z.string().min(1, 'Deadline is required'),
   category: z.string().optional(),
   targetValue: z.number().default(100),
   unit: z.string().optional(),
@@ -16,11 +15,9 @@ const createUltimateGoalSchema = z.object({
   color: z.string().optional(),
   coverImage: z.string().optional()
 }).transform((data) => {
-  // Handle both deadline and deadlineISO field names
-  const deadline = data.deadlineISO || data.deadline;
   return {
     ...data,
-    deadline,
+    deadline: data.deadlineISO,
     description: data.description || '' // Ensure description is never undefined
   };
 });
@@ -231,6 +228,7 @@ export const createUltimateGoalProcedure = protectedProcedure
       console.log(`Final verification: ${streakCount} streak tasks and ${todayCount} today tasks in database`);
       
       // Log after completion
+      console.log(`BATCH PLAN SEEDED { goalId: ${goalData.id}, days: ${daysToDeadline}, streak_count: ${streakCount || 0}, total_today: ${todayCount || 0}, trimmed_days: 0 }`);
       console.log('=== GOAL CREATION COMPLETE ===');
       console.log(`Goal ID: ${goalData.id}`);
       console.log(`Days: ${daysToDeadline}`);
@@ -296,11 +294,10 @@ export const createUltimateGoalProcedure = protectedProcedure
 
 // Update schema that includes the id field
 const updateUltimateGoalSchema = z.object({
-  id: z.string(),
+  goalId: z.string().uuid(),
   title: z.string().min(1, 'Title is required'),
   description: z.string().optional(),
-  deadline: z.string().min(1, 'Deadline is required'),
-  deadlineISO: z.string().optional(),
+  deadlineISO: z.string().min(1, 'Deadline is required'),
   category: z.string().optional(),
   targetValue: z.number().default(100),
   unit: z.string().optional(),
@@ -308,10 +305,9 @@ const updateUltimateGoalSchema = z.object({
   color: z.string().optional(),
   coverImage: z.string().optional()
 }).transform((data) => {
-  const deadline = data.deadlineISO || data.deadline;
   return {
     ...data,
-    deadline,
+    deadline: data.deadlineISO,
     description: data.description || ''
   };
 });
@@ -323,7 +319,8 @@ export const updateUltimateGoalProcedure = protectedProcedure
   .input(updateUltimateGoalSchema)
   .mutation(async ({ input, ctx }: { input: UpdateUltimateGoalInput; ctx: ProtectedContext }) => {
     const user = ctx.user;
-    const { id, ...updateData } = input;
+    const { goalId, ...updateData } = input;
+    const id = goalId; // For compatibility with existing code
     const planner = new GoalPlannerService();
     
     try {
@@ -339,7 +336,7 @@ export const updateUltimateGoalProcedure = protectedProcedure
           category: updateData.category || null,
           updated_at: new Date().toISOString()
         })
-        .eq('id', id)
+        .eq('id', goalId)
         .eq('user_id', user.id)
         .select()
         .single();
@@ -364,7 +361,7 @@ export const updateUltimateGoalProcedure = protectedProcedure
         .from('tasks')
         .delete()
         .eq('user_id', user.id)
-        .eq('goal_id', id);
+        .eq('goal_id', goalId);
         
       if (deleteTasksError) {
         console.warn('Error deleting existing tasks:', deleteTasksError);

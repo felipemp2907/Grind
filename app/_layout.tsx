@@ -260,23 +260,12 @@ export default function RootLayout() {
 }
 
 function RootLayoutNav() {
-  const { isOnboarded } = useGoalStore();
-  const { isAuthenticated } = useAuthStore();
-  
-  // Determine initial route based on auth and onboarding status
-  let initialRoute = 'login';
-  
-  if (isAuthenticated) {
-    initialRoute = isOnboarded ? '(tabs)' : 'onboarding';
-  }
-
   return (
     <trpc.Provider client={trpcClient} queryClient={queryClient}>
       <QueryClientProvider client={queryClient}>
         <TabTransitionProvider>
           <StatusBar barStyle="light-content" backgroundColor={Colors.dark.background} />
           <Stack
-          initialRouteName={initialRoute}
           screenOptions={{
             headerStyle: {
               backgroundColor: Colors.dark.background,

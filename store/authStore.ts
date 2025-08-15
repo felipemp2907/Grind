@@ -56,16 +56,10 @@ export const useAuthStore = create<AuthState>()(
           if (data?.user) {
             // Ensure user profile exists on login
             try {
-              const profileResult = await createUserProfile(data.user.id, { 
-                name: data.user.user_metadata?.name 
+              await supabase.from('profiles').upsert({
+                id: data.user.id,
+                full_name: data.user.user_metadata?.name ?? data.user.email ?? null
               });
-              if (profileResult.error) {
-                console.log('Profile creation failed during login, trying RPC fallback');
-                await supabase.rpc('ensure_user_profile', {
-                  user_id: data.user.id,
-                  user_name: data.user.user_metadata?.name || 'User'
-                });
-              }
             } catch (profileError) {
               console.error('Error ensuring profile on login:', serializeError(profileError));
             }
@@ -116,17 +110,10 @@ export const useAuthStore = create<AuthState>()(
           if (result.user) {
             // Ensure user profile exists
             try {
-              const profileResult = await createUserProfile(result.user.id, { 
-                name: result.user.name,
-                avatar_url: result.user.avatar_url
+              await supabase.from('profiles').upsert({
+                id: result.user.id,
+                full_name: result.user.name ?? result.user.email ?? null
               });
-              if (profileResult.error) {
-                console.log('Profile creation failed during Google login, trying RPC fallback');
-                await supabase.rpc('ensure_user_profile', {
-                  user_id: result.user.id,
-                  user_name: result.user.name
-                });
-              }
             } catch (profileError) {
               console.error('Error ensuring profile on Google login:', serializeError(profileError));
               // Continue with login even if profile creation fails
