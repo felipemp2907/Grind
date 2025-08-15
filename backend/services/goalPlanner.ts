@@ -58,8 +58,7 @@ export class GoalPlannerService {
     try {
       console.log(`Generating full plan for goal: ${goalTitle}`);
       
-      // Try AI generation first
-      const aiPlan = await generateFullGoalPlan(
+      const aiRaw = await generateFullGoalPlan(
         goalTitle,
         goalDescription,
         deadline,
@@ -67,7 +66,24 @@ export class GoalPlannerService {
         timezoneOffset
       );
 
-      // Validate AI plan structure
+      const aiPlan: FullGoalPlan = {
+        streak_habits: (aiRaw.streak_habits || []).map(h => ({
+          title: String(h.title),
+          description: String(h.description),
+          load: Math.min(Math.max(Number((h as any).load ?? 1), 1), 3),
+          proof_mode: ((h as any).proof_mode === 'realtime' || (h as any).proof === 'realtime') ? 'realtime' : 'flex'
+        })),
+        daily_plan: (aiRaw.daily_plan || []).map(d => ({
+          date: String(d.date),
+          today_tasks: (d.today_tasks || []).map(t => ({
+            title: String(t.title),
+            desc: String((t as any).desc ?? (t as any).description ?? ''),
+            load: Math.min(Math.max(Number((t as any).load ?? 1), 1), 3),
+            proof_mode: ((t as any).proof_mode === 'realtime' || (t as any).proof === 'realtime') ? 'realtime' : 'flex'
+          }))
+        }))
+      };
+
       if (this.validatePlan(aiPlan)) {
         console.log('AI plan validation successful');
         return aiPlan;
@@ -288,13 +304,13 @@ export class GoalPlannerService {
     const daysToDeadline = calculateDaysToDeadline(deadline);
     const now = new Date().toISOString();
 
-    // Create streak tasks for every day
+    const streakLoadPerDay = plan.streak_habits.reduce((sum, h) => sum + (h.load || 0), 0);
+
     for (let dayOffset = 0; dayOffset < daysToDeadline; dayOffset++) {
       const currentDate = new Date(today);
       currentDate.setDate(today.getDate() + dayOffset);
       const dateString = currentDate.toISOString().split('T')[0];
 
-      // Add all streak habits for this day
       for (const habit of plan.streak_habits) {
         tasks.push({
           user_id: userId,
@@ -309,21 +325,39 @@ export class GoalPlannerService {
           priority: habit.load >= 3 ? 'high' : habit.load >= 2 ? 'medium' : 'low',
           completed: false,
           load_score: habit.load,
-          proof_mode: habit.proof_mode,
+          proof_mode: habit.proof_mode ?? 'flex',
           created_at: now,
           updated_at: now
         });
       }
     }
 
-    // Add today tasks from daily plan
+    const dedupeSet = new Set<string>();
+
     for (const dayPlan of plan.daily_plan) {
       const planDate = new Date(dayPlan.date);
       if (planDate >= today && planDate <= deadlineDate) {
-        for (const task of dayPlan.today_tasks) {
+        const remainingCapacity = Math.max(0, 5 - streakLoadPerDay);
+        let dayLoad = 0;
+        let tasksAdded = 0;
+        const dayTasks = dayPlan.today_tasks;
+        for (const task of dayTasks) {
           // Set due_at to 9:00 AM on the planned date (user's agenda time)
           const dueAt = new Date(dayPlan.date + 'T09:00:00.000Z');
-          
+          const key = `${goalId}:${dayPlan.date}:${task.title.toLowerCase()}`;
+          if (dedupeSet.has(key)) {
+            continue;
+          }
+          if (tasksAdded >= 3) {
+            continue;
+          }
+          if (dayLoad + (task.load || 1) > remainingCapacity) {
+            continue;
+          }
+          dedupeSet.add(key);
+          dayLoad += task.load || 1;
+          tasksAdded += 1;
+
           tasks.push({
             user_id: userId,
             goal_id: goalId,
@@ -337,7 +371,7 @@ export class GoalPlannerService {
             priority: task.load >= 3 ? 'high' : task.load >= 2 ? 'medium' : 'low',
             completed: false,
             load_score: task.load,
-            proof_mode: task.proof_mode,
+            proof_mode: task.proof_mode ?? 'flex',
             created_at: now,
             updated_at: now
           });
