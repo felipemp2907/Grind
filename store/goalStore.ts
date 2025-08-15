@@ -206,14 +206,28 @@ export const useGoalStore = create<GoalState>()(
             console.error('tRPC error, falling back to direct Supabase:', trpcError);
             
             // Fallback to direct Supabase insertion if tRPC fails
-            const { user: currentUser, error: userError } = await getCurrentUser();
-            if (userError || !currentUser) {
-              throw new Error('User not authenticated');
+            let { user: currentUser } = await getCurrentUser();
+            if (!currentUser) {
+              try {
+                const { refreshSession } = useAuthStore.getState();
+                console.log('No user found, attempting to refresh session...');
+                await refreshSession();
+                const recheck = await getCurrentUser();
+                currentUser = recheck.user as any;
+              } catch (refreshErr) {
+                console.log('Session refresh failed:', serializeError(refreshErr));
+              }
+            }
+            
+            if (!currentUser) {
+              console.error('User not authenticated after refresh attempt. Redirecting to login.');
+              return;
             }
             
             const dbResult = await setupDatabase();
             if (!dbResult.success) {
-              throw new Error('Database not set up');
+              console.error('Database not set up:', dbResult.error);
+              return;
             }
             
             // Create goal directly in Supabase with only guaranteed columns
@@ -240,7 +254,8 @@ export const useGoalStore = create<GoalState>()(
               .single();
               
             if (goalError || !goalDbData) {
-              throw new Error(`Failed to create goal: ${goalError?.message || 'Unknown error'}`);
+              console.error('Failed to create goal via fallback:', serializeError(goalError));
+              return;
             }
             
             // Create fallback result object
@@ -274,6 +289,10 @@ export const useGoalStore = create<GoalState>()(
             console.log('Goal created via fallback method');
           }
           
+          if (!result?.goal) {
+            console.log('No result from goal creation. Aborting local state update.');
+            return;
+          }
           // Add the goal to local state
           const newGoal: Goal = {
             id: result.goal.id,
@@ -328,7 +347,7 @@ export const useGoalStore = create<GoalState>()(
           
         } catch (error) {
           console.error('Error creating ultimate goal:', error);
-          throw error;
+          return;
         }
       },
       
