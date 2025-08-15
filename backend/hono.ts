@@ -46,14 +46,13 @@ app.onError((err, c) => {
   );
 });
 
-// Mount tRPC router at /api/trpc using fetchRequestHandler
-console.log('Mounting tRPC at /api/trpc/*');
+// Mount tRPC router at both /api/trpc/* and /trpc/* to avoid client/server prefix drift
+console.log('Mounting tRPC at /api/trpc/* and /trpc/*');
 console.log('appRouter type:', typeof appRouter);
 console.log('appRouter keys:', Object.keys(appRouter));
 
 app.all('/api/trpc/*', async (c) => {
-  console.log('tRPC request received:', c.req.method, c.req.url);
-  
+  console.log('tRPC request received (/api):', c.req.method, c.req.url);
   try {
     const response = await fetchRequestHandler({
       endpoint: '/api/trpc',
@@ -62,23 +61,39 @@ app.all('/api/trpc/*', async (c) => {
       createContext,
       onError({ error, path }) {
         console.error(`tRPC Error on ${path}:`, error);
-        console.error('Error details:', {
-          code: error.code,
-          message: error.message,
-          cause: error.cause
-        });
+        console.error('Error details:', { code: error.code, message: error.message, cause: error.cause });
       },
     });
-    
     console.log('tRPC response status:', response.status);
     return response;
   } catch (error) {
-    console.error('tRPC handler error:', error);
+    console.error('tRPC handler error (/api):', error);
     return c.json({ error: 'tRPC handler failed', details: error instanceof Error ? error.message : 'Unknown error' }, 500);
   }
 });
 
-console.log('tRPC mounted at /api/trpc with appRouter');
+app.all('/trpc/*', async (c) => {
+  console.log('tRPC request received (/trpc):', c.req.method, c.req.url);
+  try {
+    const response = await fetchRequestHandler({
+      endpoint: '/trpc',
+      router: appRouter,
+      req: c.req.raw,
+      createContext,
+      onError({ error, path }) {
+        console.error(`tRPC Error on ${path}:`, error);
+        console.error('Error details:', { code: error.code, message: error.message, cause: error.cause });
+      },
+    });
+    console.log('tRPC response status:', response.status);
+    return response;
+  } catch (error) {
+    console.error('tRPC handler error (/trpc):', error);
+    return c.json({ error: 'tRPC handler failed', details: error instanceof Error ? error.message : 'Unknown error' }, 500);
+  }
+});
+
+console.log('tRPC mounted at /api/trpc and /trpc with appRouter');
 try {
   const routerDef = (appRouter as any)._def;
   if (routerDef) {
@@ -112,7 +127,8 @@ app.get("/", (c) => {
     timestamp: new Date().toISOString(),
     environment: process.env.NODE_ENV || 'development',
     routes: {
-      trpc: '/api/trpc',
+      trpcApi: '/api/trpc',
+      trpc: '/trpc',
       health: '/api/health',
       debug: '/api/debug'
     }
@@ -164,7 +180,7 @@ app.get("/health", (c) => {
   ];
     
   const payload = {
-    trpcEndpoint: "/api/trpc",
+    trpcEndpoints: ["/api/trpc", "/trpc"],
     procedures: procedures,
     actualProceduresFound: actualProcedures.length,
     supabaseUrlOk: Boolean(process.env.SUPABASE_URL || 'https://ovvihfhkhqigzahlttyf.supabase.co'),
@@ -504,7 +520,10 @@ app.get("/debug", (c) => {
       "/api/trpc/goals.create",
       "/api/trpc/tasks.getStreakTasks",
       "/api/trpc/tasks.getTodayTasks",
-      "/api/trpc/tasks.getAllForDate"
+      "/api/trpc/tasks.getAllForDate",
+      "/trpc/example.hi",
+      "/trpc/goals.createUltimate",
+      "/trpc/goals.updateUltimate"
     ]
   });
 });
@@ -521,9 +540,11 @@ app.notFound((c) => {
         '/api/trpc/goals.createUltimate',
         '/api/trpc/goals.updateUltimate',
         '/api/trpc/goals.create',
-        '/api/trpc/tasks.generateToday',
         '/api/trpc/tasks.getStreakTasks',
-        '/api/trpc/tasks.generateStreak'
+        '/api/trpc/tasks.getTodayTasks',
+        '/trpc/example.hi',
+        '/trpc/goals.createUltimate',
+        '/trpc/goals.updateUltimate'
       ]
     },
     404
