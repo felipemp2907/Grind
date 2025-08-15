@@ -17,7 +17,7 @@ export default function Index() {
     if (!isAuthenticated) {
       router.replace('/welcome');
     } else if (isOnboarded) {
-      router.replace('/(tabs)');
+      router.replace('/(tabs)/home');
     } else {
       router.replace('/onboarding');
     }
