@@ -141,6 +141,16 @@ app.get("/health", (c) => {
   return c.json(payload);
 });
 
+// Simple health endpoint for quick checks
+app.get("/health-simple", (c) => {
+  return c.json({
+    status: "ok",
+    trpcEndpoint: "/trpc",
+    procedures: ["goals.createUltimate", "goals.updateUltimate"],
+    timestamp: new Date().toISOString()
+  });
+});
+
 // Add a simple test endpoint to verify the API is working
 app.get("/ping", (c) => {
   console.log('Ping endpoint hit');

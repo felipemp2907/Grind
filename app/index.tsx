@@ -13,7 +13,7 @@ export default function Index() {
     console.log('SUPABASE_URL', process.env.EXPO_PUBLIC_SUPABASE_URL);
     
     if (session) {
-      router.replace('/home');
+      router.replace('/(tabs)/home');
     } else {
       router.replace('/welcome');
     }
