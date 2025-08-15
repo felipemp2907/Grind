@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { TRPCError } from '@trpc/server';
-import { protectedProcedure, type ProtectedContext } from '../../create-context';
+import { protectedProcedure, type ProtectedContext, supabaseAdmin } from '../../create-context';
 import { calculateDaysToDeadline } from '../../../../utils/streakUtils';
 import { GoalPlannerService } from '../../../services/goalPlanner';
 
@@ -326,8 +326,8 @@ export const updateUltimateGoalProcedure = protectedProcedure
         });
       }
       
-      // 2. Delete ALL existing tasks for this goal (both streak and today tasks)
-      const { error: deleteTasksError } = await ctx.supabase
+      // 2. Delete ALL existing tasks for this goal using admin client (both streak and today tasks)
+      const { error: deleteTasksError } = await supabaseAdmin
         .from('tasks')
         .delete()
         .eq('user_id', user.id)

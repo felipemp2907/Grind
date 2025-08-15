@@ -402,75 +402,24 @@ export const useTaskStore = create<TaskState>()(
         return get().dailyAgendas.find(a => a.date === date);
       },
       
-      // Generate tasks for all goals with deadline guard
+      // DEPRECATED: Tasks are now generated automatically when goals are created
+      // This function is kept for backward compatibility but does nothing
       generateDailyTasks: async (date) => {
-        const { goals } = useGoalStore.getState();
+        console.log('generateDailyTasks called but deprecated - tasks are now pre-generated at goal creation');
+        console.log('Refreshing tasks from database instead...');
         
-        // Apply deadline guard - check if date is beyond all goal deadlines
-        if (isDateBeyondDeadlines(date, goals)) {
-          console.log('Date is beyond all goal deadlines, skipping task generation');
-          return;
-        }
-        
-        set({ isGenerating: true });
-        
-        try {
-          // Use the new backend function with deadline guard
-          const result = await trpcClient.tasks.generateToday.mutate({
-            targetDate: date
-          });
-          
-          console.log('Task generation result:', result);
-          
-          // Refresh tasks from database to get the new ones
-          await get().fetchTasks();
-          
-        } catch (error) {
-          console.error('Error generating daily tasks:', error);
-          
-          // Fallback to old method if backend fails
-          const promises = goals.map((goal: any) => 
-            get().generateTasksForGoal(date, goal.id)
-          );
-          
-          await Promise.all(promises);
-        } finally {
-          set({ isGenerating: false });
-        }
+        // Just refresh tasks from database since they should already be there
+        await get().fetchTasks();
       },
       
-      // Generate streak tasks for all active goals
+      // DEPRECATED: Streak tasks are now generated automatically when goals are created
+      // This function is kept for backward compatibility but does nothing
       generateStreakTasks: async (date, forceRegenerate = false) => {
-        const { goals } = useGoalStore.getState();
+        console.log('generateStreakTasks called but deprecated - streak tasks are now pre-generated at goal creation');
+        console.log('Refreshing tasks from database instead...');
         
-        // Apply deadline guard - check if date is beyond all goal deadlines
-        if (isDateBeyondDeadlines(date, goals)) {
-          console.log('Date is beyond all goal deadlines, skipping streak task generation');
-          return;
-        }
-        
-        set({ isGenerating: true });
-        
-        try {
-          // Use the new backend function for streak task generation
-          const result = await trpcClient.tasks.generateStreak.mutate({
-            targetDate: date,
-            forceRegenerate
-          });
-          
-          console.log('Streak task generation result:', result);
-          
-          // Refresh tasks from database to get the new ones
-          await get().fetchTasks();
-          
-        } catch (error) {
-          console.error('Error generating streak tasks:', error);
-          
-          // No fallback for streak tasks - they should come from the backend
-          // since they require the streak template logic
-        } finally {
-          set({ isGenerating: false });
-        }
+        // Just refresh tasks from database since they should already be there
+        await get().fetchTasks();
       },
       
       // Generate tasks for a specific goal

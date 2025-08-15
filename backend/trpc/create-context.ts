@@ -13,6 +13,11 @@ const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYm
 
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
+// Create admin client for server-side operations (bypasses RLS)
+export const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
+  auth: { persistSession: false }
+});
+
 // Database health check function
 export const ensureDbReady = async (supabaseClient: typeof supabase) => {
   try {

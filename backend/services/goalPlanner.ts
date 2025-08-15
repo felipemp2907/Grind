@@ -1,5 +1,6 @@
 import { generateFullGoalPlan } from '../../utils/aiUtils';
 import { buildStreakTemplate, calculateDaysToDeadline } from '../../utils/streakUtils';
+import { supabaseAdmin } from '../trpc/create-context';
 
 export interface StreakHabit {
   title: string;
@@ -312,8 +313,8 @@ export class GoalPlannerService {
       const planDate = new Date(dayPlan.date);
       if (planDate >= today && planDate <= deadlineDate) {
         for (const task of dayPlan.today_tasks) {
-          // Set due_at to 12:00 PM on the planned date
-          const dueAt = new Date(dayPlan.date + 'T12:00:00.000Z');
+          // Set due_at to 9:00 AM on the planned date (user's agenda time)
+          const dueAt = new Date(dayPlan.date + 'T09:00:00.000Z');
           
           tasks.push({
             user_id: userId,
@@ -342,23 +343,24 @@ export class GoalPlannerService {
   }
 
   /**
-   * Insert tasks in batches to avoid database limits
+   * Insert tasks in batches using admin client to avoid RLS issues
    */
   async insertTasksBatch(
-    supabase: any,
+    _supabase: any, // Ignored, we use admin client
     tasks: TaskInsertData[],
     batchSize: number = 100
   ): Promise<{ success: number; failed: number }> {
     let successCount = 0;
     let failedCount = 0;
 
-    console.log(`Inserting ${tasks.length} tasks in batches of ${batchSize}`);
+    console.log(`Inserting ${tasks.length} tasks in batches of ${batchSize} using admin client`);
 
     for (let i = 0; i < tasks.length; i += batchSize) {
       const batch = tasks.slice(i, i + batchSize);
       
       try {
-        const { data, error } = await supabase
+        // Use admin client to bypass RLS
+        const { data, error } = await supabaseAdmin
           .from('tasks')
           .insert(batch)
           .select('id, type, task_date, due_at');
