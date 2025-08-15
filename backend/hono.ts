@@ -86,23 +86,18 @@ app.get("/", (c) => {
 app.get("/health", (c) => {
   console.log('Health endpoint hit');
   
-  // Extract procedure names from the router
   const procedures: string[] = [];
   
   try {
-    // Get the router definition and extract nested procedures
     const routerDef = (appRouter as any)._def;
     
     if (routerDef && routerDef.procedures) {
-      // Handle nested router structure
       const extractProcedures = (obj: any, prefix = '') => {
         for (const [key, value] of Object.entries(obj)) {
           if (value && typeof value === 'object' && (value as any)._def) {
             if ((value as any)._def.procedures) {
-              // This is a nested router
               extractProcedures((value as any)._def.procedures, prefix + key + '.');
             } else if ((value as any)._def.query || (value as any)._def.mutation) {
-              // This is a procedure
               procedures.push(prefix + key);
             }
           }
@@ -112,54 +107,19 @@ app.get("/health", (c) => {
       extractProcedures(routerDef.procedures);
     }
     
-    // Log the procedures for debugging
-    console.log('Extracted procedures:', procedures);
-    
-    return c.json({
-      status: "healthy",
+    const payload = {
       trpcEndpoint: "/trpc",
-      procedures: procedures.length > 0 ? procedures : [
-        "example.hi",
-        "example.test",
-        "goals.create",
-        "goals.createUltimate", 
-        "goals.updateUltimate",
-        "tasks.getStreakTasks",
-        "tasks.getTodayTasks",
-        "tasks.getAllForDate",
-        "tasks.generateToday",
-        "tasks.generateStreak"
-      ],
-      env: {
-        hasSupabaseUrl: !!process.env.SUPABASE_URL,
-        nodeEnv: process.env.NODE_ENV || 'development'
-      },
-      timestamp: new Date().toISOString(),
-      note: procedures.length === 0 ? "Procedure extraction failed, showing expected procedures" : "Procedures extracted successfully"
-    });
+      procedures: procedures,
+      supabaseUrlOk: Boolean(process.env.SUPABASE_URL),
+    };
+
+    return c.json(payload);
   } catch (error) {
     console.error('Error extracting procedures:', error);
     return c.json({
-      status: "healthy",
       trpcEndpoint: "/trpc",
-      procedures: [
-        "example.hi",
-        "example.test",
-        "goals.create",
-        "goals.createUltimate", 
-        "goals.updateUltimate",
-        "tasks.getStreakTasks",
-        "tasks.getTodayTasks",
-        "tasks.getAllForDate",
-        "tasks.generateToday",
-        "tasks.generateStreak"
-      ],
-      env: {
-        hasSupabaseUrl: !!process.env.SUPABASE_URL,
-        nodeEnv: process.env.NODE_ENV || 'development'
-      },
-      timestamp: new Date().toISOString(),
-      note: "Procedure extraction failed, showing expected procedures"
+      procedures: [],
+      supabaseUrlOk: Boolean(process.env.SUPABASE_URL),
     });
   }
 });
@@ -222,14 +182,36 @@ app.get("/test-trpc", async (c) => {
   }
 });
 
+// Auth-check endpoint
+app.get("/auth-check", async (c) => {
+  try {
+    const authHeader = c.req.header('authorization') || c.req.header('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return c.json({ error: 'Missing Authorization header' }, 401);
+    }
+    const token = authHeader.slice(7);
+
+    const supabaseUrl = process.env.SUPABASE_URL || 'https://ovvihfhkhqigzahlttyf.supabase.co';
+    const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im92dmloZmhraHFpZ3phaGx0dHlmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDcxNDQ2MDIsImV4cCI6MjA2MjcyMDYwMn0.S1GkUtQR3d7YvmuJObDwZlYRMa4hBFc3NWBid9FHn2I';
+    const supabase = createClient(supabaseUrl, supabaseAnonKey, { auth: { persistSession: false } });
+    const { data: { user }, error } = await supabase.auth.getUser(token);
+    if (error || !user) {
+      return c.json({ error: 'Invalid or expired token' }, 401);
+    }
+    return c.json({ userId: user.id });
+  } catch (err) {
+    return c.json({ error: 'Auth check failed' }, 500);
+  }
+});
+
 // Database diagnostics endpoint
 app.get("/diag/db", async (c) => {
   try {
     console.log('Database diagnostics endpoint hit');
     
     // Create a temporary supabase client for diagnostics
-    const supabaseUrl = 'https://ovvihfhkhqigzahlttyf.supabase.co';
-    const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im92dmloZmhraHFpZ3phaGx0dHlmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDcxNDQ2MDIsImV4cCI6MjA2MjcyMDYwMn0.S1GkUtQR3d7YvmuJObDwZlYRMa4hBFc3NWBid9FHn2I';
+    const supabaseUrl = process.env.SUPABASE_URL || 'https://ovvihfhkhqigzahlttyf.supabase.co';
+    const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im92dmloZmhraHFpZ3phaGx0dHlmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDcxNDQ2MDIsImV4cCI6MjA2MjcyMDYwMn0.S1GkUtQR3d7YvmuJObDwZlYRMa4hBFc3NWBid9FHn2I';
     const supabase = createClient(supabaseUrl, supabaseAnonKey);
     
     // Check core tables function

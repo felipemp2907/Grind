@@ -126,6 +126,14 @@ export default function RootLayout() {
     }
   }, [refreshSession, fetchProfile, fetchTasks, fetchGoals, fetchEntries]);
   
+  // Log important envs on app boot
+  useEffect(() => {
+    const base = process.env.EXPO_PUBLIC_API_URL || (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000');
+    const supa = process.env.EXPO_PUBLIC_SUPABASE_URL || 'unset';
+    console.log(`TRPC_URL = ${base}/api/trpc`);
+    console.log(`SUPABASE_URL = ${supa}`);
+  }, []);
+
   // Check for existing session on app load
   useEffect(() => {
     let isMounted = true;
