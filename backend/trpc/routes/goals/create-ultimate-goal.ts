@@ -6,14 +6,23 @@ import { GoalPlannerService } from '../../../services/goalPlanner';
 
 const createUltimateGoalSchema = z.object({
   title: z.string().min(1, 'Title is required'),
-  description: z.string().min(1, 'Description is required'),
+  description: z.string().optional(),
   deadline: z.string().min(1, 'Deadline is required'),
+  deadlineISO: z.string().optional(), // Alternative field name for compatibility
   category: z.string().optional(),
   targetValue: z.number().default(100),
   unit: z.string().optional(),
   priority: z.enum(['high', 'medium', 'low']).default('medium'),
   color: z.string().optional(),
   coverImage: z.string().optional()
+}).transform((data) => {
+  // Handle both deadline and deadlineISO field names
+  const deadline = data.deadlineISO || data.deadline;
+  return {
+    ...data,
+    deadline,
+    description: data.description || '' // Ensure description is never undefined
+  };
 });
 
 type CreateUltimateGoalInput = z.infer<typeof createUltimateGoalSchema>;
@@ -285,10 +294,34 @@ export const createUltimateGoalProcedure = protectedProcedure
     }
   });
 
+// Update schema that includes the id field
+const updateUltimateGoalSchema = z.object({
+  id: z.string(),
+  title: z.string().min(1, 'Title is required'),
+  description: z.string().optional(),
+  deadline: z.string().min(1, 'Deadline is required'),
+  deadlineISO: z.string().optional(),
+  category: z.string().optional(),
+  targetValue: z.number().default(100),
+  unit: z.string().optional(),
+  priority: z.enum(['high', 'medium', 'low']).default('medium'),
+  color: z.string().optional(),
+  coverImage: z.string().optional()
+}).transform((data) => {
+  const deadline = data.deadlineISO || data.deadline;
+  return {
+    ...data,
+    deadline,
+    description: data.description || ''
+  };
+});
+
+type UpdateUltimateGoalInput = z.infer<typeof updateUltimateGoalSchema>;
+
 // Update goal procedure that replaces old tasks with new ones
 export const updateUltimateGoalProcedure = protectedProcedure
-  .input(createUltimateGoalSchema.extend({ id: z.string() }))
-  .mutation(async ({ input, ctx }: { input: CreateUltimateGoalInput & { id: string }; ctx: ProtectedContext }) => {
+  .input(updateUltimateGoalSchema)
+  .mutation(async ({ input, ctx }: { input: UpdateUltimateGoalInput; ctx: ProtectedContext }) => {
     const user = ctx.user;
     const { id, ...updateData } = input;
     const planner = new GoalPlannerService();

@@ -26,7 +26,7 @@ export default function IndexGate() {
       }
       if (isOnboarded) {
         console.log('[IndexGate] Authenticated and onboarded, going to home tab');
-        router.replace('/(tabs)/home');
+        router.replace('/(tabs)');
       } else {
         console.log('[IndexGate] Authenticated but not onboarded, going to onboarding');
         router.replace('/onboarding');

@@ -86,8 +86,36 @@ app.get("/", (c) => {
 app.get("/health", (c) => {
   console.log('Health endpoint hit');
   
-  // Manually list the procedures we know exist
-  const procedures = [
+  // Try to extract actual procedures from the router
+  let actualProcedures: string[] = [];
+  try {
+    const routerDef = (appRouter as any)._def;
+    if (routerDef && routerDef.procedures) {
+      actualProcedures = Object.keys(routerDef.procedures);
+    } else if (routerDef && routerDef.record) {
+      // Handle nested router structure
+      const extractProcedures = (obj: any, prefix = ''): string[] => {
+        const procs: string[] = [];
+        for (const [key, value] of Object.entries(obj)) {
+          const fullKey = prefix ? `${prefix}.${key}` : key;
+          if (value && typeof value === 'object' && (value as any)._def) {
+            if ((value as any)._def.procedure) {
+              procs.push(fullKey);
+            } else if ((value as any)._def.record) {
+              procs.push(...extractProcedures((value as any)._def.record, fullKey));
+            }
+          }
+        }
+        return procs;
+      };
+      actualProcedures = extractProcedures(routerDef.record);
+    }
+  } catch (error) {
+    console.error('Error extracting procedures:', error);
+  }
+  
+  // Fallback to known procedures if extraction fails
+  const procedures = actualProcedures.length > 0 ? actualProcedures : [
     "example.hi",
     "example.test", 
     "goals.create",
@@ -101,7 +129,10 @@ app.get("/health", (c) => {
   const payload = {
     trpcEndpoint: "/trpc",
     procedures: procedures,
+    actualProceduresFound: actualProcedures.length,
     supabaseUrlOk: Boolean(process.env.SUPABASE_URL || 'https://ovvihfhkhqigzahlttyf.supabase.co'),
+    routerMounted: true,
+    timestamp: new Date().toISOString()
   };
 
   console.log('Health check response:', payload);

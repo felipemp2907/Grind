@@ -26,6 +26,7 @@ import Colors from '@/constants/colors';
 import { useGoalStore } from '@/store/goalStore';
 import { useTaskStore } from '@/store/taskStore';
 import { useUserStore } from '@/store/userStore';
+import { trpc } from '@/lib/trpc';
 
 
 import { getTodayDate, formatDateForDisplay } from '@/utils/dateUtils';
@@ -60,6 +61,22 @@ export default function DashboardScreen() {
 
   const [goalClarifyVisible, setGoalClarifyVisible] = useState(false);
   const [selectedGoalForClarify, setSelectedGoalForClarify] = useState<string | null>(null);
+  
+  // Test tRPC connection
+  const hiQuery = trpc.example.hi.useQuery(undefined, {
+    retry: false,
+    refetchOnWindowFocus: false
+  });
+  
+  useEffect(() => {
+    console.log('tRPC hi query status:', hiQuery.status);
+    if (hiQuery.error) {
+      console.error('tRPC hi query error:', hiQuery.error);
+    }
+    if (hiQuery.data) {
+      console.log('tRPC hi query data:', hiQuery.data);
+    }
+  }, [hiQuery.status, hiQuery.error, hiQuery.data]);
   
   const todayDate = getTodayDate();
   const todayTasks = getTasks(todayDate);

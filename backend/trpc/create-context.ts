@@ -176,7 +176,7 @@ export const protectedProcedure = t.procedure.use(async ({ ctx, next }) => {
     ctx: {
       ...ctx,
       user: { id: user.id },
-      supabaseUser: createClient(supabaseUrl, supabaseAnonKey, {
+      supabase: createClient(supabaseUrl, supabaseAnonKey, {
         auth: { persistSession: false },
         global: { headers: { Authorization: `Bearer ${token}` } as Record<string, string> }
       })
@@ -186,6 +186,5 @@ export const protectedProcedure = t.procedure.use(async ({ ctx, next }) => {
 
 export type ProtectedContext = {
   user: { id: string };
-  supabase: typeof supabase;
-  supabaseUser: SupabaseClient | null;
+  supabase: SupabaseClient;
 } & Context;
