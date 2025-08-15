@@ -276,6 +276,7 @@ function RootLayoutNav() {
         <TabTransitionProvider>
           <StatusBar barStyle="light-content" backgroundColor={Colors.dark.background} />
           <Stack
+          initialRouteName={initialRoute}
           screenOptions={{
             headerStyle: {
               backgroundColor: Colors.dark.background,
