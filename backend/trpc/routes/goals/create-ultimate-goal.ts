@@ -1,8 +1,7 @@
 import { z } from 'zod';
 import { TRPCError } from '@trpc/server';
-import { protectedProcedure, type ProtectedContext, supabaseAdmin } from '../../create-context';
-import { calculateDaysToDeadline } from '../../../../utils/streakUtils';
-import { GoalPlannerService } from '../../../services/goalPlanner';
+import { protectedProcedure, type ProtectedContext } from '../../create-context';
+import { planAndSeedFullGoal } from '../../../services/planner/planAndSeedFullGoal';
 
 const createUltimateGoalSchema = z.object({
   title: z.string().min(1, 'Title is required'),
@@ -112,18 +111,6 @@ export const createUltimateGoalProcedure = protectedProcedure
   .input(createUltimateGoalSchema)
   .mutation(async ({ input, ctx }: { input: CreateUltimateGoalInput; ctx: ProtectedContext }) => {
     const user = ctx.user;
-    const planner = new GoalPlannerService();
-    
-    // Calculate days before starting
-    const daysToDeadline = calculateDaysToDeadline(input.deadline);
-    
-    // Log before starting
-    console.log('=== GOAL CREATION START ===');
-    console.log(`User: ${user.id}`);
-    console.log(`Goal: ${input.title}`);
-    console.log(`Deadline: ${input.deadline}`);
-    console.log(`Days: ${daysToDeadline}`);
-    console.log('=== GOAL CREATION START ===');
     
     try {
       console.log('Creating ultimate goal with full automatic plan generation...');
@@ -161,10 +148,7 @@ export const createUltimateGoalProcedure = protectedProcedure
       
       console.log(`Goal created with ID: ${goalData.id}`);
       
-      // 2. Generate full plan using the planning service
-      console.log(`Generating full plan for ${daysToDeadline} days`);
-      
-      // Get user profile for experience level (fallback to 'beginner')
+      // 2. Get user profile for experience level (fallback to 'beginner')
       const { data: userProfile } = await ctx.supabase
         .from('profiles')
         .select('experience_level')
@@ -173,73 +157,22 @@ export const createUltimateGoalProcedure = protectedProcedure
         
       const experienceLevel = userProfile?.experience_level || 'beginner';
       
-      const fullPlan = await planner.generateFullPlan(
+      // 3. Generate and seed full plan using the batch planner
+      const planResult = await planAndSeedFullGoal(
+        user.id,
+        goalData.id,
         input.title,
         input.description,
         input.deadline,
         experienceLevel,
-        0 // timezone offset, can be enhanced later
+        0 // timezone offset
       );
       
-      console.log(`Plan generated with ${fullPlan.streak_habits.length} streak habits and ${fullPlan.daily_plan.length} daily plans`);
-      
-      // 3. Convert plan to database tasks
-      const allTasks = planner.convertPlanToTasks(
-        fullPlan,
-        user.id,
-        goalData.id,
-        input.deadline
-      );
-      
-      console.log(`Generated ${allTasks.length} total tasks for insertion`);
-      console.log(`Streak tasks: ${allTasks.filter(t => t.type === 'streak').length}`);
-      console.log(`Today tasks: ${allTasks.filter(t => t.type === 'today').length}`);
-      
-      // 4. Insert all tasks using a single transaction
-      let insertResult;
-      try {
-        insertResult = await planner.insertTasksBatch(supabaseAdmin, allTasks);
-        console.log(`Task insertion completed: ${insertResult.success} success, ${insertResult.failed} failed`);
-        
-        if (insertResult.failed > 0) {
-          console.warn(`Warning: ${insertResult.failed} tasks failed to insert`);
-        }
-      } catch (insertError) {
-        console.error('Task insertion failed completely:', insertError);
-        // Don't fail the entire goal creation if task insertion fails
-        insertResult = { success: 0, failed: allTasks.length };
+      if (!planResult.success) {
+        console.warn('Plan seeding failed, but goal was created:', planResult.error);
       }
       
-      // 5. Verify the insertion by counting tasks in database
-      const { count: streakCount } = await ctx.supabase
-        .from('tasks')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', user.id)
-        .eq('goal_id', goalData.id)
-        .eq('type', 'streak');
-        
-      const { count: todayCount } = await ctx.supabase
-        .from('tasks')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', user.id)
-        .eq('goal_id', goalData.id)
-        .eq('type', 'today');
-        
-      console.log(`Final verification: ${streakCount} streak tasks and ${todayCount} today tasks in database`);
-      
-      // Log after completion
-      console.log(`BATCH PLAN SEEDED { goalId: ${goalData.id}, days: ${daysToDeadline}, streak_count: ${streakCount || 0}, total_today: ${todayCount || 0}, trimmed_days: 0 }`);
-      console.log('=== GOAL CREATION COMPLETE ===');
-      console.log(`Goal ID: ${goalData.id}`);
-      console.log(`Days: ${daysToDeadline}`);
-      console.log(`Streak count: ${streakCount || 0}`);
-      console.log(`Today count: ${todayCount || 0}`);
-      console.log(`Expected streak tasks: ${daysToDeadline * fullPlan.streak_habits.length}`);
-      console.log(`Tasks inserted: ${insertResult.success}`);
-      console.log(`Tasks failed: ${insertResult.failed}`);
-      console.log('=== GOAL CREATION COMPLETE ===');
-      
-      // 6. Return the created goal with metadata
+      // 4. Return the created goal with metadata
       return {
         goal: {
           id: goalData.id,
@@ -262,15 +195,9 @@ export const createUltimateGoalProcedure = protectedProcedure
           priority: input.priority,
           milestones: []
         },
-        streakTasksCreated: streakCount || 0,
-        todayTasksCreated: todayCount || 0,
-        totalDays: daysToDeadline,
-        daysToDeadline,
-        fullPlanGenerated: true,
-        tasksInserted: insertResult.success,
-        tasksFailed: insertResult.failed,
-        expectedStreakTasks: daysToDeadline * fullPlan.streak_habits.length,
-        streakHabitsCount: fullPlan.streak_habits.length
+        seeded: planResult.success,
+        summary: planResult.summary,
+        error: planResult.error
       };
       
     } catch (error) {
@@ -320,13 +247,11 @@ export const updateUltimateGoalProcedure = protectedProcedure
   .mutation(async ({ input, ctx }: { input: UpdateUltimateGoalInput; ctx: ProtectedContext }) => {
     const user = ctx.user;
     const { goalId, ...updateData } = input;
-    const id = goalId; // For compatibility with existing code
-    const planner = new GoalPlannerService();
     
     try {
       console.log('Updating ultimate goal with full plan regeneration...');
       
-      // 1. Update the goal
+      // 1. Verify ownership and update the goal
       const { data: goalData, error: goalError } = await ctx.supabase
         .from('goals')
         .update({
@@ -356,8 +281,8 @@ export const updateUltimateGoalProcedure = protectedProcedure
         });
       }
       
-      // 2. Delete ALL existing tasks for this goal using admin client (both streak and today tasks)
-      const { error: deleteTasksError } = await supabaseAdmin
+      // 2. Delete ALL existing tasks for this goal
+      const { error: deleteTasksError } = await ctx.supabase
         .from('tasks')
         .delete()
         .eq('user_id', user.id)
@@ -369,11 +294,7 @@ export const updateUltimateGoalProcedure = protectedProcedure
         console.log('Successfully deleted all existing tasks for goal');
       }
       
-      // 3. Generate new full plan using the planning service
-      const daysToDeadline = calculateDaysToDeadline(updateData.deadline);
-      console.log(`Regenerating full plan for ${daysToDeadline} days`);
-      
-      // Get user profile for experience level (fallback to 'beginner')
+      // 3. Get user profile for experience level
       const { data: userProfile } = await ctx.supabase
         .from('profiles')
         .select('experience_level')
@@ -382,7 +303,10 @@ export const updateUltimateGoalProcedure = protectedProcedure
         
       const experienceLevel = userProfile?.experience_level || 'beginner';
       
-      const fullPlan = await planner.generateFullPlan(
+      // 4. Re-seed with new plan
+      const planResult = await planAndSeedFullGoal(
+        user.id,
+        goalData.id,
         updateData.title,
         updateData.description,
         updateData.deadline,
@@ -390,37 +314,9 @@ export const updateUltimateGoalProcedure = protectedProcedure
         0 // timezone offset
       );
       
-      console.log(`Plan regenerated with ${fullPlan.streak_habits.length} streak habits and ${fullPlan.daily_plan.length} daily plans`);
-      
-      // 4. Convert plan to database tasks
-      const allTasks = planner.convertPlanToTasks(
-        fullPlan,
-        user.id,
-        goalData.id,
-        updateData.deadline
-      );
-      
-      // 5. Insert all new tasks in batches
-      const insertResult = await planner.insertTasksBatch(supabaseAdmin, allTasks);
-      
-      console.log(`Task insertion completed: ${insertResult.success} success, ${insertResult.failed} failed`);
-      
-      // 6. Verify the insertion by counting tasks in database
-      const { count: streakCount } = await ctx.supabase
-        .from('tasks')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', user.id)
-        .eq('goal_id', goalData.id)
-        .eq('type', 'streak');
-        
-      const { count: todayCount } = await ctx.supabase
-        .from('tasks')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', user.id)
-        .eq('goal_id', goalData.id)
-        .eq('type', 'today');
-        
-      console.log(`Final verification: ${streakCount} streak tasks and ${todayCount} today tasks in database`);
+      if (!planResult.success) {
+        console.warn('Plan re-seeding failed:', planResult.error);
+      }
       
       return {
         goal: {
@@ -444,13 +340,9 @@ export const updateUltimateGoalProcedure = protectedProcedure
           priority: updateData.priority,
           milestones: []
         },
-        streakTasksCreated: streakCount || 0,
-        todayTasksCreated: todayCount || 0,
-        totalDays: daysToDeadline,
-        daysToDeadline,
-        fullPlanRegenerated: true,
-        tasksInserted: insertResult.success,
-        tasksFailed: insertResult.failed
+        seeded: planResult.success,
+        summary: planResult.summary,
+        error: planResult.error
       };
       
     } catch (error) {

@@ -49,7 +49,7 @@ const TabLayout = memo(function TabLayout() {
       }}
     >
       <Tabs.Screen
-        name="home"
+        name="index"
         options={{
           title: "Home",
           tabBarIcon: ({ color, size }) => <Home size={size} color={color} />,
@@ -193,7 +193,7 @@ const TabLayout = memo(function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="coach"
+        name="ai"
         options={{
           title: "AI",
           tabBarIcon: ({ color, size }) => <Brain size={size} color={color} />,

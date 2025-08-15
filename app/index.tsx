@@ -1,27 +1,23 @@
 import { useEffect } from 'react';
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '@/store/authStore';
-import { useGoalStore } from '@/store/goalStore';
 
 export default function Index() {
   const router = useRouter();
-  const { isAuthenticated, isLoading } = useAuthStore();
-  const { isOnboarded } = useGoalStore();
+  const { session, isLoading } = useAuthStore();
 
   useEffect(() => {
     if (isLoading) return;
     
-    console.log('TRPC_URL', process.env.EXPO_PUBLIC_API_URL + '/api/trpc');
+    console.log('TRPC_URL', (process.env.EXPO_PUBLIC_API_URL || (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000')) + '/api/trpc');
     console.log('SUPABASE_URL', process.env.EXPO_PUBLIC_SUPABASE_URL);
     
-    if (!isAuthenticated) {
-      router.replace('/welcome');
-    } else if (isOnboarded) {
-      router.replace('/(tabs)/home');
+    if (session) {
+      router.replace('/(tabs)');
     } else {
-      router.replace('/onboarding');
+      router.replace('/welcome');
     }
-  }, [isAuthenticated, isOnboarded, isLoading, router]);
+  }, [session, isLoading, router]);
 
   return null;
 }
