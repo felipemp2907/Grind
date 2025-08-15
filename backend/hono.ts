@@ -1,7 +1,7 @@
 import { Hono } from "hono";
-import { trpcServer } from "@hono/trpc-server";
 import { cors } from "hono/cors";
 import { logger } from "hono/logger";
+import { fetchRequestHandler } from '@trpc/server/adapters/fetch';
 import { appRouter } from "./trpc/app-router";
 import { createContext } from "./trpc/create-context";
 import { createClient } from '@supabase/supabase-js';
@@ -46,11 +46,13 @@ app.onError((err, c) => {
   );
 });
 
-// Mount tRPC router at /trpc
-app.use(
-  "/trpc/*",
-  trpcServer({
+// Mount tRPC router at /trpc using fetchRequestHandler
+
+app.all('/trpc/*', (c) => {
+  return fetchRequestHandler({
+    endpoint: '/trpc',
     router: appRouter,
+    req: c.req.raw,
     createContext,
     onError({ error, path }) {
       console.error(`tRPC Error on ${path}:`, error);
@@ -60,8 +62,8 @@ app.use(
         cause: error.cause
       });
     },
-  })
-);
+  });
+});
 
 console.log('tRPC mounted at /trpc with appRouter');
 console.log('Available procedures:', Object.keys((appRouter as any)._def?.procedures || {}));

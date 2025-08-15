@@ -77,7 +77,7 @@ export const useAuthStore = create<AuthState>()(
               isLoading: false,
             });
             
-            router.replace('/(tabs)/home' as any);
+            router.replace('/home');
           }
         } catch (error: any) {
           const errorMessage = serializeError(error);
@@ -135,7 +135,7 @@ export const useAuthStore = create<AuthState>()(
               isLoading: false,
             });
             
-            router.replace('/(tabs)/home' as any);
+            router.replace('/home');
           } else {
             set({ isLoading: false });
           }
