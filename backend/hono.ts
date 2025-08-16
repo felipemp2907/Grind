@@ -143,10 +143,7 @@ app.get("/health", (c) => {
   let actualProcedures: string[] = [];
   try {
     const routerDef = (appRouter as any)._def;
-    if (routerDef && routerDef.procedures) {
-      actualProcedures = Object.keys(routerDef.procedures);
-    } else if (routerDef && routerDef.record) {
-      // Handle nested router structure
+    if (routerDef && routerDef.record) {
       const extractProcedures = (obj: any, prefix = ''): string[] => {
         const procs: string[] = [];
         for (const [key, value] of Object.entries(obj)) {
@@ -167,25 +164,10 @@ app.get("/health", (c) => {
     console.error('Error extracting procedures:', error);
   }
   
-  // Fallback to known procedures if extraction fails
-  const procedures = actualProcedures.length > 0 ? actualProcedures : [
-    "example.hi",
-    "example.test", 
-    "goals.create",
-    "goals.createUltimate",
-    "goals.updateUltimate",
-    "tasks.getStreakTasks",
-    "tasks.getTodayTasks",
-    "tasks.getAllForDate"
-  ];
-    
   const payload = {
-    trpcEndpoints: ["/api/trpc", "/trpc"],
-    procedures: procedures,
-    actualProceduresFound: actualProcedures.length,
-    supabaseUrlOk: Boolean(process.env.SUPABASE_URL || 'https://ovvihfhkhqigzahlttyf.supabase.co'),
-    routerMounted: true,
-    timestamp: new Date().toISOString()
+    trpcEndpoint: ["/trpc", "/api/trpc"],
+    procedures: actualProcedures,
+    supabaseUrlPresent: Boolean(process.env.SUPABASE_URL || 'https://ovvihfhkhqigzahlttyf.supabase.co'),
   };
 
   console.log('Health check response:', payload);
@@ -217,15 +199,11 @@ app.get("/test-trpc-direct", async (c) => {
     // Test if tRPC router is accessible
     return c.json({
       status: "tRPC router accessible",
-      procedures: {
-        "example.hi": "available",
-        "goals.create": "available", 
-        "goals.createUltimate": "available",
-        "goals.updateUltimate": "available",
-        "tasks.generateToday": "available",
-        "tasks.getStreakTasks": "available",
-        "tasks.generateStreak": "available"
-      },
+      procedures: [
+        "health.ping",
+        "goals.createUltimate",
+        "goals.updateUltimate"
+      ],
       timestamp: new Date().toISOString()
     });
   } catch (error) {
