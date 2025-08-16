@@ -10,12 +10,12 @@ const getBaseUrl = () => {
   const envUrl = process.env.EXPO_PUBLIC_API_URL as string | undefined;
   if (envUrl && envUrl.trim().length > 0) {
     console.log('TRPC_URL base (env):', envUrl);
-    return envUrl;
+    return envUrl.replace(/\/$/, '');
   }
   if (typeof window !== 'undefined') {
     const origin = window.location.origin;
     console.log('TRPC_URL base (window origin):', origin);
-    return origin;
+    return origin.replace(/\/$/, '');
   }
   if (__DEV__) {
     console.error('EXPO_PUBLIC_API_URL is not set. Set it to your API base (e.g., http://<LAN-IP>:3000).');
@@ -26,7 +26,8 @@ const getBaseUrl = () => {
 export const trpcClient = createTRPCClient<AppRouter>({
   links: [
     httpBatchLink({
-      url: `${getBaseUrl()}/trpc`,
+      // IMPORTANT: On Vercel, the API is mounted under /api
+      url: `${getBaseUrl()}/api/trpc`,
       transformer: superjson,
       headers() {
         const headers: Record<string, string> = {};
