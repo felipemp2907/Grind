@@ -23,11 +23,13 @@ const getBaseUrl = () => {
   return 'http://127.0.0.1:3000';
 };
 
+console.log('TRPC_URL', `${getBaseUrl()}/trpc`);
+
 export const trpcClient = createTRPCClient<AppRouter>({
   links: [
     httpBatchLink({
-      // IMPORTANT: On Vercel, the API is mounted under /api
-      url: `${getBaseUrl()}/api/trpc`,
+      // IMPORTANT: Use /trpc mounted at API root
+      url: `${getBaseUrl()}/trpc`,
       transformer: superjson,
       headers() {
         const headers: Record<string, string> = {};
