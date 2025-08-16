@@ -3,22 +3,18 @@ import { createTRPCClient, httpBatchLink } from "@trpc/client";
 import type { AppRouter } from "@/backend/trpc/app-router";
 import superjson from "superjson";
 import { useAuthStore } from '@/store/authStore';
-import { Platform } from 'react-native';
 
 export const trpc = createTRPCReact<AppRouter>();
 
 const getBaseUrl = () => {
   const envUrl = process.env.EXPO_PUBLIC_API_URL as string | undefined;
   if (envUrl && envUrl.trim().length > 0) {
-    console.log('tRPC base URL (env):', envUrl);
+    console.log('TRPC_URL base (env):', envUrl);
     return envUrl;
   }
   if (typeof window !== 'undefined') {
     const origin = window.location.origin;
-    console.log('tRPC base URL (window origin):', origin);
-    if (/:(8081|1900\d)/.test(origin)) {
-      console.warn('Metro origin detected. Set EXPO_PUBLIC_API_URL to your API base (e.g., http://<LAN-IP>:3000).');
-    }
+    console.log('TRPC_URL base (window origin):', origin);
     return origin;
   }
   if (__DEV__) {
@@ -30,7 +26,7 @@ const getBaseUrl = () => {
 export const trpcClient = createTRPCClient<AppRouter>({
   links: [
     httpBatchLink({
-      url: `${getBaseUrl()}/api/trpc`,
+      url: `${getBaseUrl()}/trpc`,
       transformer: superjson,
       headers() {
         const headers: Record<string, string> = {};
