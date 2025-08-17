@@ -53,7 +53,7 @@ export const getApiBaseUrl = (): string => {
   
   // 1. Environment variable (highest priority)
   const envUrl = process.env.EXPO_PUBLIC_API_URL as string | undefined;
-  if (envUrl) {
+  if (envUrl && envUrl !== 'https://rork.app') {
     console.log('Using env URL:', envUrl);
     return envUrl.replace(/\/$/, '');
   }
@@ -65,20 +65,19 @@ export const getApiBaseUrl = (): string => {
     return webUrl;
   }
   
-  // 3. Check if we're in Expo Go (likely production/deployed API)
-  const isExpoGo = Constants.appOwnership === 'expo';
-  if (isExpoGo) {
-    // When running in Expo Go, use the primary deployed URL
-    const deployedUrl = 'https://rork.app';
-    console.log('Using deployed URL for Expo Go:', deployedUrl);
-    return deployedUrl;
-  }
-  
-  // 4. Try to derive from Expo dev server
+  // 3. Try to derive from Expo dev server first (for development)
   const derived = deriveFromExpoOrigin();
   if (derived) {
-    console.log('Using derived URL:', derived);
+    console.log('Using derived URL from Expo dev server:', derived);
     return derived;
+  }
+  
+  // 4. Check if we're in Expo Go and no local dev server found
+  const isExpoGo = Constants.appOwnership === 'expo';
+  if (isExpoGo && envUrl === 'https://rork.app') {
+    // Only use deployed URL if we couldn't find a local dev server
+    console.log('Using deployed URL for Expo Go (no local dev server found):', envUrl);
+    return envUrl;
   }
   
   // 5. Platform-specific defaults for development

@@ -227,10 +227,10 @@ export default function DashboardScreen() {
         {streakTasks.length > 0 && (
           <>
             <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>
+              <View style={styles.sectionTitleContainer}>
                 <Flame size={16} color={Colors.dark.warning} style={styles.sectionIcon} />
-                Streak Tasks
-              </Text>
+                <Text style={styles.sectionTitle}>Streak Tasks</Text>
+              </View>
               <Text style={styles.streakCount}>
                 {streakTasks.filter(t => t.completed).length}/{streakTasks.length} Completed
               </Text>
@@ -436,6 +436,8 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
     color: Colors.dark.text,
+  },
+  sectionTitleContainer: {
     flexDirection: 'row',
     alignItems: 'center',
   },
