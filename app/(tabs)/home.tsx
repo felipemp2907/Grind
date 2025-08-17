@@ -62,21 +62,22 @@ export default function DashboardScreen() {
   const [goalClarifyVisible, setGoalClarifyVisible] = useState(false);
   const [selectedGoalForClarify, setSelectedGoalForClarify] = useState<string | null>(null);
   
-  // Test tRPC connection
-  const hiQuery = trpc.example.hi.useQuery(undefined, {
-    retry: false,
-    refetchOnWindowFocus: false
+  // Test tRPC connection with health ping
+  const healthQuery = trpc.health.ping.useQuery(undefined, {
+    retry: 1,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false
   });
   
   useEffect(() => {
-    console.log('tRPC hi query status:', hiQuery.status);
-    if (hiQuery.error) {
-      console.error('tRPC hi query error:', hiQuery.error);
+    console.log('tRPC health query status:', healthQuery.status);
+    if (healthQuery.error) {
+      console.error('tRPC health query error:', healthQuery.error);
     }
-    if (hiQuery.data) {
-      console.log('tRPC hi query data:', hiQuery.data);
+    if (healthQuery.data) {
+      console.log('tRPC health query data:', healthQuery.data);
     }
-  }, [hiQuery.status, hiQuery.error, hiQuery.data]);
+  }, [healthQuery.status, healthQuery.error, healthQuery.data]);
   
   const todayDate = getTodayDate();
   const todayTasks = getTasks(todayDate);
@@ -333,9 +334,10 @@ export default function DashboardScreen() {
             style={styles.actionButton}
           />
           <Button
-            title="Validate Task"
-            onPress={() => router.push('/tasks')}
-            icon={<Camera size={16} />}
+            title="API Debug"
+            onPress={() => router.push('/debug-api')}
+            variant="outline"
+            icon={<Settings size={16} />}
             style={styles.actionButton}
           />
         </View>
