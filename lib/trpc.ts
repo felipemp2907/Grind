@@ -9,45 +9,53 @@ export const trpc = createTRPCReact<AppRouter>();
 
 // API URL detection and health checking
 async function tryFetchHealth(base: string): Promise<{ procedures: string[] } | null> {
-  try {
-    const url = `${base.replace(/\/$/, '')}/health`;
-    console.log('Trying health check:', url);
-    const res = await fetch(url, { 
-      method: 'GET',
-      headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json'
+  const healthEndpoints = [
+    `${base.replace(/\/$/, '')}/api/health`,
+    `${base.replace(/\/$/, '')}/health`
+  ];
+  
+  for (const url of healthEndpoints) {
+    try {
+      console.log('Trying health check:', url);
+      const res = await fetch(url, { 
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (!res.ok) {
+        console.log(`Health check failed: ${res.status} ${res.statusText}`);
+        continue;
       }
-    });
-    
-    if (!res.ok) {
-      console.log(`Health check failed: ${res.status} ${res.statusText}`);
-      return null;
+      
+      const ct = res.headers.get('content-type') ?? '';
+      if (!ct.includes('application/json')) {
+        console.log('Health check returned non-JSON:', ct);
+        continue;
+      }
+      
+      const json = (await res.json()) as { procedures?: unknown };
+      const list = Array.isArray(json.procedures) ? (json.procedures as string[]) : [];
+      console.log('Health check procedures:', list);
+      
+      // Check for required procedures
+      const hasRequired = list.includes('goals.createUltimate') || list.includes('health.ping');
+      if (hasRequired) {
+        console.log('✅ Health check passed for:', base);
+        return { procedures: list };
+      }
+      
+      console.log('❌ Health check failed - missing required procedures');
+      // Continue to next endpoint
+    } catch (error) {
+      console.log('Health check error for', url, ':', error);
+      // Continue to next endpoint
     }
-    
-    const ct = res.headers.get('content-type') ?? '';
-    if (!ct.includes('application/json')) {
-      console.log('Health check returned non-JSON:', ct);
-      return null;
-    }
-    
-    const json = (await res.json()) as { procedures?: unknown };
-    const list = Array.isArray(json.procedures) ? (json.procedures as string[]) : [];
-    console.log('Health check procedures:', list);
-    
-    // Check for required procedures
-    const hasRequired = list.includes('goals.createUltimate') || list.includes('health.ping');
-    if (hasRequired) {
-      console.log('✅ Health check passed for:', base);
-      return { procedures: list };
-    }
-    
-    console.log('❌ Health check failed - missing required procedures');
-    return null;
-  } catch (error) {
-    console.log('Health check error:', error);
-    return null;
   }
+  
+  return null;
 }
 
 function deriveFromExpoOrigin(): string | null {
@@ -80,23 +88,23 @@ export const getApiBaseUrl = async (): Promise<string> => {
   
   // 2. Platform-specific defaults
   if (Platform.OS === 'android') {
-    candidates.push('http://10.0.2.2:3000/api');
+    candidates.push('http://10.0.2.2:3000');
     console.log('Added Android emulator URL');
   }
   if (Platform.OS === 'ios') {
-    candidates.push('http://localhost:3000/api');
+    candidates.push('http://localhost:3000');
     console.log('Added iOS simulator URL');
   }
   
   // 3. Derived from Expo dev server
   const derived = deriveFromExpoOrigin();
   if (derived) {
-    candidates.push(`${derived}/api`);
+    candidates.push(derived);
   }
   
   // 4. Fallbacks
-  candidates.push('http://127.0.0.1:3000/api');
-  candidates.push('http://192.168.1.100:3000/api'); // Common LAN IP
+  candidates.push('http://127.0.0.1:3000');
+  candidates.push('http://192.168.1.100:3000'); // Common LAN IP
   
   console.log('Testing candidates:', candidates);
   
@@ -111,7 +119,7 @@ export const getApiBaseUrl = async (): Promise<string> => {
   }
   
   // If nothing works, return the first candidate with a warning
-  const fallback = candidates[0]?.replace(/\/$/, '') || 'http://127.0.0.1:3000/api';
+  const fallback = candidates[0]?.replace(/\/$/, '') || 'http://127.0.0.1:3000';
   console.warn('⚠️ No working API URL found, using fallback:', fallback);
   console.warn('💡 Set EXPO_PUBLIC_API_URL to your server URL if needed');
   
@@ -156,53 +164,69 @@ export const trpcClient = createTRPCClient<AppRouter>({
       fetch: async (url, options) => {
         const base = await ensureBase();
         
-        // Build the full URL
+        // Build the full URL - try /api/trpc first, then /trpc
         const path = url.toString().replace(/^.*\/trpc/, '');
-        let finalUrl = `${base}/trpc${path}`;
+        const endpoints = [
+          `${base}/api/trpc${path}`,
+          `${base}/trpc${path}`
+        ];
         
-        console.log('📡 tRPC request:', options?.method || 'GET', finalUrl);
+        let lastError: Error | null = null;
         
-        try {
-          let res = await fetch(finalUrl, {
-            ...options,
-            headers: {
-              ...options?.headers,
-              'Content-Type': 'application/json',
-              'Accept': 'application/json'
-            }
-          });
+        for (const finalUrl of endpoints) {
+          console.log('📡 tRPC request:', options?.method || 'GET', finalUrl);
           
-          // No need to retry with /api/trpc since base already includes /api
-          
-          // Check response content type
-          const contentType = res.headers.get('content-type') ?? '';
-          if (contentType.includes('text/html')) {
-            throw new Error(`❌ Invalid tRPC endpoint. Got HTML from ${finalUrl}. Set EXPO_PUBLIC_API_URL to your API server URL.`);
-          }
-          
-          // Handle non-OK responses
-          if (!res.ok) {
-            const text = await res.text();
-            if (text.trim().startsWith('<')) {
-              throw new Error(`❌ Invalid tRPC endpoint. Got HTML from ${finalUrl}. Set EXPO_PUBLIC_API_URL to your API server URL.`);
+          try {
+            let res = await fetch(finalUrl, {
+              ...options,
+              headers: {
+                ...options?.headers,
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+              }
+            });
+            
+            // Check response content type
+            const contentType = res.headers.get('content-type') ?? '';
+            if (contentType.includes('text/html')) {
+              const error = new Error(`❌ Invalid tRPC endpoint. Got HTML from ${finalUrl}. Set EXPO_PUBLIC_API_URL to your API server URL.`);
+              lastError = error;
+              console.log('Got HTML, trying next endpoint...');
+              continue;
             }
             
-            try {
-              const errorData = JSON.parse(text);
-              const message = errorData?.message || errorData?.error || `HTTP ${res.status}`;
-              throw new Error(message);
-            } catch {
-              throw new Error(`HTTP ${res.status}: ${text.slice(0, 200)}`);
+            // Handle non-OK responses
+            if (!res.ok) {
+              const text = await res.text();
+              if (text.trim().startsWith('<')) {
+                const error = new Error(`❌ Invalid tRPC endpoint. Got HTML from ${finalUrl}. Set EXPO_PUBLIC_API_URL to your API server URL.`);
+                lastError = error;
+                console.log('Got HTML error, trying next endpoint...');
+                continue;
+              }
+              
+              try {
+                const errorData = JSON.parse(text);
+                const message = errorData?.message || errorData?.error || `HTTP ${res.status}`;
+                throw new Error(message);
+              } catch {
+                throw new Error(`HTTP ${res.status}: ${text.slice(0, 200)}`);
+              }
             }
+            
+            console.log('✅ tRPC response:', res.status, 'from', finalUrl);
+            return res;
+            
+          } catch (error) {
+            console.log('❌ tRPC request failed for', finalUrl, ':', error);
+            lastError = error as Error;
+            // Continue to next endpoint
           }
-          
-          console.log('✅ tRPC response:', res.status);
-          return res;
-          
-        } catch (error) {
-          console.error('❌ tRPC request failed:', error);
-          throw error;
         }
+        
+        // If we get here, all endpoints failed
+        console.error('❌ All tRPC endpoints failed');
+        throw lastError || new Error('All tRPC endpoints failed');
       },
     }),
   ],

@@ -15,6 +15,7 @@ interface ApiStatus {
 export default function ApiHealthCheck() {
   const [status, setStatus] = useState<ApiStatus | null>(null);
   const [loading, setLoading] = useState(false);
+  const [directTest, setDirectTest] = useState<{ url: string; result: string } | null>(null);
   
   // Test tRPC health ping
   const healthQuery = trpc.health.ping.useQuery(undefined, {
@@ -35,6 +36,34 @@ export default function ApiHealthCheck() {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const testDirectUrl = async () => {
+    const testUrl = 'https://expo-app-rork.vercel.app/api/health';
+    try {
+      console.log('Testing direct URL:', testUrl);
+      const response = await fetch(testUrl, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      const text = await response.text();
+      console.log('Direct URL response:', response.status, text);
+      
+      setDirectTest({
+        url: testUrl,
+        result: `Status: ${response.status}\nResponse: ${text.slice(0, 500)}`
+      });
+    } catch (error) {
+      console.error('Direct URL test failed:', error);
+      setDirectTest({
+        url: testUrl,
+        result: `Error: ${error instanceof Error ? error.message : 'Unknown error'}`
+      });
     }
   };
 
@@ -127,14 +156,32 @@ export default function ApiHealthCheck() {
           </View>
         )}
 
-        <TouchableOpacity 
-          style={styles.refreshButton} 
-          onPress={checkHealth}
-          disabled={loading}
-        >
-          <RefreshCw size={20} color={Colors.dark.text} />
-          <Text style={styles.refreshText}>Refresh</Text>
-        </TouchableOpacity>
+        <View style={styles.buttonRow}>
+          <TouchableOpacity 
+            style={[styles.refreshButton, { flex: 1, marginRight: 8 }]} 
+            onPress={checkHealth}
+            disabled={loading}
+          >
+            <RefreshCw size={20} color={Colors.dark.text} />
+            <Text style={styles.refreshText}>Refresh</Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity 
+            style={[styles.refreshButton, { flex: 1, marginLeft: 8 }]} 
+            onPress={testDirectUrl}
+          >
+            <AlertCircle size={20} color={Colors.dark.text} />
+            <Text style={styles.refreshText}>Test Direct</Text>
+          </TouchableOpacity>
+        </View>
+        
+        {directTest && (
+          <View style={styles.trpcCard}>
+            <Text style={styles.cardTitle}>Direct URL Test</Text>
+            <Text style={styles.detailText}>URL: {directTest.url}</Text>
+            <Text style={styles.value}>{directTest.result}</Text>
+          </View>
+        )}
 
         <View style={styles.infoCard}>
           <AlertCircle size={20} color={Colors.dark.warning} />
@@ -249,6 +296,10 @@ const styles = StyleSheet.create({
     color: Colors.dark.text,
     marginLeft: 8,
   },
+  buttonRow: {
+    flexDirection: 'row',
+    marginBottom: 16,
+  },
   refreshButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -256,7 +307,6 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.dark.card,
     borderRadius: 12,
     padding: 16,
-    marginBottom: 16,
   },
   refreshText: {
     fontSize: 16,

@@ -16,6 +16,7 @@ import { supabase } from "@/lib/supabase";
 import { AuthChangeEvent, Session } from "@supabase/supabase-js";
 import Toast from 'react-native-toast-message';
 import { TabTransitionProvider } from '@/components/TabTransitionProvider';
+import { ConnectivityBanner } from '@/components/ConnectivityBanner';
 import 'react-native-reanimated';
 
 export const unstable_settings = {
@@ -264,6 +265,7 @@ function RootLayoutNav() {
     <trpc.Provider client={trpcClient} queryClient={queryClient}>
       <QueryClientProvider client={queryClient}>
         <TabTransitionProvider>
+          <ConnectivityBanner />
           <StatusBar barStyle="light-content" backgroundColor={Colors.dark.background} />
           <Stack
           screenOptions={{
