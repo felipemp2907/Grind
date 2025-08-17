@@ -1,22 +1,13 @@
 {
-  "buildCommand": "expo export -p web",
-  "outputDirectory": "dist",
-  "devCommand": "expo",
-  "cleanUrls": true,
+  "version": 2,
   "framework": null,
   "functions": {
-    "api/[[...route]].ts": {
-      "runtime": "edge"
-    }
+    "api/**/*.ts": { "runtime": "nodejs20.x" },
+    "api/**/*.js": { "runtime": "nodejs20.x" }
   },
-  "rewrites": [
-    {
-      "source": "/api/(.*)",
-      "destination": "/api/$1"
-    },
-    {
-      "source": "/((?!api).*)",
-      "destination": "/"
-    }
+  "routes": [
+    { "src": "^/trpc(?:/.*)?$", "dest": "/api/index.ts" },
+    { "src": "^/health$", "dest": "/api/index.ts" },
+    { "src": "^/(.*)$", "dest": "/api/index.ts" }
   ]
 }

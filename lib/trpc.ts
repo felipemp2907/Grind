@@ -132,10 +132,9 @@ export const trpcClient = createTRPCClient<AppRouter>({
       fetch: async (url, options) => {
         const base = ensureBase();
         
-        // Build the full URL - try /api/trpc first (Vercel pattern), then /trpc
+        // Build the full URL - use /trpc directly (new clean API structure)
         const path = url.toString().replace(/^.*\/trpc/, '');
         const endpoints = [
-          `${base}/api/trpc${path}`,
           `${base}/trpc${path}`
         ];
         
@@ -210,7 +209,7 @@ export const trpcClient = createTRPCClient<AppRouter>({
 // Log the final tRPC URL on startup
 try {
   const base = ensureBase();
-  console.log('🚀 TRPC_URL:', `${base}/api/trpc`);
+  console.log('🚀 TRPC_URL:', `${base}/trpc`);
 } catch (error) {
   console.error('❌ Failed to resolve tRPC URL:', error);
   console.warn('💡 Set EXPO_PUBLIC_API_URL to your server URL');
@@ -228,10 +227,7 @@ export const checkApiConnectivity = async (): Promise<{
     
     // Try a simple health check
     const healthEndpoints = [
-      `${base}/api/health`,
-      `${base}/health`,
-      `${base}/api/ping`,
-      `${base}/ping`
+      `${base}/health`
     ];
     
     for (const url of healthEndpoints) {
