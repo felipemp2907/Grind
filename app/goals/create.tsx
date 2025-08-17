@@ -69,14 +69,18 @@ export default function CreateGoalScreen() {
       // Refresh tasks to get the newly created tasks
       await fetchTasks();
       
+      const streaks = result?.summary?.streak_count ?? 0;
+      const days = result?.summary?.days ?? 0;
+      const totalToday = result?.summary?.total_today ?? 0;
+      
       Alert.alert(
         "Ultimate Goal Created! 🎯",
-        `Your goal "${title}" has been created and tasks have been generated for every day until your deadline (${result.streakTasksCreated} streak tasks and ${result.todayTasksCreated} today tasks)!`,
-        [{ text: "Let's Go!" }]
+        `Your goal "${title}" has been created and your plan is seeded. Days: ${days}, streaks/day: ${streaks}, today tasks: ${totalToday}.`,
+        [{ text: "View Today" }]
       );
       
-      // Navigate back
-      router.back();
+      // Navigate to Home so user sees today's seeded tasks immediately
+      router.replace('/(tabs)/home');
       
     } catch (error) {
       console.error('Error creating goal:', error);

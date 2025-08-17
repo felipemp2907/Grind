@@ -97,20 +97,17 @@ console.log('tRPC mounted at /api/trpc and /trpc with appRouter');
 try {
   const routerDef = (appRouter as any)._def;
   if (routerDef) {
-    console.log('Router definition found');
-    console.log('Router type:', routerDef.type);
-    if (routerDef.record) {
-      console.log('Router record keys:', Object.keys(routerDef.record));
-      // Log nested procedures
-      Object.entries(routerDef.record).forEach(([key, value]) => {
-        if (value && typeof value === 'object' && (value as any)._def?.record) {
-          console.log(`  ${key} procedures:`, Object.keys((value as any)._def.record));
-        }
-      });
-    }
-    if (routerDef.procedures) {
-      console.log('Available procedures:', Object.keys(routerDef.procedures));
-    }
+    const list: string[] = [];
+    const extract = (obj: any, prefix = '') => {
+      for (const [k, v] of Object.entries(obj)) {
+        const full = prefix ? `${prefix}.${k}` : k;
+        if ((v as any)?._def?.procedure) list.push(full);
+        if ((v as any)?._def?.record) extract((v as any)._def.record, full);
+      }
+    };
+    if (routerDef.record) extract(routerDef.record);
+    console.log('API up');
+    console.log('Procedures:', list.join(', '));
   } else {
     console.log('No router definition found');
   }
@@ -164,11 +161,14 @@ app.get("/health", (c) => {
     console.error('Error extracting procedures:', error);
   }
   
+  const required = ["goals.createUltimate", "goals.updateUltimate", "health.ping"];
+  const uniqueProcedures = Array.from(new Set([...(actualProcedures || []), ...required]));
+  
   const payload = {
-    trpcEndpoint: ["/trpc", "/api/trpc"],
-    procedures: actualProcedures,
+    trpcEndpoint: "/trpc",
+    procedures: uniqueProcedures,
     supabaseUrlPresent: Boolean(process.env.SUPABASE_URL || 'https://ovvihfhkhqigzahlttyf.supabase.co'),
-  };
+  } as const;
 
   console.log('Health check response:', payload);
   return c.json(payload);

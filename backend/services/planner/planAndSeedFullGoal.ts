@@ -222,18 +222,35 @@ function convertPlanToTasks(
 ): TaskInsert[] {
   const tasks: TaskInsert[] = [];
   const today = new Date();
+  today.setHours(0, 0, 0, 0);
   const deadlineDate = new Date(deadline);
-  
-  // Convert streak habits to daily tasks
+  deadlineDate.setHours(0, 0, 0, 0);
+
+  const dateKey = (d: Date) => d.toISOString().split('T')[0];
+  const sumStreakLoad = plan.streak_habits.reduce((sum, h) => sum + (h.load ?? 1), 0);
+
+  // Build map of planned today tasks by date
+  const plannedMap = new Map<string, { title: string; desc: string; load: number; proof_mode: 'realtime' | 'flex' }[]>();
   for (const day of plan.daily_plan) {
-    const dayDate = new Date(day.date);
-    
-    // Skip dates that are past the deadline
-    if (dayDate > deadlineDate) {
-      continue;
+    if (!day?.date) continue;
+    const d = new Date(day.date);
+    d.setHours(0, 0, 0, 0);
+    if (d > deadlineDate) continue;
+    const key = dateKey(d);
+    const arr = plannedMap.get(key) ?? [];
+    for (const t of day.today_tasks ?? []) {
+      arr.push({ title: t.title, desc: t.desc, load: t.load ?? 1, proof_mode: t.proof_mode });
     }
-    
-    // Add streak tasks for this day
+    plannedMap.set(key, arr);
+  }
+
+  // Iterate each day from today..deadline, add streaks, and schedule capped today tasks with carryover forward
+  const carryover: { title: string; desc: string; load: number; proof_mode: 'realtime' | 'flex' }[] = [];
+  const nineAMHours = 9;
+  for (let d = new Date(today); d <= deadlineDate; d.setDate(d.getDate() + 1)) {
+    const key = dateKey(d);
+
+    // Streak tasks for EVERY day
     for (const habit of plan.streak_habits) {
       tasks.push({
         user_id: userId,
@@ -241,33 +258,57 @@ function convertPlanToTasks(
         title: habit.title,
         description: habit.desc,
         type: 'streak',
-        task_date: day.date,
+        task_date: key,
         load_score: habit.load,
         proof_mode: habit.proof_mode,
-        status: 'pending'
+        status: 'pending',
       });
     }
-    
-    // Add today tasks for this day
-    for (const task of day.today_tasks) {
-      // Set due_at to 9 AM on the task date (can be customized later)
-      const dueAt = new Date(dayDate);
-      dueAt.setHours(9, 0, 0, 0);
-      
+
+    // Determine caps for today
+    const isToday = key === dateKey(new Date());
+    const now = new Date();
+    const nowPastAgenda = isToday && now.getHours() >= nineAMHours;
+    const maxTodayCount = nowPastAgenda ? 1 : 3;
+    let remainingLoad = Math.max(0, 5 - sumStreakLoad);
+
+    // Collect tasks for this date + carryover
+    const pool = [...(plannedMap.get(key) ?? []), ...carryover];
+    carryover.length = 0;
+
+    let usedCount = 0;
+    for (const t of pool) {
+      if (usedCount >= maxTodayCount) {
+        carryover.push(t);
+        continue;
+      }
+      if (t.load > remainingLoad) {
+        carryover.push(t);
+        continue;
+      }
+      usedCount += 1;
+      remainingLoad -= t.load;
+      const due = new Date(d);
+      due.setHours(nineAMHours, 0, 0, 0);
       tasks.push({
         user_id: userId,
         goal_id: goalId,
-        title: task.title,
-        description: task.desc,
+        title: t.title,
+        description: t.desc,
         type: 'today',
-        due_at: dueAt.toISOString(),
-        load_score: task.load,
-        proof_mode: task.proof_mode,
-        status: 'pending'
+        due_at: due.toISOString(),
+        load_score: t.load,
+        proof_mode: t.proof_mode,
+        status: 'pending',
       });
     }
   }
-  
+
+  // Any remaining carryover tasks are dropped if past deadline
+  if (carryover.length > 0) {
+    console.log(`Carryover tasks beyond deadline dropped: ${carryover.length}`);
+  }
+
   console.log(`Converted plan to ${tasks.length} database tasks`);
   return tasks;
 }
