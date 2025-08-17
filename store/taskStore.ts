@@ -3,45 +3,14 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 // Remove randomUUID import as we'll let Supabase generate UUIDs
 import { Task } from '@/types';
-import { generateDailyTasksForGoal, generateDailyAgenda } from '@/utils/aiUtils';
-import { useGoalStore } from '@/store/goalStore';
+
 import { useUserStore } from '@/store/userStore';
 import { supabase, setupDatabase, serializeError, ensureUserProfile } from '@/lib/supabase';
 import { useAuthStore } from './authStore';
-import { isDateBeyondDeadlines } from '@/utils/streakUtils';
-import { trpcClient } from '@/lib/trpc';
-
-// Interface for tasks returned from AI
-interface AIGeneratedTask {
-  title: string;
-  description: string;
-  isHabit: boolean;
-  xpValue: number;
-}
-
-// Interface for agenda tasks
-interface AgendaTask {
-  title: string;
-  description: string;
-  xpValue: number;
-  priority: 'high' | 'medium' | 'low';
-  estimatedTime: string;
-}
-
-// Interface for daily agenda
-interface DailyAgenda {
-  date: string;
-  tasks: AgendaTask[];
-  motivation: string;
-  status: 'pending' | 'accepted' | 'regenerated';
-  createdAt: string;
-}
 
 interface TaskState {
   tasks: Task[];
-  dailyAgendas: DailyAgenda[];
   isGenerating: boolean;
-  isGeneratingAgenda: boolean;
   
   // Task management
   addTask: (task: Omit<Task, 'id'>) => Promise<void>;
@@ -52,17 +21,11 @@ interface TaskState {
   getTaskById: (id: string) => Task | undefined;
   deleteTask: (id: string) => Promise<void>;
   fetchTasks: () => Promise<void>;
-  generateDailyTasks: (date: string) => Promise<void>;
-  generateStreakTasks: (date: string, forceRegenerate?: boolean) => Promise<void>;
-  generateTasksForGoal: (date: string, goalId: string) => Promise<void>;
+
   setIsGenerating: (isGenerating: boolean) => void;
   resetStreak: (id: string) => void;
   
-  // Agenda management
-  generateDailyAgenda: (date: string) => Promise<void>;
-  acceptAgenda: (date: string) => Promise<void>;
-  regenerateAgenda: (date: string) => Promise<void>;
-  getAgenda: (date: string) => DailyAgenda | undefined;
+
   
   // Task rescheduling
   rescheduleTask: (taskId: string, newDate: string, newTime?: string) => void;
@@ -73,9 +36,7 @@ interface TaskState {
   getStreakTasks: (date: string) => Task[];
   getMissedTasks: (date: string) => Task[];
   
-  // AI Suggestions
-  generateAISuggestions: (date: string, goalId?: string) => Promise<void>;
-  canAddMoreTasks: (date: string, goalId?: string) => { canAddToday: boolean; canAddHabits: boolean; todayCount: number; habitCount: number };
+
   
   // Reset
   resetTasks: () => Promise<void>;
@@ -85,9 +46,7 @@ export const useTaskStore = create<TaskState>()(
   persist(
     (set, get) => ({
       tasks: [],
-      dailyAgendas: [],
       isGenerating: false,
-      isGeneratingAgenda: false,
       
       setIsGenerating: (isGenerating) => set({ isGenerating }),
       
@@ -344,282 +303,7 @@ export const useTaskStore = create<TaskState>()(
         return get().getTasks(date).filter(task => !task.completed);
       },
       
-      // Generate daily agenda (proactive morning plan) - DEPRECATED
-      // Tasks are now generated at goal creation, not on-demand
-      generateDailyAgenda: async (date) => {
-        console.log('generateDailyAgenda called but deprecated - tasks are now pre-generated at goal creation');
-        return;
-      },
-      
-      acceptAgenda: async (date) => {
-        const agenda = get().getAgenda(date);
-        if (!agenda) return;
-        
-        const { goals, activeGoalId } = useGoalStore.getState();
-        const activeGoal = goals.find((g: any) => g.id === activeGoalId) || goals[0];
-        if (!activeGoal) return;
-        
-        // Convert agenda tasks to actual tasks (limit to 3)
-        const newTasks: Omit<Task, 'id'>[] = agenda.tasks.slice(0, 3).map((agendaTask, index) => ({
-          title: agendaTask.title,
-          description: agendaTask.description,
-          date,
-          goalId: activeGoal.id,
-          completed: false,
-          xpValue: agendaTask.xpValue,
-          isHabit: false,
-          streak: 0,
-          isUserCreated: false,
-          requiresValidation: true,
-          priority: agendaTask.priority,
-          estimatedTime: agendaTask.estimatedTime
-        }));
-        
-        // Add tasks and mark agenda as accepted
-        for (const task of newTasks) {
-          await get().addTask(task);
-        }
-        
-        set((state) => ({
-          dailyAgendas: state.dailyAgendas.map(a => 
-            a.date === date ? { ...a, status: 'accepted' as const } : a
-          )
-        }));
-      },
-      
-      regenerateAgenda: async (date) => {
-        // Mark current agenda as regenerated and create new one
-        set((state) => ({
-          dailyAgendas: state.dailyAgendas.map(a => 
-            a.date === date ? { ...a, status: 'regenerated' as const } : a
-          )
-        }));
-        
-        await get().generateDailyAgenda(date);
-      },
-      
-      getAgenda: (date) => {
-        return get().dailyAgendas.find(a => a.date === date);
-      },
-      
-      // DEPRECATED: Tasks are now generated automatically when goals are created
-      // This function is kept for backward compatibility but does nothing
-      generateDailyTasks: async (date) => {
-        console.log('generateDailyTasks called but deprecated - tasks are now pre-generated at goal creation');
-        console.log('Refreshing tasks from database instead...');
-        
-        // Just refresh tasks from database since they should already be there
-        await get().fetchTasks();
-      },
-      
-      // DEPRECATED: Streak tasks are now generated automatically when goals are created
-      // This function is kept for backward compatibility but does nothing
-      generateStreakTasks: async (date, forceRegenerate = false) => {
-        console.log('generateStreakTasks called but deprecated - streak tasks are now pre-generated at goal creation');
-        console.log('Refreshing tasks from database instead...');
-        
-        // Just refresh tasks from database since they should already be there
-        await get().fetchTasks();
-      },
-      
-      // Generate tasks for a specific goal
-      generateTasksForGoal: async (date, goalId) => {
-        const { goals } = useGoalStore.getState();
-        const goal = goals.find((g: any) => g.id === goalId);
-        
-        if (!goal) return;
-        
-        // Check if tasks already exist for this goal and date
-        const existingTasks = get().tasks.filter(
-          task => task.date === date && task.goalId === goalId
-        );
-        
-        // Only generate new non-habit tasks if we don't have enough for this date
-        // For habit tasks, we'll check individually
-        const existingRegularTasks = existingTasks.filter(task => !task.isHabit);
-        const existingHabitTasks = existingTasks.filter(task => task.isHabit);
-        
-        if (existingRegularTasks.length >= 3 && existingHabitTasks.length >= 3) {
-          // If we already have enough tasks for this date, don't generate new ones
-          // But we might still need to create habit tasks if they don't exist
-          
-          // Get existing habit tasks for this goal
-          const habitTasks = get().tasks.filter(
-            task => task.goalId === goalId && task.isHabit
-          );
-          
-          // If we have habit tasks but none for this date and we need more, create copies for today
-          if (habitTasks.length > 0 && existingHabitTasks.length < 3) {
-            // Create copies of habit tasks for today (up to 3 total)
-            const tasksToAdd = Math.min(3 - existingHabitTasks.length, habitTasks.length);
-            const newHabitTasks = habitTasks.slice(0, tasksToAdd).map(habitTask => {
-              const { id, ...taskWithoutId } = habitTask;
-              return {
-                ...taskWithoutId,
-                date,
-                completed: false,
-                completedAt: undefined,
-                journalEntryId: undefined
-              };
-            });
-            
-            // Add only the habit tasks
-            for (const task of newHabitTasks) {
-              await get().addTask(task);
-            }
-          }
-          
-          return;
-        }
-        
-        try {
-          set({ isGenerating: true });
-          
-          // Get previous tasks for this goal to provide context to AI
-          const previousTasks = get().tasks
-            .filter(task => task.goalId === goalId && task.completed)
-            .map(task => task.title);
-          
-          // Call AI to generate tasks, passing the current date
-          const aiResponse = await generateDailyTasksForGoal(
-            goal.title,
-            goal.description,
-            goal.deadline,
-            previousTasks,
-            date
-          );
-          
-          // Parse AI response
-          let aiTasks: AIGeneratedTask[] = [];
-          try {
-            // Clean the response to handle potential markdown formatting
-            const cleanedResponse = aiResponse
-              .replace(/```json\s*/g, '')
-              .replace(/```\s*$/g, '')
-              .replace(/```/g, '')
-              .trim();
-              
-            // Find JSON array in the response if it's not already a valid JSON
-            let jsonToparse = cleanedResponse;
-            if (!cleanedResponse.startsWith('[')) {
-              const match = cleanedResponse.match(/\[[\s\S]*\]/);
-              if (match) {
-                jsonToparse = match[0];
-              }
-            }
-            
-            aiTasks = JSON.parse(jsonToparse);
-          } catch (error) {
-            console.error('Error parsing AI response:', error, 'Raw response:', aiResponse);
-            // Fallback to default tasks if parsing fails
-            aiTasks = [
-              {
-                title: `Work on ${goal.title} for ${new Date(date).toLocaleDateString('en-US', {weekday: 'long'})}`,
-                description: `Make progress on your goal: ${goal.description.substring(0, 50)}...`,
-                isHabit: false,
-                xpValue: 50
-              },
-              {
-                title: `Research for ${goal.title} - ${new Date(date).toLocaleDateString('en-US', {month: 'short', day: 'numeric'})}`,
-                description: "Gather information and resources to help you progress",
-                isHabit: false,
-                xpValue: 30
-              },
-              {
-                title: `Daily habit for ${goal.title}`,
-                description: "Maintain your daily practice",
-                isHabit: true,
-                xpValue: 20
-              }
-            ];
-          }
-          
-          // Separate today tasks and habit tasks, then limit each
-          const todayTasks = aiTasks.filter(task => !task.isHabit).slice(0, 3);
-          const habitTasks = aiTasks.filter(task => task.isHabit).slice(0, 3);
-          const limitedTasks = [...todayTasks, ...habitTasks];
-          
-          // Create task objects from AI response
-          const newTasks: Omit<Task, 'id'>[] = limitedTasks.map((aiTask: AIGeneratedTask, index: number) => ({
-            title: aiTask.title,
-            description: aiTask.description,
-            date,
-            goalId,
-            completed: false,
-            xpValue: aiTask.xpValue || Math.floor(Math.random() * 30) + 20, // 20-50 XP if not specified
-            isHabit: aiTask.isHabit || false,
-            streak: 0,
-            isUserCreated: false,
-            requiresValidation: true
-          }));
-          
-          // Add tasks to store
-          for (const task of newTasks) {
-            await get().addTask(task);
-          }
-          
-        } catch (error) {
-          console.error('Error generating tasks for goal:', error);
-          
-          // Create fallback tasks if AI fails (limited to 3 today + 3 habits)
-          const fallbackTasks: Omit<Task, 'id'>[] = [
-            {
-              title: `Work on ${goal.title} - ${new Date(date).toLocaleDateString('en-US', {month: 'short', day: 'numeric'})}`,
-              description: `Make progress on your goal: ${goal.description.substring(0, 50)}...`,
-              date,
-              goalId,
-              completed: false,
-              xpValue: 50,
-              isHabit: false,
-              streak: 0,
-              isUserCreated: false,
-              requiresValidation: true
-            },
-            {
-              title: `Research for ${goal.title}`,
-              description: "Gather information and resources to help you progress",
-              date,
-              goalId,
-              completed: false,
-              xpValue: 30,
-              isHabit: false,
-              streak: 0,
-              isUserCreated: false,
-              requiresValidation: true
-            },
-            {
-              title: `Plan next steps for ${goal.title}`,
-              description: "Create a detailed action plan for tomorrow",
-              date,
-              goalId,
-              completed: false,
-              xpValue: 25,
-              isHabit: false,
-              streak: 0,
-              isUserCreated: false,
-              requiresValidation: true
-            },
-            {
-              title: `Daily habit for ${goal.title}`,
-              description: "Maintain your daily practice",
-              date,
-              goalId,
-              completed: false,
-              xpValue: 20,
-              isHabit: true,
-              streak: 0,
-              isUserCreated: false,
-              requiresValidation: true
-            }
-          ];
-          
-          for (const task of fallbackTasks) {
-            await get().addTask(task);
-          }
-        } finally {
-          set({ isGenerating: false });
-        }
-      },
+
       
       fetchTasks: async () => {
         try {
@@ -698,118 +382,7 @@ export const useTaskStore = create<TaskState>()(
         }
       },
       
-      // Check if more tasks can be added for a specific date and goal
-      canAddMoreTasks: (date, goalId) => {
-        const existingTasks = goalId 
-          ? get().tasks.filter(task => task.date === date && task.goalId === goalId)
-          : get().tasks.filter(task => task.date === date);
-          
-        const todayTasks = existingTasks.filter(task => !task.isHabit);
-        const habitTasks = existingTasks.filter(task => task.isHabit);
-        
-        return {
-          canAddToday: todayTasks.length < 3,
-          canAddHabits: habitTasks.length < 3,
-          todayCount: todayTasks.length,
-          habitCount: habitTasks.length
-        };
-      },
-      
-      // Generate AI task suggestions when user requests them
-      generateAISuggestions: async (date, goalId) => {
-        const { goals } = useGoalStore.getState();
-        const goal = goalId ? goals.find((g: any) => g.id === goalId) : goals[0];
-        
-        if (!goal) return;
-        
-        const taskLimits = get().canAddMoreTasks(date, goalId);
-        
-        // Only generate if we can add more tasks
-        if (!taskLimits.canAddToday && !taskLimits.canAddHabits) {
-          return;
-        }
-        
-        set({ isGenerating: true });
-        
-        try {
-          // Get previous tasks for context
-          const previousTasks = get().tasks
-            .filter(task => task.goalId === goal.id && task.completed)
-            .map(task => task.title);
-          
-          // Call AI to generate suggestions
-          const aiResponse = await generateDailyTasksForGoal(
-            goal.title,
-            goal.description,
-            goal.deadline,
-            previousTasks,
-            date
-          );
-          
-          // Parse AI response
-          let aiTasks: AIGeneratedTask[] = [];
-          try {
-            const cleanedResponse = aiResponse
-              .replace(/```json\s*/g, '')
-              .replace(/```\s*$/g, '')
-              .replace(/```/g, '')
-              .trim();
-              
-            let jsonToparse = cleanedResponse;
-            if (!cleanedResponse.startsWith('[')) {
-              const match = cleanedResponse.match(/\[[\s\S]*\]/);
-              if (match) {
-                jsonToparse = match[0];
-              }
-            }
-            
-            aiTasks = JSON.parse(jsonToparse);
-          } catch (error) {
-            console.error('Error parsing AI suggestions:', error);
-            return;
-          }
-          
-          // Filter tasks based on what we can add
-          const todayTasks = aiTasks.filter(task => !task.isHabit);
-          const habitTasks = aiTasks.filter(task => task.isHabit);
-          
-          const tasksToAdd: AIGeneratedTask[] = [];
-          
-          if (taskLimits.canAddToday) {
-            const todayToAdd = Math.min(3 - taskLimits.todayCount, todayTasks.length);
-            tasksToAdd.push(...todayTasks.slice(0, todayToAdd));
-          }
-          
-          if (taskLimits.canAddHabits) {
-            const habitsToAdd = Math.min(3 - taskLimits.habitCount, habitTasks.length);
-            tasksToAdd.push(...habitTasks.slice(0, habitsToAdd));
-          }
-          
-          // Create task objects from AI suggestions
-          const newTasks: Omit<Task, 'id'>[] = tasksToAdd.map((aiTask: AIGeneratedTask, index: number) => ({
-            title: aiTask.title,
-            description: aiTask.description,
-            date,
-            goalId: goal.id,
-            completed: false,
-            xpValue: aiTask.xpValue || Math.floor(Math.random() * 30) + 20,
-            isHabit: aiTask.isHabit || false,
-            streak: 0,
-            isUserCreated: false,
-            requiresValidation: true
-          }));
-          
-          // Add suggested tasks
-          for (const task of newTasks) {
-            await get().addTask(task);
-          }
-          
-        } catch (error) {
-          console.error('Error generating AI suggestions:', error);
-        } finally {
-          set({ isGenerating: false });
-        }
-      },
+
       
       resetTasks: async () => {
         try {
@@ -835,9 +408,7 @@ export const useTaskStore = create<TaskState>()(
           // Clear local state
           set({ 
             tasks: [],
-            dailyAgendas: [],
-            isGenerating: false,
-            isGeneratingAgenda: false
+            isGenerating: false
           });
         } catch (error) {
           console.error('Error resetting tasks:', serializeError(error));
