@@ -265,7 +265,7 @@ function RootLayoutNav() {
     <trpc.Provider client={trpcClient} queryClient={queryClient}>
       <QueryClientProvider client={queryClient}>
         <TabTransitionProvider>
-          <ConnectivityBanner />
+          <ConnectivityBanner showWhenConnected={true} />
           <StatusBar barStyle="light-content" backgroundColor={Colors.dark.background} />
           <Stack
           screenOptions={{

@@ -131,8 +131,8 @@ export const getApiBaseUrl = async (): Promise<string> => {
   if (isExpoGo) {
     // When running in Expo Go, try the deployed API first
     const deployedUrls = [
-      // Primary deployment URL from app.json
-      'https://rork.app',
+      // Try the current domain if we can detect it (for web)
+      ...(typeof window !== 'undefined' && window.location ? [`https://${window.location.hostname}`] : []),
       // Common Vercel deployment patterns
       'https://dailydesk-ai-self-mastery-platform.vercel.app',
       'https://grind-app.vercel.app',
@@ -140,11 +140,19 @@ export const getApiBaseUrl = async (): Promise<string> => {
       'https://expo-app.vercel.app',
       // Try with the Supabase project ID prefix
       'https://ovvihfhkhqigzahlttyf-rork-app.vercel.app',
-      // Try the current domain if we can detect it
-      ...(typeof window !== 'undefined' && window.location ? [`https://${window.location.hostname}`] : [])
+      // Primary deployment URL from app.json (last as fallback)
+      'https://rork.app'
     ];
     candidates.push(...deployedUrls);
     console.log('Added deployed URLs for Expo Go:', deployedUrls);
+  } else {
+    // In development, also try some deployed URLs as fallback
+    const fallbackDeployedUrls = [
+      'https://dailydesk-ai-self-mastery-platform.vercel.app',
+      'https://grind-app.vercel.app'
+    ];
+    // Add these after local URLs are tried
+    candidates.push(...fallbackDeployedUrls);
   }
   
   // 3. Platform-specific defaults for development
@@ -166,6 +174,8 @@ export const getApiBaseUrl = async (): Promise<string> => {
   // 5. Fallbacks
   candidates.push('http://127.0.0.1:3000');
   candidates.push('http://192.168.1.100:3000'); // Common LAN IP
+  candidates.push('http://192.168.1.1:3000'); // Router IP
+  candidates.push('http://192.168.0.100:3000'); // Another common LAN range
   
   console.log('Testing candidates:', candidates);
   

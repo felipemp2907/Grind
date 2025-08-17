@@ -39,6 +39,7 @@
     "expo-status-bar": "~2.2.3",
     "expo-symbols": "~0.4.4",
     "expo-system-ui": "~5.0.6",
+    "expo-updates": "~0.28.17",
     "expo-web-browser": "~14.1.6",
     "hono": "^4.7.9",
     "lucide-react-native": "^0.475.0",
