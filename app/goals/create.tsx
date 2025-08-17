@@ -8,7 +8,6 @@ import {
   TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
-  ActivityIndicator,
   Alert
 } from 'react-native';
 import { useRouter, Stack } from 'expo-router';
@@ -18,17 +17,13 @@ import Colors from '@/constants/colors';
 import Button from '@/components/Button';
 import { useGoalStore } from '@/store/goalStore';
 import { useTaskStore } from '@/store/taskStore';
-import { trpc } from '@/lib/trpc';
-import { formatDate, getDatePlusDays, getTodayDate } from '@/utils/dateUtils';
-import { generateGoalBreakdown } from '@/utils/aiUtils';
+import { formatDate, getDatePlusDays } from '@/utils/dateUtils';
 import DateTimePicker from '@/components/DateTimePicker';
 
 export default function CreateGoalScreen() {
   const router = useRouter();
-  const { goals, addGoal } = useGoalStore();
+  const { goals, createUltimateGoal } = useGoalStore();
   const { fetchTasks } = useTaskStore();
-  
-  const createUltimateGoalMutation = trpc.goals.createUltimate.useMutation();
   
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -36,7 +31,7 @@ export default function CreateGoalScreen() {
 
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [creating, setCreating] = useState(false);
-  const [generatingBreakdown, setGeneratingBreakdown] = useState(false);
+  const [currentStage, setCurrentStage] = useState<string>('');
   
   const handleCreate = async () => {
     // Check if we already have 3 goals
@@ -50,60 +45,47 @@ export default function CreateGoalScreen() {
     }
     
     setCreating(true);
-    
-    // Create abort controller for timeout
-    const abortController = new AbortController();
-    const timeoutId = setTimeout(() => {
-      abortController.abort();
-    }, 15000); // 15 second timeout
+    setCurrentStage('Saving goal...');
     
     try {
       console.log('🎯 Creating ultimate goal with batch planner...');
       
-      // Use the new tRPC createUltimate endpoint that generates all tasks automatically
-      const result = await createUltimateGoalMutation.mutateAsync({
+      // Update stage messages
+      setTimeout(() => setCurrentStage('Planning your days...'), 1000);
+      setTimeout(() => setCurrentStage('Seeding tasks...'), 3000);
+      
+      // Use the goal store's createUltimateGoal method
+      await createUltimateGoal({
         title,
         description,
-        deadlineISO: deadline
+        deadline
       });
       
-      clearTimeout(timeoutId);
-      console.log('✅ Goal creation result:', result);
-      
-      // Add the goal to the store
-      addGoal(result.goal);
+      console.log('✅ Goal creation completed successfully');
       
       // Refresh tasks to get the newly created tasks
       await fetchTasks();
       
-      const streaks = result?.summary?.streak_count ?? 0;
-      const days = result?.summary?.days ?? 0;
-      const totalToday = result?.summary?.total_today ?? 0;
-      
       Alert.alert(
         "Ultimate Goal Created! 🎯",
-        `Your goal "${title}" has been created and your plan is seeded. Days: ${days}, streaks/day: ${streaks}, today tasks: ${totalToday}.`,
-        [{ text: "View Today" }]
+        `Your goal "${title}" has been created and your full plan is seeded! Check your Home tab to see today's tasks.`,
+        [{ text: "View Today", onPress: () => router.replace('/(tabs)/home') }]
       );
       
-      // Navigate to Home so user sees today's seeded tasks immediately
-      router.replace('/(tabs)/home');
-      
     } catch (error) {
-      clearTimeout(timeoutId);
       console.error('❌ Error creating goal:', error);
       
       let errorMessage = "There was an issue creating your goal. Please try again.";
       
       if (error instanceof Error) {
-        if (error.message.includes('Network request failed') || error.message.includes('Failed to fetch')) {
-          errorMessage = "Cannot reach the server. Please check your internet connection and ensure the API server is running.";
-        } else if (error.message.includes('timeout') || error.message.includes('aborted')) {
-          errorMessage = "The request timed out. The server may be busy. Please try again.";
-        } else if (error.message.includes('AUTH_REQUIRED')) {
+        if (error.message.includes('Network request failed') || error.message.includes('Failed to fetch') || error.message.includes('Request timeout')) {
+          errorMessage = "API unreachable. Using offline planner to create your goal and tasks.";
+        } else if (error.message.includes('Authentication required')) {
           errorMessage = "Authentication required. Please sign in again.";
-        } else if (error.message.includes('PLANNER_TIMEOUT')) {
-          errorMessage = "The AI planner took too long. Please try again with a simpler goal.";
+        } else if (error.message.includes('Database setup failed')) {
+          errorMessage = "Database connection failed. Please check your internet connection.";
+        } else if (error.message.includes('Goal creation failed') || error.message.includes('Task creation failed')) {
+          errorMessage = `Goal creation failed: ${error.message}. Please try again.`;
         }
       }
       
@@ -113,13 +95,13 @@ export default function CreateGoalScreen() {
         [{ text: "OK" }]
       );
     } finally {
-      clearTimeout(timeoutId);
       setCreating(false);
+      setCurrentStage('');
     }
   };
   
   const isCreateDisabled = () => {
-    return !title.trim() || !description.trim() || !deadline || creating || generatingBreakdown;
+    return !title.trim() || !description.trim() || !deadline || creating;
   };
 
   const handleDateChange = (date: Date) => {
@@ -220,15 +202,15 @@ export default function CreateGoalScreen() {
             
             <Button
               title={
-                creating 
-                  ? "Creating Goal & Seeding Plan..." 
-                  : generatingBreakdown 
-                    ? "Generating AI Breakdown..." 
+                creating && currentStage
+                  ? currentStage
+                  : creating 
+                    ? "Creating Goal & Seeding Plan..." 
                     : "Create Ultimate Goal"
               }
               onPress={handleCreate}
               disabled={isCreateDisabled()}
-              loading={creating || generatingBreakdown}
+              loading={creating}
               style={styles.createButton}
             />
           </ScrollView>

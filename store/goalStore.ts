@@ -197,7 +197,7 @@ export const useGoalStore = create<GoalState>()(
         try {
           console.log('Creating ultimate goal:', goalData.title);
           
-          // Check API connectivity first
+          // Check API connectivity with shorter timeout
           const apiCheck = await Promise.race([
             checkApiConnectivity(),
             new Promise<{ connected: false; error: string }>((_, reject) => 
@@ -209,13 +209,20 @@ export const useGoalStore = create<GoalState>()(
           let usedClientPlanner = false;
           
           if (apiCheck.connected && 'procedures' in apiCheck && apiCheck.procedures?.includes('goals.createUltimate')) {
-            // Try to use the backend tRPC procedure
+            // Try to use the backend tRPC procedure with timeout
             try {
               console.log('🌐 Using server planner via tRPC');
-              result = await trpcClient.goals.createUltimate.mutate({
+              
+              const serverPromise = trpcClient.goals.createUltimate.mutate({
                 ...goalData,
                 deadlineISO: goalData.deadline
               });
+              
+              const timeoutPromise = new Promise<never>((_, reject) => 
+                setTimeout(() => reject(new Error('Request timeout')), 12000)
+              );
+              
+              result = await Promise.race([serverPromise, timeoutPromise]);
               console.log('✅ Server goal creation result:', result);
             } catch (trpcError) {
               console.log('❌ tRPC failed, falling back to client planner:', trpcError);
@@ -227,6 +234,8 @@ export const useGoalStore = create<GoalState>()(
           }
           
           if (usedClientPlanner) {
+            console.log('🤖 Using client-side batch planner fallback');
+            
             // Use client-side planner
             let { user: currentUser } = await getCurrentUser();
             if (!currentUser) {
@@ -250,6 +259,17 @@ export const useGoalStore = create<GoalState>()(
             if (!dbResult.success) {
               console.error('Database not set up:', dbResult.error);
               throw new Error('Database setup failed');
+            }
+            
+            // Ensure user profile exists
+            const profileResult = await ensureUserProfile(currentUser.id, {
+              name: currentUser.user_metadata?.name || currentUser.email?.split('@')[0] || 'User',
+              email: currentUser.email
+            });
+            
+            if (!profileResult.success) {
+              console.error('Error ensuring profile exists:', profileResult.error);
+              throw new Error('Profile setup failed');
             }
             
             // Create goal in Supabase
@@ -277,7 +297,7 @@ export const useGoalStore = create<GoalState>()(
               
             if (goalError || !goalDbData) {
               console.error('Failed to create goal:', serializeError(goalError));
-              throw new Error('Goal creation failed');
+              throw new Error(`Goal creation failed: ${goalError?.message || 'Unknown error'}`);
             }
             
             console.log('🤖 Creating client-side plan...');
@@ -324,7 +344,7 @@ export const useGoalStore = create<GoalState>()(
                   console.error('Task insertion failed:', serializeError(insertError));
                   // Clean up goal if task insertion fails
                   await supabase.from('goals').delete().eq('id', goalDbData.id);
-                  throw new Error('Task creation failed');
+                  throw new Error(`Task creation failed: ${insertError.message}`);
                 }
                 
                 totalInserted += batch.length;
@@ -334,7 +354,6 @@ export const useGoalStore = create<GoalState>()(
               throw insertError;
             }
             
-            // Calculate stats
             // Calculate stats
             const deadline = new Date(goalData.deadline);
             const totalDays = Math.ceil((deadline.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
@@ -432,7 +451,7 @@ export const useGoalStore = create<GoalState>()(
           
         } catch (error) {
           console.error('Error creating ultimate goal:', error);
-          return;
+          throw error; // Re-throw so UI can handle it properly
         }
       },
       
