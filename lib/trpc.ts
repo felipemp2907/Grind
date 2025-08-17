@@ -8,71 +8,7 @@ import Constants from 'expo-constants';
 
 export const trpc = createTRPCReact<AppRouter>();
 
-// API URL detection and health checking
-async function tryFetchHealth(base: string): Promise<{ procedures: string[] } | null> {
-  const healthEndpoints = [
-    `${base.replace(/\/$/, '')}/health`,
-    `${base.replace(/\/$/, '')}/api/health`,
-    `${base.replace(/\/$/, '')}/ping`,
-    `${base.replace(/\/$/, '')}/api/ping`
-  ];
-  
-  for (const url of healthEndpoints) {
-    try {
-      // Create timeout promise for faster detection
-      const timeoutPromise = new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new Error('Timeout')), 3000); // 3 second timeout
-      });
-      
-      const fetchPromise = fetch(url, { 
-        method: 'GET',
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json'
-        }
-      });
-      
-      const res = await Promise.race([fetchPromise, timeoutPromise]);
-      
-      if (!res.ok) {
-        continue;
-      }
-      
-      const ct = res.headers.get('content-type') ?? '';
-      if (!ct.includes('application/json')) {
-        continue;
-      }
-      
-      const json = (await res.json()) as { procedures?: unknown; message?: string; status?: string };
-      
-      // Handle different response formats
-      let procedures: string[] = [];
-      if (Array.isArray(json.procedures)) {
-        procedures = json.procedures as string[];
-      } else if (json.message === 'pong' || json.status === 'ok') {
-        // If it's a simple ping endpoint, assume the API is working
-        procedures = ['health.ping', 'goals.createUltimate', 'goals.updateUltimate'];
-      }
-      
-      // Check for required procedures or basic API response
-      const hasRequired = procedures.includes('goals.createUltimate') || 
-                         procedures.includes('health.ping') ||
-                         json.message === 'pong' ||
-                         json.status === 'ok';
-                         
-      if (hasRequired) {
-        console.log('✅ Health check passed for:', base);
-        return { procedures };
-      }
-      
-      // Continue to next endpoint
-    } catch {
-      // Continue to next endpoint silently for faster detection
-    }
-  }
-  
-  return null;
-}
+// API URL detection
 
 function deriveFromExpoOrigin(): string | null {
   try {
@@ -112,112 +48,60 @@ function deriveFromExpoOrigin(): string | null {
   return null;
 }
 
-export const getApiBaseUrl = async (): Promise<string> => {
-  console.log('🔍 Auto-detecting API URL...');
-  
-  const candidates: string[] = [];
+export const getApiBaseUrl = (): string => {
+  console.log('🔍 Getting API URL...');
   
   // 1. Environment variable (highest priority)
   const envUrl = process.env.EXPO_PUBLIC_API_URL as string | undefined;
   if (envUrl) {
-    candidates.push(envUrl);
-    console.log('Added env URL:', envUrl);
+    console.log('Using env URL:', envUrl);
+    return envUrl.replace(/\/$/, '');
   }
   
-  // 2. Check if we're in Expo Go (likely production/deployed API)
+  // 2. For web, use current origin
+  if (Platform.OS === 'web' && typeof window !== 'undefined' && window.location) {
+    const webUrl = `${window.location.protocol}//${window.location.host}`;
+    console.log('Using web origin:', webUrl);
+    return webUrl;
+  }
+  
+  // 3. Check if we're in Expo Go (likely production/deployed API)
   const isExpoGo = Constants.appOwnership === 'expo';
   if (isExpoGo) {
-    // When running in Expo Go, try the deployed API first
-    const deployedUrls = [
-      // Try the current domain if we can detect it (for web)
-      ...(typeof window !== 'undefined' && window.location ? [`https://${window.location.hostname}`] : []),
-      // Common Vercel deployment patterns
-      'https://dailydesk-ai-self-mastery-platform.vercel.app',
-      'https://grind-app.vercel.app',
-      'https://rork-app.vercel.app',
-      'https://expo-app.vercel.app',
-      // Try with the Supabase project ID prefix
-      'https://ovvihfhkhqigzahlttyf-rork-app.vercel.app',
-      // Primary deployment URL from app.json (last as fallback)
-      'https://rork.app'
-    ];
-    candidates.push(...deployedUrls);
-    console.log('Added deployed URLs for Expo Go:', deployedUrls);
+    // When running in Expo Go, use the primary deployed URL
+    const deployedUrl = 'https://rork.app';
+    console.log('Using deployed URL for Expo Go:', deployedUrl);
+    return deployedUrl;
   }
   
-  // 3. Platform-specific defaults for development
-  if (Platform.OS === 'android') {
-    candidates.push('http://10.0.2.2:3000');
-    console.log('Added Android emulator URL');
-  }
-  if (Platform.OS === 'ios') {
-    candidates.push('http://localhost:3000');
-    console.log('Added iOS simulator URL');
-  }
-  
-  // 4. Derived from Expo dev server
+  // 4. Try to derive from Expo dev server
   const derived = deriveFromExpoOrigin();
   if (derived) {
-    candidates.push(derived);
+    console.log('Using derived URL:', derived);
+    return derived;
   }
   
-  // 5. Common development server URLs
-  candidates.push('http://127.0.0.1:3000');
-  candidates.push('http://localhost:3000');
-  
-  // 6. Common LAN IPs for physical device testing
-  const commonLanIps = [
-    'http://192.168.1.100:3000',
-    'http://192.168.1.101:3000',
-    'http://192.168.1.102:3000',
-    'http://192.168.0.100:3000',
-    'http://192.168.0.101:3000',
-    'http://192.168.0.102:3000',
-    'http://10.0.0.100:3000',
-    'http://10.0.0.101:3000',
-    'http://172.16.0.100:3000'
-  ];
-  candidates.push(...commonLanIps);
-  
-  // 7. Fallback deployed URLs (in case local dev isn't running)
-  if (!isExpoGo) {
-    const fallbackDeployedUrls = [
-      'https://dailydesk-ai-self-mastery-platform.vercel.app',
-      'https://grind-app.vercel.app'
-    ];
-    candidates.push(...fallbackDeployedUrls);
+  // 5. Platform-specific defaults for development
+  let defaultUrl: string;
+  if (Platform.OS === 'android') {
+    defaultUrl = 'http://10.0.2.2:3000';
+  } else if (Platform.OS === 'ios') {
+    defaultUrl = 'http://localhost:3000';
+  } else {
+    defaultUrl = 'http://127.0.0.1:3000';
   }
   
-  console.log(`Testing ${candidates.length} candidates...`);
-  
-  // Test each candidate with shorter timeout for faster detection
-  for (let i = 0; i < candidates.length; i++) {
-    const base = candidates[i];
-    console.log(`[${i + 1}/${candidates.length}] Testing: ${base}`);
-    
-    const health = await tryFetchHealth(base);
-    if (health) {
-      const finalUrl = base.replace(/\/$/, '');
-      console.log('🎯 API URL detected:', finalUrl);
-      return finalUrl;
-    }
-  }
-  
-  // If nothing works, return the first candidate with a warning
-  const fallback = candidates[0]?.replace(/\/$/, '') || 'http://127.0.0.1:3000';
-  console.warn('⚠️ No working API URL found, using fallback:', fallback);
-  console.warn('💡 Set EXPO_PUBLIC_API_URL to your server URL if needed');
-  
-  return fallback;
+  console.log('Using platform default:', defaultUrl);
+  return defaultUrl;
 };
 
-// Cache the base URL promise
-let resolvedBasePromise: Promise<string> | null = null;
-const ensureBase = () => {
-  if (!resolvedBasePromise) {
-    resolvedBasePromise = getApiBaseUrl();
+// Cache the base URL
+let cachedBaseUrl: string | null = null;
+const ensureBase = (): string => {
+  if (!cachedBaseUrl) {
+    cachedBaseUrl = getApiBaseUrl();
   }
-  return resolvedBasePromise;
+  return cachedBaseUrl;
 };
 
 // Create the tRPC client
@@ -247,13 +131,13 @@ export const trpcClient = createTRPCClient<AppRouter>({
         return headers;
       },
       fetch: async (url, options) => {
-        const base = await ensureBase();
+        const base = ensureBase();
         
-        // Build the full URL - try /trpc first, then /api/trpc
+        // Build the full URL - try /api/trpc first (Vercel pattern), then /trpc
         const path = url.toString().replace(/^.*\/trpc/, '');
         const endpoints = [
-          `${base}/trpc${path}`,
-          `${base}/api/trpc${path}`
+          `${base}/api/trpc${path}`,
+          `${base}/trpc${path}`
         ];
         
         let lastError: Error | null = null;
@@ -264,7 +148,7 @@ export const trpcClient = createTRPCClient<AppRouter>({
           try {
             // Add timeout to prevent hanging
             const timeoutPromise = new Promise<never>((_, reject) => {
-              setTimeout(() => reject(new Error('Request timeout')), 15000); // 15 second timeout
+              setTimeout(() => reject(new Error('Request timeout')), 10000); // 10 second timeout
             });
             
             const fetchPromise = fetch(finalUrl, {
@@ -324,20 +208,14 @@ export const trpcClient = createTRPCClient<AppRouter>({
   ],
 });
 
-// Log the final tRPC URL on startup (with timeout)
-(async () => {
-  try {
-    const timeoutPromise = new Promise<never>((_, reject) => {
-      setTimeout(() => reject(new Error('URL detection timeout')), 10000);
-    });
-    
-    const base = await Promise.race([ensureBase(), timeoutPromise]);
-    console.log('🚀 TRPC_URL:', `${base}/trpc`);
-  } catch (error) {
-    console.error('❌ Failed to resolve tRPC URL:', error);
-    console.warn('💡 Set EXPO_PUBLIC_API_URL to your server URL');
-  }
-})();
+// Log the final tRPC URL on startup
+try {
+  const base = ensureBase();
+  console.log('🚀 TRPC_URL:', `${base}/api/trpc`);
+} catch (error) {
+  console.error('❌ Failed to resolve tRPC URL:', error);
+  console.warn('💡 Set EXPO_PUBLIC_API_URL to your server URL');
+}
 
 // Export a function to check API connectivity
 export const checkApiConnectivity = async (): Promise<{
@@ -347,22 +225,41 @@ export const checkApiConnectivity = async (): Promise<{
   error?: string;
 }> => {
   try {
-    const base = await getApiBaseUrl();
-    const health = await tryFetchHealth(base);
+    const base = getApiBaseUrl();
     
-    if (health) {
-      return {
-        connected: true,
-        url: base,
-        procedures: health.procedures
-      };
-    } else {
-      return {
-        connected: false,
-        url: base,
-        error: 'Health check failed'
-      };
+    // Try a simple health check
+    const healthEndpoints = [
+      `${base}/api/health`,
+      `${base}/health`,
+      `${base}/api/ping`,
+      `${base}/ping`
+    ];
+    
+    for (const url of healthEndpoints) {
+      try {
+        const res = await fetch(url, { 
+          method: 'GET',
+          headers: { 'Accept': 'application/json' }
+        });
+        
+        if (res.ok) {
+          const data = await res.json();
+          return {
+            connected: true,
+            url: base,
+            procedures: data.procedures || ['health.ping', 'goals.createUltimate', 'goals.updateUltimate']
+          };
+        }
+      } catch {
+        // Continue to next endpoint
+      }
     }
+    
+    return {
+      connected: false,
+      url: base,
+      error: 'Health check failed'
+    };
   } catch (error) {
     return {
       connected: false,
