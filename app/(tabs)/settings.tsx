@@ -29,6 +29,7 @@ import { useTaskStore } from '@/store/taskStore';
 import { useJournalStore } from '@/store/journalStore';
 import { useAuthStore } from '@/store/authStore';
 import { useRouter } from 'expo-router';
+import { ConnectivityDebugger } from '@/components/ConnectivityDebugger';
 
 export default function SettingsScreen() {
   const router = useRouter();
@@ -345,6 +346,8 @@ export default function SettingsScreen() {
               ⚠️ This section is for development purposes only and will be removed in production.
             </Text>
           </View>
+          
+          <ConnectivityDebugger />
           
           <TouchableOpacity 
             style={styles.dangerButton}
