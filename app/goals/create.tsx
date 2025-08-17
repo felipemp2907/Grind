@@ -51,8 +51,14 @@ export default function CreateGoalScreen() {
     
     setCreating(true);
     
+    // Create abort controller for timeout
+    const abortController = new AbortController();
+    const timeoutId = setTimeout(() => {
+      abortController.abort();
+    }, 15000); // 15 second timeout
+    
     try {
-      console.log('Creating ultimate goal with batch planner...');
+      console.log('🎯 Creating ultimate goal with batch planner...');
       
       // Use the new tRPC createUltimate endpoint that generates all tasks automatically
       const result = await createUltimateGoalMutation.mutateAsync({
@@ -61,7 +67,8 @@ export default function CreateGoalScreen() {
         deadlineISO: deadline
       });
       
-      console.log('Goal creation result:', result);
+      clearTimeout(timeoutId);
+      console.log('✅ Goal creation result:', result);
       
       // Add the goal to the store
       addGoal(result.goal);
@@ -83,13 +90,30 @@ export default function CreateGoalScreen() {
       router.replace('/(tabs)/home');
       
     } catch (error) {
-      console.error('Error creating goal:', error);
+      clearTimeout(timeoutId);
+      console.error('❌ Error creating goal:', error);
+      
+      let errorMessage = "There was an issue creating your goal. Please try again.";
+      
+      if (error instanceof Error) {
+        if (error.message.includes('Network request failed') || error.message.includes('Failed to fetch')) {
+          errorMessage = "Cannot reach the server. Please check your internet connection and ensure the API server is running.";
+        } else if (error.message.includes('timeout') || error.message.includes('aborted')) {
+          errorMessage = "The request timed out. The server may be busy. Please try again.";
+        } else if (error.message.includes('AUTH_REQUIRED')) {
+          errorMessage = "Authentication required. Please sign in again.";
+        } else if (error.message.includes('PLANNER_TIMEOUT')) {
+          errorMessage = "The AI planner took too long. Please try again with a simpler goal.";
+        }
+      }
+      
       Alert.alert(
-        "Error",
-        "There was an issue creating your goal. Please try again.",
+        "Error Creating Goal",
+        errorMessage,
         [{ text: "OK" }]
       );
     } finally {
+      clearTimeout(timeoutId);
       setCreating(false);
     }
   };
@@ -197,7 +221,7 @@ export default function CreateGoalScreen() {
             <Button
               title={
                 creating 
-                  ? "Creating Goal..." 
+                  ? "Creating Goal & Seeding Plan..." 
                   : generatingBreakdown 
                     ? "Generating AI Breakdown..." 
                     : "Create Ultimate Goal"

@@ -9,7 +9,8 @@ import { createClient } from '@supabase/supabase-js';
 // app will be mounted at /api
 const app = new Hono();
 
-console.log('Hono app initialized');
+const PORT = process.env.PORT || 3000;
+console.log(`🚀 API starting on port ${PORT}`);
 console.log('Environment:', process.env.NODE_ENV || 'development');
 console.log('Supabase URL configured:', !!process.env.SUPABASE_URL);
 console.log('Available env vars:', {
@@ -21,18 +22,15 @@ console.log('Available env vars:', {
 // Add logging middleware
 app.use("*", logger());
 
-// Enable CORS for all routes
+// Enable CORS for all routes - allow mobile devices and Expo Go
 app.use("*", cors({
   origin: (origin, c) => {
-    // Allow all origins in development
-    if (process.env.NODE_ENV === 'development') {
-      return origin || '*';
-    }
-    // In production, you might want to restrict this
+    console.log('CORS request from origin:', origin);
+    // Always allow requests (including mobile apps)
     return origin || '*';
   },
   allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowHeaders: ['Content-Type', 'Authorization', 'x-trpc-source'],
+  allowHeaders: ['Content-Type', 'Authorization', 'x-trpc-source', 'Accept'],
   credentials: true,
 }));
 
@@ -111,8 +109,8 @@ try {
       }
     };
     if (routerDef.record) extract(routerDef.record);
-    console.log('API up');
-    console.log('Procedures:', list.join(', '));
+    console.log('🎯 API listening on PORT', PORT);
+    console.log('📋 Procedures:', list.join(', '));
   } else {
     console.log('No router definition found');
   }
