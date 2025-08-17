@@ -9,7 +9,7 @@ export default function Index() {
   useEffect(() => {
     if (isLoading) return;
     
-    console.log('TRPC_URL', (process.env.EXPO_PUBLIC_API_URL || (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000')) + '/api/trpc');
+    console.log('TRPC_URL', (process.env.EXPO_PUBLIC_API_URL || 'https://expo-app-rork.vercel.app') + '/api/trpc');
     console.log('SUPABASE_URL', process.env.EXPO_PUBLIC_SUPABASE_URL);
     
     if (session) {

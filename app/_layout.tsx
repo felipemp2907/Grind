@@ -128,7 +128,7 @@ export default function RootLayout() {
   
   // Log important envs on app boot
   useEffect(() => {
-    const base = process.env.EXPO_PUBLIC_API_URL || (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000');
+    const base = process.env.EXPO_PUBLIC_API_URL || 'https://expo-app-rork.vercel.app';
     const supa = process.env.EXPO_PUBLIC_SUPABASE_URL || 'unset';
     console.log(`TRPC_URL = ${base}/api/trpc`);
     console.log(`SUPABASE_URL = ${supa}`);
@@ -334,6 +334,13 @@ function RootLayoutNav() {
             name="challenges" 
             options={{ 
               title: "Challenges",
+              headerBackTitle: "Back",
+            }} 
+          />
+          <Stack.Screen 
+            name="debug-api" 
+            options={{ 
+              title: "API Debug",
               headerBackTitle: "Back",
             }} 
           />

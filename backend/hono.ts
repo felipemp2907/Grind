@@ -12,6 +12,11 @@ const app = new Hono();
 console.log('Hono app initialized');
 console.log('Environment:', process.env.NODE_ENV || 'development');
 console.log('Supabase URL configured:', !!process.env.SUPABASE_URL);
+console.log('Available env vars:', {
+  SUPABASE_URL: !!process.env.SUPABASE_URL,
+  SUPABASE_ANON_KEY: !!process.env.SUPABASE_ANON_KEY,
+  SUPABASE_SERVICE_ROLE_KEY: !!process.env.SUPABASE_SERVICE_ROLE_KEY
+});
 
 // Add logging middleware
 app.use("*", logger());
