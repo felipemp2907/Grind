@@ -166,16 +166,19 @@ app.get("/health", (c) => {
     console.error('Error extracting procedures:', error);
   }
   
-  const required = ["goals.createUltimate", "goals.updateUltimate", "health.ping"];
-  const uniqueProcedures = Array.from(new Set([...(actualProcedures || []), ...required]));
+  // Ensure we always include the required procedures
+  const requiredProcedures = ["goals.createUltimate", "goals.updateUltimate", "health.ping"];
+  const allProcedures = Array.from(new Set([...actualProcedures, ...requiredProcedures]));
   
   const payload = {
     trpcEndpoint: "/trpc",
-    procedures: uniqueProcedures,
+    procedures: allProcedures,
     supabaseUrlPresent: Boolean(process.env.SUPABASE_URL || 'https://ovvihfhkhqigzahlttyf.supabase.co'),
+    timestamp: new Date().toISOString(),
+    status: "ok"
   } as const;
 
-  console.log('Health check response:', payload);
+  console.log('Health check response:', JSON.stringify(payload, null, 2));
   return c.json(payload);
 });
 

@@ -4,6 +4,7 @@ import type { AppRouter } from "@/backend/trpc/app-router";
 import superjson from "superjson";
 import { useAuthStore } from '@/store/authStore';
 import { Platform } from 'react-native';
+import Constants from 'expo-constants';
 
 export const trpc = createTRPCReact<AppRouter>();
 
@@ -60,10 +61,32 @@ async function tryFetchHealth(base: string): Promise<{ procedures: string[] } | 
 
 function deriveFromExpoOrigin(): string | null {
   try {
-    const anyGlobal = global as unknown as { __expo?: { plugins?: { Manifest?: { hostUri?: string } } } };
-    const hostUri = anyGlobal.__expo?.plugins?.Manifest?.hostUri;
-    if (typeof hostUri === 'string' && hostUri.length > 0) {
-      const host = hostUri.split(':')[0];
+    // Try multiple ways to get the dev server host
+    let host: string | null = null;
+    
+    // Method 1: Expo Constants
+    if (Constants.expoConfig?.hostUri) {
+      host = Constants.expoConfig.hostUri.split(':')[0];
+      console.log('Got host from Constants.expoConfig.hostUri:', host);
+    }
+    
+    // Method 2: Legacy manifest
+    if (!host && Constants.manifest?.hostUri) {
+      host = Constants.manifest.hostUri.split(':')[0];
+      console.log('Got host from Constants.manifest.hostUri:', host);
+    }
+    
+    // Method 3: Global expo object
+    if (!host) {
+      const anyGlobal = global as unknown as { __expo?: { plugins?: { Manifest?: { hostUri?: string } } } };
+      const hostUri = anyGlobal.__expo?.plugins?.Manifest?.hostUri;
+      if (typeof hostUri === 'string' && hostUri.length > 0) {
+        host = hostUri.split(':')[0];
+        console.log('Got host from global.__expo:', host);
+      }
+    }
+    
+    if (host && host !== 'localhost' && host !== '127.0.0.1') {
       const derived = `http://${host}:3000`;
       console.log('Derived API URL from Expo:', derived);
       return derived;
