@@ -80,23 +80,23 @@ export const getApiBaseUrl = async (): Promise<string> => {
   
   // 2. Platform-specific defaults
   if (Platform.OS === 'android') {
-    candidates.push('http://10.0.2.2:3000');
+    candidates.push('http://10.0.2.2:3000/api');
     console.log('Added Android emulator URL');
   }
   if (Platform.OS === 'ios') {
-    candidates.push('http://localhost:3000');
+    candidates.push('http://localhost:3000/api');
     console.log('Added iOS simulator URL');
   }
   
   // 3. Derived from Expo dev server
   const derived = deriveFromExpoOrigin();
   if (derived) {
-    candidates.push(derived);
+    candidates.push(`${derived}/api`);
   }
   
   // 4. Fallbacks
-  candidates.push('http://127.0.0.1:3000');
-  candidates.push('http://192.168.1.100:3000'); // Common LAN IP
+  candidates.push('http://127.0.0.1:3000/api');
+  candidates.push('http://192.168.1.100:3000/api'); // Common LAN IP
   
   console.log('Testing candidates:', candidates);
   
@@ -111,7 +111,7 @@ export const getApiBaseUrl = async (): Promise<string> => {
   }
   
   // If nothing works, return the first candidate with a warning
-  const fallback = candidates[0]?.replace(/\/$/, '') || 'http://127.0.0.1:3000';
+  const fallback = candidates[0]?.replace(/\/$/, '') || 'http://127.0.0.1:3000/api';
   console.warn('⚠️ No working API URL found, using fallback:', fallback);
   console.warn('💡 Set EXPO_PUBLIC_API_URL to your server URL if needed');
   
@@ -172,20 +172,7 @@ export const trpcClient = createTRPCClient<AppRouter>({
             }
           });
           
-          // If 404, try the /api/trpc prefix
-          if (res.status === 404) {
-            const altUrl = `${base}/api/trpc${path}`;
-            console.log('🔄 tRPC 404, retrying with:', altUrl);
-            res = await fetch(altUrl, {
-              ...options,
-              headers: {
-                ...options?.headers,
-                'Content-Type': 'application/json',
-                'Accept': 'application/json'
-              }
-            });
-            finalUrl = altUrl;
-          }
+          // No need to retry with /api/trpc since base already includes /api
           
           // Check response content type
           const contentType = res.headers.get('content-type') ?? '';
@@ -204,7 +191,7 @@ export const trpcClient = createTRPCClient<AppRouter>({
               const errorData = JSON.parse(text);
               const message = errorData?.message || errorData?.error || `HTTP ${res.status}`;
               throw new Error(message);
-            } catch (parseError) {
+            } catch {
               throw new Error(`HTTP ${res.status}: ${text.slice(0, 200)}`);
             }
           }
