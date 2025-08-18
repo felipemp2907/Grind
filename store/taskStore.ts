@@ -7,6 +7,7 @@ import { Task } from '@/types';
 import { useUserStore } from '@/store/userStore';
 import { supabase, setupDatabase, serializeError, ensureUserProfile, createTaskWithElevatedPermissions } from '@/lib/supabase';
 import { useAuthStore } from './authStore';
+import { getTasksForDate, updateTaskCompletion } from '@/lib/directApi';
 
 interface TaskState {
   tasks: Task[];
@@ -21,6 +22,7 @@ interface TaskState {
   getTaskById: (id: string) => Task | undefined;
   deleteTask: (id: string) => Promise<void>;
   fetchTasks: () => Promise<void>;
+  fetchTasksForDate: (date: string) => Promise<void>;
 
   resetStreak: (id: string) => void;
   
@@ -441,7 +443,68 @@ export const useTaskStore = create<TaskState>()(
         }
       },
       
-
+      fetchTasksForDate: async (date: string) => {
+        try {
+          console.log('🔍 Fetching tasks for date:', date);
+          
+          const result = await getTasksForDate(date);
+          
+          if (result.success) {
+            // Convert database tasks to local Task format
+            const streakTasks: Task[] = (result.streakTasks || []).map((task: any) => ({
+              id: task.id,
+              title: task.title,
+              description: task.description || '',
+              date: task.task_date,
+              goalId: task.goal_id || '',
+              completed: task.completed || false,
+              xpValue: task.xp_value || 30,
+              isHabit: true,
+              streak: task.streak || 0,
+              isUserCreated: true,
+              requiresValidation: true,
+              priority: task.priority as 'high' | 'medium' | 'low' || 'medium',
+              completedAt: task.completed_at || undefined,
+              type: 'streak' as const,
+              taskDate: task.task_date
+            }));
+            
+            const todayTasks: Task[] = (result.todayTasks || []).map((task: any) => ({
+              id: task.id,
+              title: task.title,
+              description: task.description || '',
+              date: task.due_at ? task.due_at.split('T')[0] : date,
+              goalId: task.goal_id || '',
+              completed: task.completed || false,
+              xpValue: task.xp_value || 30,
+              isHabit: false,
+              streak: task.streak || 0,
+              isUserCreated: true,
+              requiresValidation: true,
+              priority: task.priority as 'high' | 'medium' | 'low' || 'medium',
+              completedAt: task.completed_at || undefined,
+              type: 'today' as const
+            }));
+            
+            const allTasks = [...streakTasks, ...todayTasks];
+            
+            // Update local state with tasks for this date
+            set((state) => {
+              // Remove existing tasks for this date and add new ones
+              const otherTasks = state.tasks.filter(task => task.date !== date);
+              return {
+                tasks: [...otherTasks, ...allTasks]
+              };
+            });
+            
+            console.log(`✅ Fetched ${allTasks.length} tasks for ${date} (${streakTasks.length} streak, ${todayTasks.length} today)`);
+          } else {
+            console.error('❌ Failed to fetch tasks for date:', result.error);
+          }
+        } catch (error) {
+          console.error('❌ Error in fetchTasksForDate:', error);
+        }
+      },
       
       resetTasks: async () => {
         try {
