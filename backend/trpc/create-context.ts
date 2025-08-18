@@ -8,7 +8,7 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js';
 const supabaseUrl = 'https://ovvihfhkhqigzahlttyf.supabase.co';
 
 
-// Use the correct service role key
+// Supabase keys
 const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im92dmloZmhraHFpZ3phaGx0dHlmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDcxNDQ2MDIsImV4cCI6MjA2MjcyMDYwMn0.S1GkUtQR3d7YvmuJObDwZlYRMa4hBFc3NWBid9FHn2I';
 const supabaseServiceRoleKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im92dmloZmhraHFpZ3phaGx0dHlmIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0NzE0NDYwMiwiZXhwIjoyMDYyNzIwNjAyfQ.SCVexKSM6ktxwCnkq-mM8q6XoJsWCgiymSWcqmUde-Y';
 
@@ -17,8 +17,19 @@ const supabase = createClient(supabaseUrl, supabaseAnonKey, { auth: { persistSes
 // Create admin client for server-side operations (bypasses RLS)
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || supabaseServiceRoleKey;
 export const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
-  auth: { persistSession: false }
+  auth: { 
+    persistSession: false,
+    autoRefreshToken: false,
+    detectSessionInUrl: false
+  },
+  global: {
+    headers: {
+      'X-Client-Info': 'grind-app-admin'
+    }
+  }
 });
+
+console.log('Supabase Admin client initialized with service role');
 
 // Database health check function
 export const ensureDbReady = async (supabaseClient: typeof supabase) => {
@@ -94,7 +105,7 @@ export const createContext = async (opts: FetchCreateContextFnOptions) => {
         auth: { persistSession: false },
         global: { headers: { Authorization: `Bearer ${bearer}` } as Record<string, string> }
       });
-    } catch (e) {
+    } catch {
       console.log('Token validation failed in context');
     }
   }
@@ -169,8 +180,8 @@ export const protectedProcedure = t.procedure.use(async ({ ctx, next }) => {
           experience_level: 'beginner'
         });
     }
-  } catch (e) {
-    console.warn('Profile ensure failed:', e);
+  } catch (profileError) {
+    console.warn('Profile ensure failed:', profileError);
   }
 
   return next({

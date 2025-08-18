@@ -40,7 +40,8 @@ export const createGoalProcedure = protectedProcedure
         category: input.category || null
       };
       
-      const { data: goalData, error: goalError } = await ctx.supabase
+      console.log('Creating goal with admin client to bypass RLS...');
+      const { data: goalData, error: goalError } = await ctx.supabaseAdmin
         .from('goals')
         .insert(goalInsertData)
         .select()
@@ -160,8 +161,8 @@ export const createUltimateGoalProcedure = protectedProcedure
         
         console.log(`✅ Goal created with ID: ${goalData.id}`);
         
-        // 2. Get user profile for experience level (fallback to 'beginner')
-        const { data: userProfile } = await ctx.supabase
+        // 2. Get user profile for experience level using admin client (fallback to 'beginner')
+        const { data: userProfile } = await ctx.supabaseAdmin
           .from('profiles')
           .select('experience_level')
           .eq('id', user.id)
@@ -305,8 +306,9 @@ export const updateUltimateGoalProcedure = protectedProcedure
       try {
         console.log('🔄 Updating ultimate goal with full plan regeneration...');
         
-        // 1. Verify ownership and update the goal
-        const { data: goalData, error: goalError } = await ctx.supabase
+        // 1. Verify ownership and update the goal using admin client
+        console.log('Updating goal with admin client to bypass RLS...');
+        const { data: goalData, error: goalError } = await ctx.supabaseAdmin
           .from('goals')
           .update({
             title: updateData.title,
@@ -335,9 +337,9 @@ export const updateUltimateGoalProcedure = protectedProcedure
           });
         }
         
-        // 2. Delete ALL existing tasks for this goal
-        console.log('🗑️ Deleting existing tasks...');
-        const { error: deleteTasksError } = await ctx.supabase
+        // 2. Delete ALL existing tasks for this goal using admin client
+        console.log('🗑️ Deleting existing tasks with admin client...');
+        const { error: deleteTasksError } = await ctx.supabaseAdmin
           .from('tasks')
           .delete()
           .eq('user_id', user.id)
@@ -349,8 +351,8 @@ export const updateUltimateGoalProcedure = protectedProcedure
           console.log('✅ Successfully deleted all existing tasks for goal');
         }
         
-        // 3. Get user profile for experience level
-        const { data: userProfile } = await ctx.supabase
+        // 3. Get user profile for experience level using admin client
+        const { data: userProfile } = await ctx.supabaseAdmin
           .from('profiles')
           .select('experience_level')
           .eq('id', user.id)
