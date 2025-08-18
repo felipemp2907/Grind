@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { TRPCError } from '@trpc/server';
 import { protectedProcedure, type ProtectedContext } from '../../create-context';
-import { planAndSeedFullGoal } from '../../../services/planner/planAndSeedFullGoal';
+import { planAndSeedFullGoal } from '../../../services/planner/index';
 
 const createUltimateGoalSchema = z.object({
   title: z.string().min(1, 'Title is required'),
@@ -177,7 +177,7 @@ export const createUltimateGoalProcedure = protectedProcedure
           goalData.id,
           input.title,
           input.description,
-          input.deadline,
+          input.deadlineISO,
           experienceLevel,
           0 // timezone offset
         );
@@ -367,7 +367,7 @@ export const updateUltimateGoalProcedure = protectedProcedure
           goalData.id,
           updateData.title,
           updateData.description,
-          updateData.deadline,
+          updateData.deadlineISO,
           experienceLevel,
           0 // timezone offset
         );
