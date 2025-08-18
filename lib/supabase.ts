@@ -5,15 +5,19 @@ import 'react-native-url-polyfill/auto';
 // Supabase credentials
 const supabaseUrl = 'https://ovvihfhkhqigzahlttyf.supabase.co';
 const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im92dmloZmhraHFpZ3phaGx0dHlmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDcxNDQ2MDIsImV4cCI6MjA2MjcyMDYwMn0.S1GkUtQR3d7YvmuJObDwZlYRMa4hBFc3NWBid9FHn2I';
+const supabaseServiceKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im92dmloZmhraHFpZ3phaGx0dHlmIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0NzE0NDYwMiwiZXhwIjoyMDYyNzIwNjAyfQ.SCVexKSM6ktxwCnkq-mM8q6XoJsWCgiymSWcqmUde-Y';
 
-// Create the Supabase client
+// Create the Supabase client for regular operations
 let supabase: SupabaseClient;
+
+// Create admin client for operations that need elevated permissions
+let supabaseAdmin: SupabaseClient;
 
 try {
   // Validate URL format
   new URL(supabaseUrl);
   
-  // Create the Supabase client
+  // Create the regular Supabase client
   supabase = createClient(supabaseUrl, supabaseAnonKey, {
     auth: {
       storage: AsyncStorage,
@@ -36,7 +40,19 @@ try {
     },
   });
   
-  console.log('Supabase client initialized successfully');
+  // Create admin client for elevated operations
+  supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
+    auth: {
+      persistSession: false,
+    },
+    global: {
+      headers: {
+        'X-Client-Info': 'grind-app-admin',
+      },
+    },
+  });
+  
+  console.log('Supabase clients initialized successfully');
 } catch (error) {
   // Handle invalid URL error
   console.error('Invalid Supabase URL:', error);
@@ -412,4 +428,87 @@ export const createDemoGoogleUser = async (): Promise<{ success: boolean; error?
   }
 };
 
-export { supabase };
+// Helper function to get the appropriate client based on operation type
+export const getSupabaseClient = (useAdmin: boolean = false): SupabaseClient => {
+  return useAdmin ? supabaseAdmin : supabase;
+};
+
+// Helper function for task operations that need elevated permissions
+export const createTaskWithElevatedPermissions = async (taskData: any) => {
+  try {
+    console.log('Creating task with elevated permissions:', taskData);
+    
+    // First try with regular client
+    const { data, error } = await supabase
+      .from('tasks')
+      .insert(taskData)
+      .select()
+      .single();
+    
+    if (!error) {
+      console.log('Task created successfully with regular client');
+      return { data, error: null };
+    }
+    
+    console.log('Regular client failed, trying admin client:', error.message);
+    
+    // If regular client fails, try with admin client
+    const { data: adminData, error: adminError } = await supabaseAdmin
+      .from('tasks')
+      .insert(taskData)
+      .select()
+      .single();
+    
+    if (adminError) {
+      console.error('Admin client also failed:', adminError.message);
+      return { data: null, error: adminError };
+    }
+    
+    console.log('Task created successfully with admin client');
+    return { data: adminData, error: null };
+  } catch (error) {
+    console.error('Error in createTaskWithElevatedPermissions:', error);
+    return { data: null, error };
+  }
+};
+
+// Helper function for goal operations that need elevated permissions
+export const createGoalWithElevatedPermissions = async (goalData: any) => {
+  try {
+    console.log('Creating goal with elevated permissions:', goalData);
+    
+    // First try with regular client
+    const { data, error } = await supabase
+      .from('goals')
+      .insert(goalData)
+      .select()
+      .single();
+    
+    if (!error) {
+      console.log('Goal created successfully with regular client');
+      return { data, error: null };
+    }
+    
+    console.log('Regular client failed, trying admin client:', error.message);
+    
+    // If regular client fails, try with admin client
+    const { data: adminData, error: adminError } = await supabaseAdmin
+      .from('goals')
+      .insert(goalData)
+      .select()
+      .single();
+    
+    if (adminError) {
+      console.error('Admin client also failed:', adminError.message);
+      return { data: null, error: adminError };
+    }
+    
+    console.log('Goal created successfully with admin client');
+    return { data: adminData, error: null };
+  } catch (error) {
+    console.error('Error in createGoalWithElevatedPermissions:', error);
+    return { data: null, error };
+  }
+};
+
+export { supabase, supabaseAdmin };

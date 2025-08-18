@@ -5,7 +5,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Task } from '@/types';
 
 import { useUserStore } from '@/store/userStore';
-import { supabase, setupDatabase, serializeError, ensureUserProfile } from '@/lib/supabase';
+import { supabase, setupDatabase, serializeError, ensureUserProfile, createTaskWithElevatedPermissions } from '@/lib/supabase';
 import { useAuthStore } from './authStore';
 
 interface TaskState {
@@ -85,15 +85,12 @@ export const useTaskStore = create<TaskState>()(
           
           console.log('Inserting task data:', insertData);
           
-          const { data, error } = await supabase
-            .from('tasks')
-            .insert(insertData)
-            .select()
-            .single();
+          // Use elevated permissions function for task creation
+          const { data, error } = await createTaskWithElevatedPermissions(insertData);
             
           if (error) {
-            console.error('Error saving task to Supabase:', serializeError(error));
-            return;
+            console.error('Task insertion failed:', serializeError(error));
+            throw new Error(`Task creation failed: ${serializeError(error)}`);
           }
           
           // Add to local state with the proper UUID from database

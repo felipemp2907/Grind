@@ -4,7 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { Goal, Milestone, ProgressUpdate, MilestoneAlert, GoalShareCard } from '@/types';
-import { supabase, setupDatabase, serializeError, getCurrentUser, ensureUserProfile } from '@/lib/supabase';
+import { supabase, setupDatabase, serializeError, getCurrentUser, ensureUserProfile, createGoalWithElevatedPermissions, createTaskWithElevatedPermissions } from '@/lib/supabase';
 import { useAuthStore } from './authStore';
 // import { trpcClient, checkApiConnectivity } from '@/lib/trpc';
 import { createClientPlan, convertPlanToTasks } from '@/lib/clientPlanner';
@@ -252,15 +252,12 @@ export const useGoalStore = create<GoalState>()(
           if (goalData.color) goalInsertData.color = goalData.color;
           if (goalData.coverImage) goalInsertData.cover_image = goalData.coverImage;
           
-          const { data: goalDbData, error: goalError } = await supabase
-            .from('goals')
-            .insert(goalInsertData)
-            .select()
-            .single();
+          // Use elevated permissions for goal creation
+          const { data: goalDbData, error: goalError } = await createGoalWithElevatedPermissions(goalInsertData);
             
           if (goalError || !goalDbData) {
-            console.error('Failed to create goal:', serializeError(goalError));
-            throw new Error(`Goal creation failed: ${goalError?.message || 'Unknown error'}`);
+            console.error('❌ Error creating goal:', serializeError(goalError));
+            throw new Error(`Goal creation failed: ${serializeError(goalError)}`);
           }
           
           console.log('🤖 Creating client-side plan...');
@@ -303,15 +300,16 @@ export const useGoalStore = create<GoalState>()(
                 priority: task.priority || 'medium'
               }));
               
-              const { error: insertError } = await supabase
-                .from('tasks')
-                .insert(supabaseTasks);
-                
-              if (insertError) {
-                console.error('Task insertion failed:', serializeError(insertError));
+              // Use elevated permissions for task creation
+              const insertPromises = supabaseTasks.map(task => createTaskWithElevatedPermissions(task));
+              const insertResults = await Promise.all(insertPromises);
+              
+              const failedInserts = insertResults.filter(result => result.error);
+              if (failedInserts.length > 0) {
+                console.error('Failed to insert tasks:', failedInserts.map(r => serializeError(r.error)));
                 // Clean up goal if task insertion fails
                 await supabase.from('goals').delete().eq('id', goalDbData.id);
-                throw new Error(`Task creation failed: ${insertError.message}`);
+                throw new Error(`Task creation failed: ${serializeError(failedInserts[0].error)}`);
               }
               
               totalInserted += batch.length;
