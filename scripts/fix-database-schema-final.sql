@@ -1,5 +1,20 @@
--- Comprehensive database schema fix for Grind app
+-- ========================================
+-- DATABASE SCHEMA FIX FOR GRIND APP
+-- ========================================
+-- 
+-- PROBLEM: "Could not find the 'completed' column of 'tasks' in the schema cache"
+-- SOLUTION: Run this script in your Supabase SQL Editor
+--
+-- INSTRUCTIONS:
+-- 1. Go to your Supabase Dashboard
+-- 2. Navigate to SQL Editor
+-- 3. Copy and paste this entire script
+-- 4. Click "Run" to execute
+-- 5. Verify the fix by checking the output at the end
+--
 -- This script is idempotent and can be run multiple times safely
+
+BEGIN;
 
 -- 1. Ensure profiles table has all required columns
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS full_name TEXT;
@@ -15,6 +30,9 @@ ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS task_date DATE;
 ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS due_at TIMESTAMPTZ;
 ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS load_score INTEGER DEFAULT 1 CHECK (load_score BETWEEN 1 AND 5);
 ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS proof_mode TEXT DEFAULT 'flex' CHECK (proof_mode IN ('flex', 'realtime'));
+ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS completed BOOLEAN DEFAULT FALSE;
+ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS completed_at TIMESTAMPTZ;
+ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'completed', 'skipped'));
 
 -- 3. Add constraint to ensure proper task type structure
 DO $$ 
@@ -180,3 +198,11 @@ COMMIT;
 
 -- Log completion
 SELECT 'Database schema fix completed successfully' AS status;
+
+-- Verify the fix worked by checking if the completed column exists
+SELECT column_name, data_type, is_nullable, column_default 
+FROM information_schema.columns 
+WHERE table_schema = 'public' 
+AND table_name = 'tasks' 
+AND column_name IN ('completed', 'completed_at', 'status', 'type', 'task_date', 'due_at', 'load_score', 'proof_mode')
+ORDER BY column_name;
