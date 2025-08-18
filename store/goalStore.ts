@@ -6,7 +6,7 @@ import * as Haptics from 'expo-haptics';
 import { Goal, Milestone, ProgressUpdate, MilestoneAlert, GoalShareCard } from '@/types';
 import { supabase, setupDatabase, serializeError, getCurrentUser, ensureUserProfile } from '@/lib/supabase';
 import { useAuthStore } from './authStore';
-import { trpcClient, checkApiConnectivity } from '@/lib/trpc';
+// import { trpcClient, checkApiConnectivity } from '@/lib/trpc';
 import { createClientPlan, convertPlanToTasks } from '@/lib/clientPlanner';
 
 interface GoalState {
@@ -197,204 +197,162 @@ export const useGoalStore = create<GoalState>()(
         try {
           console.log('Creating ultimate goal:', goalData.title);
           
-          // Check API connectivity with shorter timeout
-          const apiCheck = await Promise.race([
-            checkApiConnectivity(),
-            new Promise<{ connected: false; error: string }>((_, reject) => 
-              setTimeout(() => reject({ connected: false, error: 'Timeout' }), 800)
-            )
-          ]).catch(() => ({ connected: false, error: 'Connection check failed' }));
-          
-          let result;
-          let usedClientPlanner = false;
-          
-          if (apiCheck.connected && 'procedures' in apiCheck && apiCheck.procedures?.includes('goals.createUltimate')) {
-            // Try to use the backend tRPC procedure with timeout
+          // Always use client-side planner (no tRPC dependency)
+          console.log('🤖 Using client-side batch planner');
+          // Use client-side planner
+          let { user: currentUser } = await getCurrentUser();
+          if (!currentUser) {
             try {
-              console.log('🌐 Using server planner via tRPC');
-              
-              const serverPromise = trpcClient.goals.createUltimate.mutate({
-                ...goalData,
-                deadlineISO: goalData.deadline
-              });
-              
-              const timeoutPromise = new Promise<never>((_, reject) => 
-                setTimeout(() => reject(new Error('Request timeout')), 12000)
-              );
-              
-              result = await Promise.race([serverPromise, timeoutPromise]);
-              console.log('✅ Server goal creation result:', result);
-            } catch (trpcError) {
-              console.log('❌ tRPC failed, falling back to client planner:', trpcError);
-              usedClientPlanner = true;
+              const { refreshSession } = useAuthStore.getState();
+              console.log('No user found, attempting to refresh session...');
+              await refreshSession();
+              const recheck = await getCurrentUser();
+              currentUser = recheck.user as any;
+            } catch (refreshErr) {
+              console.log('Session refresh failed:', serializeError(refreshErr));
             }
-          } else {
-            console.log('🔌 API unreachable, using client planner');
-            usedClientPlanner = true;
           }
           
-          if (usedClientPlanner) {
-            console.log('🤖 Using client-side batch planner fallback');
+          if (!currentUser) {
+            console.error('User not authenticated. Cannot create goal.');
+            throw new Error('Authentication required');
+          }
+          
+          const dbResult = await setupDatabase();
+          if (!dbResult.success) {
+            console.error('Database not set up:', dbResult.error);
+            throw new Error('Database setup failed');
+          }
+          
+          // Ensure user profile exists
+          const profileResult = await ensureUserProfile(currentUser.id, {
+            name: currentUser.user_metadata?.name || currentUser.email?.split('@')[0] || 'User',
+            email: currentUser.email
+          });
+          
+          if (!profileResult.success) {
+            console.error('Error ensuring profile exists:', profileResult.error);
+            throw new Error('Profile setup failed');
+          }
+          
+          // Create goal in Supabase
+          const goalInsertData: any = {
+            user_id: currentUser.id,
+            title: goalData.title,
+            description: goalData.description,
+            deadline: new Date(goalData.deadline).toISOString(),
+            status: 'active'
+          };
+          
+          // Add optional columns
+          if (goalData.category) goalInsertData.category = goalData.category;
+          if (goalData.targetValue !== undefined) goalInsertData.target_value = goalData.targetValue;
+          if (goalData.unit) goalInsertData.unit = goalData.unit;
+          if (goalData.priority) goalInsertData.priority = goalData.priority;
+          if (goalData.color) goalInsertData.color = goalData.color;
+          if (goalData.coverImage) goalInsertData.cover_image = goalData.coverImage;
+          
+          const { data: goalDbData, error: goalError } = await supabase
+            .from('goals')
+            .insert(goalInsertData)
+            .select()
+            .single();
             
-            // Use client-side planner
-            let { user: currentUser } = await getCurrentUser();
-            if (!currentUser) {
-              try {
-                const { refreshSession } = useAuthStore.getState();
-                console.log('No user found, attempting to refresh session...');
-                await refreshSession();
-                const recheck = await getCurrentUser();
-                currentUser = recheck.user as any;
-              } catch (refreshErr) {
-                console.log('Session refresh failed:', serializeError(refreshErr));
+          if (goalError || !goalDbData) {
+            console.error('Failed to create goal:', serializeError(goalError));
+            throw new Error(`Goal creation failed: ${goalError?.message || 'Unknown error'}`);
+          }
+          
+          console.log('🤖 Creating client-side plan...');
+          
+          // Generate client-side plan
+          const clientPlan = createClientPlan({
+            title: goalData.title,
+            description: goalData.description,
+            deadline: goalData.deadline
+          });
+          
+          // Convert plan to tasks
+          const tasksToInsert = convertPlanToTasks(clientPlan, goalDbData.id);
+          
+          console.log(`📝 Inserting ${tasksToInsert.length} tasks...`);
+          
+          // Insert tasks in batches of 1000
+          const batchSize = 1000;
+          let totalInserted = 0;
+          
+          try {
+            for (let i = 0; i < tasksToInsert.length; i += batchSize) {
+              const batch = tasksToInsert.slice(i, i + batchSize);
+              
+              // Convert to Supabase format
+              const supabaseTasks = batch.map(task => ({
+                user_id: currentUser.id,
+                goal_id: task.goalId,
+                title: task.title,
+                description: task.description,
+                type: task.type,
+                task_date: task.type === 'streak' ? task.taskDate : null,
+                due_at: task.type === 'today' ? new Date(`${task.date}T09:00:00.000Z`).toISOString() : null,
+                load_score: Math.floor(task.xpValue / 10), // Convert XP back to load
+                proof_mode: task.proofRequired ? 'realtime' : 'flex',
+                completed: false
+              }));
+              
+              const { error: insertError } = await supabase
+                .from('tasks')
+                .insert(supabaseTasks);
+                
+              if (insertError) {
+                console.error('Task insertion failed:', serializeError(insertError));
+                // Clean up goal if task insertion fails
+                await supabase.from('goals').delete().eq('id', goalDbData.id);
+                throw new Error(`Task creation failed: ${insertError.message}`);
               }
+              
+              totalInserted += batch.length;
             }
-            
-            if (!currentUser) {
-              console.error('User not authenticated. Cannot create goal.');
-              throw new Error('Authentication required');
-            }
-            
-            const dbResult = await setupDatabase();
-            if (!dbResult.success) {
-              console.error('Database not set up:', dbResult.error);
-              throw new Error('Database setup failed');
-            }
-            
-            // Ensure user profile exists
-            const profileResult = await ensureUserProfile(currentUser.id, {
-              name: currentUser.user_metadata?.name || currentUser.email?.split('@')[0] || 'User',
-              email: currentUser.email
-            });
-            
-            if (!profileResult.success) {
-              console.error('Error ensuring profile exists:', profileResult.error);
-              throw new Error('Profile setup failed');
-            }
-            
-            // Create goal in Supabase
-            const goalInsertData: any = {
-              user_id: currentUser.id,
+          } catch (insertError) {
+            console.error('Failed to insert tasks:', insertError);
+            throw insertError;
+          }
+          
+          // Calculate stats
+          const deadline = new Date(goalData.deadline);
+          const totalDays = Math.ceil((deadline.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
+          const streakCount = clientPlan.streak_habits.length;
+          const totalTodayTasks = clientPlan.daily_plan.reduce((sum, day) => sum + day.today_tasks.length, 0);
+          
+          console.log(`✅ BATCH PLAN SEEDED { goalId: ${goalDbData.id}, days: ${totalDays}, streak_count: ${streakCount}, total_today: ${totalTodayTasks} }`);
+          
+          // Create result object
+          const result = {
+            goal: {
+              id: goalDbData.id,
               title: goalData.title,
               description: goalData.description,
-              deadline: new Date(goalData.deadline).toISOString(),
-              status: 'active'
-            };
-            
-            // Add optional columns
-            if (goalData.category) goalInsertData.category = goalData.category;
-            if (goalData.targetValue !== undefined) goalInsertData.target_value = goalData.targetValue;
-            if (goalData.unit) goalInsertData.unit = goalData.unit;
-            if (goalData.priority) goalInsertData.priority = goalData.priority;
-            if (goalData.color) goalInsertData.color = goalData.color;
-            if (goalData.coverImage) goalInsertData.cover_image = goalData.coverImage;
-            
-            const { data: goalDbData, error: goalError } = await supabase
-              .from('goals')
-              .insert(goalInsertData)
-              .select()
-              .single();
-              
-            if (goalError || !goalDbData) {
-              console.error('Failed to create goal:', serializeError(goalError));
-              throw new Error(`Goal creation failed: ${goalError?.message || 'Unknown error'}`);
-            }
-            
-            console.log('🤖 Creating client-side plan...');
-            
-            // Generate client-side plan
-            const clientPlan = createClientPlan({
-              title: goalData.title,
-              description: goalData.description,
-              deadline: goalData.deadline
-            });
-            
-            // Convert plan to tasks
-            const tasksToInsert = convertPlanToTasks(clientPlan, goalDbData.id);
-            
-            console.log(`📝 Inserting ${tasksToInsert.length} tasks...`);
-            
-            // Insert tasks in batches of 1000
-            const batchSize = 1000;
-            let totalInserted = 0;
-            
-            try {
-              for (let i = 0; i < tasksToInsert.length; i += batchSize) {
-                const batch = tasksToInsert.slice(i, i + batchSize);
-                
-                // Convert to Supabase format
-                const supabaseTasks = batch.map(task => ({
-                  user_id: currentUser.id,
-                  goal_id: task.goalId,
-                  title: task.title,
-                  description: task.description,
-                  type: task.type,
-                  task_date: task.type === 'streak' ? task.taskDate : null,
-                  due_at: task.type === 'today' ? new Date(`${task.date}T09:00:00.000Z`).toISOString() : null,
-                  load_score: Math.floor(task.xpValue / 10), // Convert XP back to load
-                  proof_mode: task.proofRequired ? 'realtime' : 'flex',
-                  completed: false
-                }));
-                
-                const { error: insertError } = await supabase
-                  .from('tasks')
-                  .insert(supabaseTasks);
-                  
-                if (insertError) {
-                  console.error('Task insertion failed:', serializeError(insertError));
-                  // Clean up goal if task insertion fails
-                  await supabase.from('goals').delete().eq('id', goalDbData.id);
-                  throw new Error(`Task creation failed: ${insertError.message}`);
-                }
-                
-                totalInserted += batch.length;
-              }
-            } catch (insertError) {
-              console.error('Failed to insert tasks:', insertError);
-              throw insertError;
-            }
-            
-            // Calculate stats
-            const deadline = new Date(goalData.deadline);
-            const totalDays = Math.ceil((deadline.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
-            const streakCount = clientPlan.streak_habits.length;
-            const totalTodayTasks = clientPlan.daily_plan.reduce((sum, day) => sum + day.today_tasks.length, 0);
-            
-            console.log(`✅ BATCH PLAN SEEDED { goalId: ${goalDbData.id}, days: ${totalDays}, streak_count: ${streakCount}, total_today: ${totalTodayTasks} }`);
-            
-            // Create result object
-            result = {
-              goal: {
-                id: goalDbData.id,
-                title: goalData.title,
-                description: goalData.description,
-                deadline: goalData.deadline,
-                category: goalData.category || '',
-                createdAt: goalDbData.created_at,
-                updatedAt: goalDbData.updated_at,
-                progressValue: 0,
-                targetValue: goalData.targetValue || 100,
-                unit: goalData.unit || '',
-                xpEarned: 0,
-                streakCount: 0,
-                todayTasksIds: [],
-                streakTaskIds: [],
-                status: 'active' as const,
-                coverImage: goalData.coverImage,
-                color: goalData.color,
-                priority: goalData.priority || 'medium',
-                milestones: []
-              },
-              streakTasksCreated: totalInserted,
-              totalDays,
-              daysToDeadline: totalDays
-            };
-          }
-          
-          if (!result?.goal) {
-            console.log('No result from goal creation. Aborting local state update.');
-            return;
-          }
+              deadline: goalData.deadline,
+              category: goalData.category || '',
+              createdAt: goalDbData.created_at,
+              updatedAt: goalDbData.updated_at,
+              progressValue: 0,
+              targetValue: goalData.targetValue || 100,
+              unit: goalData.unit || '',
+              xpEarned: 0,
+              streakCount: 0,
+              todayTasksIds: [],
+              streakTaskIds: [],
+              status: 'active' as const,
+              coverImage: goalData.coverImage,
+              color: goalData.color,
+              priority: goalData.priority || 'medium',
+              milestones: []
+            },
+            streakTasksCreated: totalInserted,
+            totalDays,
+            daysToDeadline: totalDays
+          };
+
           // Add the goal to local state
           const newGoal: Goal = {
             id: result.goal.id,
@@ -435,9 +393,9 @@ export const useGoalStore = create<GoalState>()(
             };
           });
           
-          const tasksCreated = 'streakTasksCreated' in result ? result.streakTasksCreated : 0;
-          const totalDays = 'totalDays' in result ? result.totalDays : 0;
-          console.log(`Ultimate goal created successfully with ${tasksCreated} tasks for ${totalDays} days`);
+          const tasksCreated = result.streakTasksCreated;
+          const goalTotalDays = result.totalDays;
+          console.log(`Ultimate goal created successfully with ${tasksCreated} tasks for ${goalTotalDays} days`);
           
           // Trigger heavy haptic feedback on successful goal creation
           if (Platform.OS !== 'web') {
