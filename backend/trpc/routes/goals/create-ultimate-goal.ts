@@ -136,6 +136,7 @@ export const createUltimateGoalProcedure = protectedProcedure
           category: input.category || null
         };
         
+        console.log('Creating goal with admin client to bypass RLS...');
         const { data: goalData, error: goalError } = await ctx.supabaseAdmin
           .from('goals')
           .insert(goalInsertData)
