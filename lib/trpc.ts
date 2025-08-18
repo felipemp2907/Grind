@@ -130,7 +130,7 @@ export const trpcClient = createTRPCClient<AppRouter>({
           try {
             // Add timeout to prevent hanging
             const timeoutPromise = new Promise<never>((_, reject) => {
-              setTimeout(() => reject(new Error('Request timeout')), 10000); // 10 second timeout
+              setTimeout(() => reject(new Error('Request timeout')), 5000); // 5 second timeout
             });
             
             const fetchPromise = fetch(finalUrl, {

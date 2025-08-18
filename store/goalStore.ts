@@ -5,7 +5,7 @@ import { Platform } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { Goal, Milestone, ProgressUpdate, MilestoneAlert, GoalShareCard } from '@/types';
 import { supabase, setupDatabase, serializeError, getCurrentUser, ensureUserProfile } from '@/lib/supabase';
-import { useAuthStore } from './authStore';
+
 import { trpcClient } from '@/lib/trpc';
 import { createClientPlan, convertPlanToTasks } from '@/lib/clientPlanner';
 import { useTaskStore } from './taskStore';
@@ -29,6 +29,7 @@ interface GoalState {
     color?: string;
     coverImage?: string;
   }) => Promise<void>;
+  syncGoalToBackend?: (goal: Goal) => Promise<void>;
   updateGoal: (id: string, updates: Partial<Goal>) => Promise<void>;
   deleteGoal: (id: string) => Promise<void>;
   setActiveGoal: (id: string) => void;
@@ -196,144 +197,54 @@ export const useGoalStore = create<GoalState>()(
       
       createUltimateGoal: async (goalData) => {
         try {
-          console.log('🎯 Creating ultimate goal:', goalData.title);
+          console.log('🎯 Creating ultimate goal (offline-first):', goalData.title);
           
-          // Try tRPC first, but fall back to offline planner if it fails
-          let useOfflinePlanner = false;
-          let newGoal: Goal;
+          // Create goal with offline planner (independent of tRPC/database)
+          const goalId = `goal_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
           
-          try {
-            // Ensure user is authenticated
-            let { user: currentUser } = await getCurrentUser();
-            if (!currentUser) {
-              try {
-                const { refreshSession } = useAuthStore.getState();
-                console.log('No user found, attempting to refresh session...');
-                await refreshSession();
-                const recheck = await getCurrentUser();
-                currentUser = recheck.user as any;
-              } catch (refreshErr) {
-                console.log('Session refresh failed:', serializeError(refreshErr));
-                throw new Error('Authentication failed');
-              }
-            }
-            
-            if (!currentUser) {
-              console.error('User not authenticated. Using offline mode.');
-              throw new Error('Authentication required');
-            }
-            
-            // Ensure user profile exists
-            const profileResult = await ensureUserProfile(currentUser.id, {
-              name: currentUser.user_metadata?.name || currentUser.email?.split('@')[0] || 'User',
-              email: currentUser.email
-            });
-            
-            if (!profileResult.success) {
-              console.error('Error ensuring profile exists:', profileResult.error);
-              throw new Error('Profile setup failed');
-            }
-            
-            console.log('🚀 Attempting tRPC Ultimate Goal Creation with Batch Planner');
-            
-            // Use tRPC to create ultimate goal with automatic task generation
-            const result = await Promise.race([
-              trpcClient.goals.createUltimate.mutate({
-                title: goalData.title,
-                description: goalData.description || '',
-                deadlineISO: goalData.deadline,
-                category: goalData.category,
-                targetValue: goalData.targetValue || 100,
-                unit: goalData.unit || '',
-                priority: goalData.priority || 'medium',
-                color: goalData.color,
-                coverImage: goalData.coverImage
-              }),
-              new Promise((_, reject) => 
-                setTimeout(() => reject(new Error('Request timeout')), 10000)
-              )
-            ]) as any;
-            
-            console.log('✅ tRPC goal creation result:', result);
-            
-            // Add the goal to local state
-            newGoal = {
-              id: result.goal?.id || `goal_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-              title: result.goal?.title || goalData.title,
-              description: result.goal?.description || goalData.description || '',
-              deadline: result.goal?.deadline || goalData.deadline,
-              category: result.goal?.category || goalData.category || '',
-              createdAt: result.goal?.createdAt || new Date().toISOString(),
-              updatedAt: result.goal?.updatedAt || new Date().toISOString(),
-              progressValue: result.goal?.progressValue || 0,
-              targetValue: result.goal?.targetValue || goalData.targetValue || 100,
-              unit: result.goal?.unit || goalData.unit || '',
-              xpEarned: result.goal?.xpEarned || 0,
-              streakCount: result.goal?.streakCount || 0,
-              todayTasksIds: result.goal?.todayTasksIds || [],
-              streakTaskIds: result.goal?.streakTaskIds || [],
-              status: result.goal?.status || 'active',
-              coverImage: result.goal?.coverImage || goalData.coverImage,
-              color: result.goal?.color || goalData.color,
-              priority: result.goal?.priority || goalData.priority || 'medium',
-              milestones: result.goal?.milestones || []
-            };
-            
-            if (result.summary) {
-              console.log(`✅ BATCH_PLAN_SEEDED { goalId: ${result.goalId}, days: ${result.summary.days}, streak_count: ${result.summary.streak_count}, total_today: ${result.summary.total_today}, trimmed_days: ${result.summary.trimmed_days} }`);
-            }
-            
-          } catch (trpcError) {
-            console.log('🔄 tRPC failed, using offline planner:', serializeError(trpcError));
-            useOfflinePlanner = true;
-            
-            // Create goal with offline planner
-            const goalId = `goal_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-            
-            newGoal = {
-              id: goalId,
-              title: goalData.title,
-              description: goalData.description || '',
-              deadline: goalData.deadline,
-              category: goalData.category || '',
-              createdAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString(),
-              progressValue: 0,
-              targetValue: goalData.targetValue || 100,
-              unit: goalData.unit || '',
-              xpEarned: 0,
-              streakCount: 0,
-              todayTasksIds: [],
-              streakTaskIds: [],
-              status: 'active',
-              coverImage: goalData.coverImage,
-              color: goalData.color,
-              priority: goalData.priority || 'medium',
-              milestones: []
-            };
-            
-            // Generate tasks using offline planner
-            console.log('🤖 Generating tasks with offline planner...');
-            const clientPlan = createClientPlan({
-              title: goalData.title,
-              description: goalData.description || '',
-              deadline: goalData.deadline
-            });
-            
-            const tasks = convertPlanToTasks(clientPlan, goalId);
-            
-            // Add tasks to task store
-            const { addTasks } = useTaskStore.getState();
-            await addTasks(tasks.map(task => ({
-              ...task,
-              id: `task_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-              completed: false,
-              completedAt: undefined,
-              streak: 0
-            })));
-            
-            console.log(`✅ OFFLINE_PLAN_SEEDED { goalId: ${goalId}, days: ${clientPlan.daily_plan.length}, streak_count: ${clientPlan.streak_habits.length}, total_today: ${clientPlan.daily_plan.reduce((sum, day) => sum + day.today_tasks.length, 0)} }`);
-          }
+          const newGoal: Goal = {
+            id: goalId,
+            title: goalData.title,
+            description: goalData.description || '',
+            deadline: goalData.deadline,
+            category: goalData.category || '',
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            progressValue: 0,
+            targetValue: goalData.targetValue || 100,
+            unit: goalData.unit || '',
+            xpEarned: 0,
+            streakCount: 0,
+            todayTasksIds: [],
+            streakTaskIds: [],
+            status: 'active',
+            coverImage: goalData.coverImage,
+            color: goalData.color,
+            priority: goalData.priority || 'medium',
+            milestones: []
+          };
+          
+          // Generate tasks using offline planner
+          console.log('🤖 Generating tasks with offline planner...');
+          const clientPlan = createClientPlan({
+            title: goalData.title,
+            description: goalData.description || '',
+            deadline: goalData.deadline
+          });
+          
+          const tasks = convertPlanToTasks(clientPlan, goalId);
+          
+          // Add tasks to task store
+          const { addTasks } = useTaskStore.getState();
+          await addTasks(tasks.map(task => ({
+            ...task,
+            id: `task_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            completed: false,
+            completedAt: undefined,
+            streak: 0
+          })));
+          
+          console.log(`✅ OFFLINE_PLAN_SEEDED { goalId: ${goalId}, days: ${clientPlan.daily_plan.length}, streak_count: ${clientPlan.streak_habits.length}, total_today: ${clientPlan.daily_plan.reduce((sum, day) => sum + day.today_tasks.length, 0)} }`);
           
           // Add goal to local state
           set((state) => {
@@ -363,15 +274,64 @@ export const useGoalStore = create<GoalState>()(
             }
           }
           
-          if (useOfflinePlanner) {
-            console.log('✅ Goal created successfully using offline planner');
-          } else {
-            console.log('✅ Goal created successfully using tRPC');
-          }
+          console.log('✅ Goal created successfully using offline planner');
+          
+          // Try to sync to backend in the background (non-blocking)
+          get().syncGoalToBackend?.(newGoal).catch((error: any) => {
+            console.log('Background sync failed (non-critical):', serializeError(error));
+          });
           
         } catch (error) {
           console.error('❌ Error creating ultimate goal:', error);
           throw error; // Re-throw so UI can handle it properly
+        }
+      },
+      
+      // Background sync method (non-blocking)
+      syncGoalToBackend: async (goal: Goal) => {
+        try {
+          // Try tRPC first
+          try {
+            const { user: currentUser } = await getCurrentUser();
+            if (currentUser) {
+              await trpcClient.goals.createUltimate.mutate({
+                title: goal.title,
+                description: goal.description,
+                deadlineISO: goal.deadline,
+                category: goal.category,
+                targetValue: goal.targetValue,
+                unit: goal.unit,
+                priority: goal.priority,
+                color: goal.color,
+                coverImage: goal.coverImage
+              });
+              console.log('✅ Goal synced to backend via tRPC');
+              return;
+            }
+          } catch (trpcError) {
+            console.log('tRPC sync failed, trying direct database:', serializeError(trpcError));
+          }
+          
+          // Fallback to direct database
+          const { user: currentUser } = await getCurrentUser();
+          if (currentUser) {
+            const { error } = await supabase
+              .from('goals')
+              .insert({
+                user_id: currentUser.id,
+                title: goal.title,
+                description: goal.description,
+                deadline: goal.deadline ? new Date(goal.deadline).toISOString() : null
+              });
+              
+            if (error) {
+              console.log('Database sync failed:', serializeError(error));
+            } else {
+              console.log('✅ Goal synced to backend via database');
+            }
+          }
+        } catch (error) {
+          console.log('Background sync failed:', serializeError(error));
         }
       },
       
