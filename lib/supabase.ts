@@ -438,34 +438,33 @@ export const createTaskWithElevatedPermissions = async (taskData: any) => {
   try {
     console.log('Creating task with elevated permissions:', taskData);
     
-    // First try with regular client
-    const { data, error } = await supabase
-      .from('tasks')
-      .insert(taskData)
-      .select()
-      .single();
-    
-    if (!error) {
-      console.log('Task created successfully with regular client');
-      return { data, error: null };
+    // Ensure user is authenticated
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      console.error('User not authenticated:', authError);
+      return { data: null, error: new Error('User not authenticated') };
     }
     
-    console.log('Regular client failed, trying admin client:', error.message);
+    // Ensure task has user_id set
+    const taskWithUserId = {
+      ...taskData,
+      user_id: user.id
+    };
     
-    // If regular client fails, try with admin client
-    const { data: adminData, error: adminError } = await supabaseAdmin
+    // Use admin client for task creation to bypass RLS
+    const { data, error } = await supabaseAdmin
       .from('tasks')
-      .insert(taskData)
+      .insert(taskWithUserId)
       .select()
       .single();
     
-    if (adminError) {
-      console.error('Admin client also failed:', adminError.message);
-      return { data: null, error: adminError };
+    if (error) {
+      console.error('Task creation failed:', error.message);
+      return { data: null, error };
     }
     
     console.log('Task created successfully with admin client');
-    return { data: adminData, error: null };
+    return { data, error: null };
   } catch (error) {
     console.error('Error in createTaskWithElevatedPermissions:', error);
     return { data: null, error };
@@ -477,34 +476,33 @@ export const createGoalWithElevatedPermissions = async (goalData: any) => {
   try {
     console.log('Creating goal with elevated permissions:', goalData);
     
-    // First try with regular client
-    const { data, error } = await supabase
-      .from('goals')
-      .insert(goalData)
-      .select()
-      .single();
-    
-    if (!error) {
-      console.log('Goal created successfully with regular client');
-      return { data, error: null };
+    // Ensure user is authenticated
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      console.error('User not authenticated:', authError);
+      return { data: null, error: new Error('User not authenticated') };
     }
     
-    console.log('Regular client failed, trying admin client:', error.message);
+    // Ensure goal has user_id set
+    const goalWithUserId = {
+      ...goalData,
+      user_id: user.id
+    };
     
-    // If regular client fails, try with admin client
-    const { data: adminData, error: adminError } = await supabaseAdmin
+    // Use admin client for goal creation to bypass RLS
+    const { data, error } = await supabaseAdmin
       .from('goals')
-      .insert(goalData)
+      .insert(goalWithUserId)
       .select()
       .single();
     
-    if (adminError) {
-      console.error('Admin client also failed:', adminError.message);
-      return { data: null, error: adminError };
+    if (error) {
+      console.error('Goal creation failed:', error.message);
+      return { data: null, error };
     }
     
     console.log('Goal created successfully with admin client');
-    return { data: adminData, error: null };
+    return { data, error: null };
   } catch (error) {
     console.error('Error in createGoalWithElevatedPermissions:', error);
     return { data: null, error };
