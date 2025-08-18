@@ -33,7 +33,7 @@ import { getTodayDate, formatDate } from '@/utils/dateUtils';
 
 export default function CoachScreen() {
   const { goals, activeGoalId } = useGoalStore();
-  const { tasks, getTasks, updateTask, addTask, rescheduleTask, generateAISuggestions, canAddMoreTasks, isGenerating } = useTaskStore();
+  const { tasks, getTasks, updateTask, addTask, rescheduleTask } = useTaskStore();
   const { profile, coachSettings } = useUserStore();
   
   const [messages, setMessages] = useState<{
@@ -199,20 +199,8 @@ export default function CoachScreen() {
       
       // Check for AI suggestion commands
       if (!commandExecuted && (currentInput.toLowerCase().includes('suggest') || currentInput.toLowerCase().includes('generate') || currentInput.toLowerCase().includes('ai task'))) {
-        if (goal) {
-          const taskLimits = canAddMoreTasks(getTodayDate(), goal.id);
-          if (taskLimits.canAddToday || taskLimits.canAddHabits) {
-            await generateAISuggestions(getTodayDate(), goal.id);
-            aiResponse = `🤖 I've generated some AI task suggestions for today based on your goal "${goal.title}"! You now have ${taskLimits.todayCount + (taskLimits.canAddToday ? 1 : 0)} today tasks and ${taskLimits.habitCount + (taskLimits.canAddHabits ? 1 : 0)} habit tasks. Check your tasks tab to see them!`;
-            commandExecuted = true;
-          } else {
-            aiResponse = `You already have the maximum number of tasks for today (3 today tasks + 3 habit tasks). Complete some tasks first or I can help you reschedule them to make room for new suggestions!`;
-            commandExecuted = true;
-          }
-        } else {
-          aiResponse = `I need you to have an active goal first before I can generate task suggestions. Please create a goal and then ask me for suggestions!`;
-          commandExecuted = true;
-        }
+        aiResponse = `I can help you create specific tasks! Try saying something like "Schedule workout tomorrow at 8 AM" or "Add daily meditation as a habit". What specific task would you like to create?`;
+        commandExecuted = true;
       }
       
       // If no command was executed, proceed with normal AI conversation
@@ -384,33 +372,10 @@ export default function CoachScreen() {
         
         <TouchableOpacity 
           style={styles.quickActionButton}
-          onPress={async () => {
-            if (goal) {
-              const taskLimits = canAddMoreTasks(getTodayDate(), goal.id);
-              if (taskLimits.canAddToday || taskLimits.canAddHabits) {
-                await generateAISuggestions(getTodayDate(), goal.id);
-                setMessages(prev => [
-                  ...prev,
-                  {
-                    role: 'assistant',
-                    content: `🤖 I've generated some AI task suggestions for today! You now have ${taskLimits.todayCount + (taskLimits.canAddToday ? 1 : 0)} today tasks and ${taskLimits.habitCount + (taskLimits.canAddHabits ? 1 : 0)} habit tasks.`
-                  }
-                ]);
-              } else {
-                setMessages(prev => [
-                  ...prev,
-                  {
-                    role: 'assistant',
-                    content: `You already have the maximum number of tasks for today (3 today tasks + 3 habit tasks). Complete some tasks first or I can help you reschedule them!`
-                  }
-                ]);
-              }
-            }
-          }}
-          disabled={isGenerating}
+          onPress={() => setInput('What tasks should I focus on today?')}
         >
           <Zap size={16} color={Colors.dark.primary} />
-          <Text style={styles.quickActionText}>{isGenerating ? 'Generating...' : 'AI Suggestions'}</Text>
+          <Text style={styles.quickActionText}>Task Ideas</Text>
         </TouchableOpacity>
         
         <TouchableOpacity 
@@ -470,7 +435,7 @@ export default function CoachScreen() {
         <View style={styles.inputContainer}>
           <TextInput
             style={styles.input}
-            placeholder="Ask Hustle for advice, say 'Schedule workout tomorrow at 8 AM', or 'Generate AI task suggestions'..."
+            placeholder="Ask Hustle for advice or say 'Schedule workout tomorrow at 8 AM'..."
             placeholderTextColor={Colors.dark.subtext}
             value={input}
             onChangeText={setInput}

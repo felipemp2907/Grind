@@ -26,7 +26,7 @@ import Colors from '@/constants/colors';
 import { useGoalStore } from '@/store/goalStore';
 import { useTaskStore } from '@/store/taskStore';
 import { useUserStore } from '@/store/userStore';
-import { trpc } from '@/lib/trpc';
+
 
 
 import { getTodayDate, formatDateForDisplay } from '@/utils/dateUtils';
@@ -63,22 +63,7 @@ export default function DashboardScreen() {
   const [goalClarifyVisible, setGoalClarifyVisible] = useState(false);
   const [selectedGoalForClarify, setSelectedGoalForClarify] = useState<string | null>(null);
   
-  // Test tRPC connection with health ping
-  const healthQuery = trpc.health.ping.useQuery(undefined, {
-    retry: 1,
-    refetchOnWindowFocus: false,
-    refetchOnMount: false
-  });
-  
-  useEffect(() => {
-    console.log('tRPC health query status:', healthQuery.status);
-    if (healthQuery.error) {
-      console.error('tRPC health query error:', healthQuery.error);
-    }
-    if (healthQuery.data) {
-      console.log('tRPC health query data:', healthQuery.data);
-    }
-  }, [healthQuery.status, healthQuery.error, healthQuery.data]);
+
   
   const todayDate = getTodayDate();
   const todayTasks = getTasks(todayDate);

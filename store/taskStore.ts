@@ -10,7 +10,6 @@ import { useAuthStore } from './authStore';
 
 interface TaskState {
   tasks: Task[];
-  isGenerating: boolean;
   
   // Task management
   addTask: (task: Omit<Task, 'id'>) => Promise<void>;
@@ -22,10 +21,7 @@ interface TaskState {
   deleteTask: (id: string) => Promise<void>;
   fetchTasks: () => Promise<void>;
 
-  setIsGenerating: (isGenerating: boolean) => void;
   resetStreak: (id: string) => void;
-  
-
   
   // Task rescheduling
   rescheduleTask: (taskId: string, newDate: string, newTime?: string) => void;
@@ -36,8 +32,6 @@ interface TaskState {
   getStreakTasks: (date: string) => Task[];
   getMissedTasks: (date: string) => Task[];
   
-
-  
   // Reset
   resetTasks: () => Promise<void>;
 }
@@ -46,9 +40,6 @@ export const useTaskStore = create<TaskState>()(
   persist(
     (set, get) => ({
       tasks: [],
-      isGenerating: false,
-      
-      setIsGenerating: (isGenerating) => set({ isGenerating }),
       
       addTask: async (task: Omit<Task, 'id'>) => {
         // Save to Supabase first to get the proper UUID
@@ -407,8 +398,7 @@ export const useTaskStore = create<TaskState>()(
           
           // Clear local state
           set({ 
-            tasks: [],
-            isGenerating: false
+            tasks: []
           });
         } catch (error) {
           console.error('Error resetting tasks:', serializeError(error));

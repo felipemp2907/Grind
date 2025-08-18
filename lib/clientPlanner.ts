@@ -357,7 +357,12 @@ export function createClientPlan(goalData: {
     category,
     streakCount: streakHabits.length,
     totalDays,
-    totalTodayTasks: dailyPlan.reduce((sum, day) => sum + day.today_tasks.length, 0)
+    totalTodayTasks: dailyPlan.reduce((sum, day) => sum + day.today_tasks.length, 0),
+    sampleDays: dailyPlan.slice(0, 3).map(day => ({
+      date: day.date,
+      todayTasksCount: day.today_tasks.length,
+      todayTasks: day.today_tasks.map(t => t.title)
+    }))
   });
   
   return result;
