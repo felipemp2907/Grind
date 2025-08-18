@@ -8,6 +8,7 @@ import {
   KeyboardAvoidingView, 
   Platform,
   TouchableOpacity,
+  ActivityIndicator,
   Alert
 } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -18,14 +19,16 @@ import Colors from '@/constants/colors';
 import Button from '@/components/Button';
 import { useGoalStore } from '@/store/goalStore';
 import { useUserStore } from '@/store/userStore';
+import { useTaskStore } from '@/store/taskStore';
 import { useAuthStore } from '@/store/authStore';
-import { formatDate, getDatePlusDays } from '@/utils/dateUtils';
+import { formatDate, getDatePlusDays, getTodayDate } from '@/utils/dateUtils';
 import DateTimePicker from '@/components/DateTimePicker';
 
 export default function OnboardingScreen() {
   const router = useRouter();
-  const { createUltimateGoal, setOnboarded } = useGoalStore();
+  const { addGoal, setOnboarded } = useGoalStore();
   const { updateProfile } = useUserStore();
+  const { generateTasksForGoal, isGenerating } = useTaskStore();
   const { user, logout } = useAuthStore();
   
   const [step, setStep] = useState(1);
@@ -52,15 +55,28 @@ export default function OnboardingScreen() {
         await updateProfile({ name: user.name });
       }
       
-      // Create ultimate goal with task generation
-      await createUltimateGoal({
+      // Create goal
+      const newGoal = {
+        id: Date.now().toString(),
         title: goalTitle,
         description: goalDescription,
         deadline,
-        priority: 'high'
-      });
+        milestones: [],
+        createdAt: new Date().toISOString(),
+        progressValue: 0,
+        targetValue: 100,
+        xpEarned: 0,
+        streakCount: 0,
+        todayTasksIds: [],
+        streakTaskIds: [],
+        status: 'active' as const,
+        updatedAt: new Date().toISOString()
+      };
       
-      console.log('Ultimate goal created successfully with tasks');
+      await addGoal(newGoal);
+      
+      // Generate tasks for the goal
+      await generateTasksForGoal(getTodayDate(), newGoal.id);
       
       // Mark as onboarded
       setOnboarded(true);
@@ -175,7 +191,7 @@ export default function OnboardingScreen() {
   const isNextDisabled = () => {
     switch (step) {
       case 1: return !goalTitle.trim() || !goalDescription.trim();
-      case 2: return !deadline || isCompleting;
+      case 2: return !deadline || isCompleting || isGenerating;
       default: return false;
     }
   };
@@ -217,11 +233,11 @@ export default function OnboardingScreen() {
             </View>
             
             <Button
-              title={step === 2 ? (isCompleting ? "Setting Up..." : "Get Started") : "Next"}
+              title={step === 2 ? (isCompleting || isGenerating ? "Setting Up..." : "Get Started") : "Next"}
               onPress={handleNext}
               disabled={isNextDisabled()}
-              loading={step === 2 && isCompleting}
-              icon={!isCompleting ? <ArrowRight size={16} color="#FFFFFF" /> : undefined}
+              loading={step === 2 && (isCompleting || isGenerating)}
+              icon={!isCompleting && !isGenerating ? <ArrowRight size={16} color="#FFFFFF" /> : undefined}
             />
             
             <TouchableOpacity 
