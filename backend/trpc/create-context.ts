@@ -29,23 +29,26 @@ export const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
   }
 });
 
-console.log('Supabase Admin client initialized with service role');
+console.log('✅ Supabase Admin client initialized with service role');
+console.log('🔑 Using service role key:', serviceRoleKey.substring(0, 20) + '...');
 
-// Database health check function
-export const ensureDbReady = async (supabaseClient: typeof supabase) => {
+// Database health check function - use admin client to bypass RLS
+export const ensureDbReady = async () => {
   try {
-    // Check if core tables exist by trying to query them
-    const { error: profilesError } = await supabaseClient
+    console.log('Running database health check with admin client...');
+    
+    // Use admin client to check tables (bypasses RLS)
+    const { error: profilesError } = await supabaseAdmin
       .from('profiles')
       .select('id')
       .limit(1);
       
-    const { error: goalsError } = await supabaseClient
+    const { error: goalsError } = await supabaseAdmin
       .from('goals')
       .select('id')
       .limit(1);
       
-    const { error: tasksError } = await supabaseClient
+    const { error: tasksError } = await supabaseAdmin
       .from('tasks')
       .select('id')
       .limit(1);
@@ -63,10 +66,10 @@ export const ensureDbReady = async (supabaseClient: typeof supabase) => {
       throw new Error('Database not set up: tasks table missing');
     }
     
-    console.log('Database health check passed');
+    console.log('✅ Database health check passed');
     return { ok: true };
   } catch (error) {
-    console.error('Database health check failed:', error);
+    console.error('❌ Database health check failed:', error);
     throw error;
   }
 };
@@ -76,11 +79,11 @@ let dbHealthChecked = false;
 const checkDbHealth = async () => {
   if (!dbHealthChecked) {
     try {
-      await ensureDbReady(supabase);
+      await ensureDbReady();
       dbHealthChecked = true;
-      console.log('DB READY: true');
+      console.log('✅ DB READY: true');
     } catch (error) {
-      console.error('DB READY: false -', error instanceof Error ? error.message : 'Unknown error');
+      console.error('❌ DB READY: false -', error instanceof Error ? error.message : 'Unknown error');
       // Don't throw here, let individual requests handle it
     }
   }
@@ -141,13 +144,14 @@ export const publicProcedure = t.procedure;
 
 // Protected procedure that gets the authenticated user from Supabase
 export const protectedProcedure = t.procedure.use(async ({ ctx, next }) => {
-  console.log('Protected procedure middleware called');
+  console.log('🔐 Protected procedure middleware called');
 
-  try {
-    await ensureDbReady(supabase);
-  } catch (dbError) {
-    console.warn('DB health check failed:', dbError);
-  }
+  // Skip DB health check for now to avoid blocking requests
+  // try {
+  //   await ensureDbReady();
+  // } catch (dbError) {
+  //   console.warn('⚠️ DB health check failed:', dbError);
+  // }
 
   const authHeader = ctx.req.headers.get('authorization') || ctx.req.headers.get('Authorization');
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -155,20 +159,27 @@ export const protectedProcedure = t.procedure.use(async ({ ctx, next }) => {
   }
 
   const token = authHeader.substring(7);
-  const { data: { user }, error } = await supabase.auth.getUser(token);
+  
+  // Use admin client for auth verification to avoid RLS issues
+  const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
   if (error || !user) {
+    console.error('❌ Auth verification failed:', error?.message);
     throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Invalid or expired token' });
   }
 
+  console.log('✅ User authenticated:', user.id);
+
+  // Ensure user profile exists using admin client
   try {
-    // Use service role for profile operations to bypass RLS
     const { data: profileData, error: profileError } = await supabaseAdmin
       .from('profiles')
       .select('id')
       .eq('id', user.id)
       .single();
+      
     if (profileError || !profileData) {
-      await supabaseAdmin
+      console.log('📝 Creating user profile...');
+      const { error: upsertError } = await supabaseAdmin
         .from('profiles')
         .upsert({
           id: user.id,
@@ -178,10 +189,16 @@ export const protectedProcedure = t.procedure.use(async ({ ctx, next }) => {
           streak_days: 0,
           longest_streak: 0,
           experience_level: 'beginner'
-        });
+        }, { onConflict: 'id' });
+        
+      if (upsertError) {
+        console.warn('⚠️ Profile upsert failed:', upsertError.message);
+      } else {
+        console.log('✅ User profile ensured');
+      }
     }
   } catch (profileError) {
-    console.warn('Profile ensure failed:', profileError);
+    console.warn('⚠️ Profile ensure failed:', profileError);
   }
 
   return next({
