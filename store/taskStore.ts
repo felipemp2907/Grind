@@ -13,6 +13,7 @@ interface TaskState {
   
   // Task management
   addTask: (task: Omit<Task, 'id'>) => Promise<void>;
+  addTasks: (tasks: Task[]) => Promise<void>;
   updateTask: (id: string, updates: Partial<Task>) => Promise<void>;
   completeTask: (id: string, journalEntryId: string) => Promise<void>;
   getTasks: (date: string) => Task[];
@@ -40,6 +41,76 @@ export const useTaskStore = create<TaskState>()(
   persist(
     (set, get) => ({
       tasks: [],
+      
+      addTasks: async (tasks: Task[]) => {
+        // Add multiple tasks to local state immediately
+        set((state) => ({ 
+          tasks: [...state.tasks, ...tasks] 
+        }));
+        
+        // Save each task to Supabase in the background
+        for (const task of tasks) {
+          try {
+            const { user } = useAuthStore.getState();
+            if (!user?.id) continue;
+            
+            const dbResult = await setupDatabase();
+            if (!dbResult.success) {
+              console.error('Database not set up:', dbResult.error);
+              continue;
+            }
+            
+            // Ensure user profile exists
+            const profileResult = await ensureUserProfile(user.id, {
+              name: user.name,
+              email: user.email
+            });
+            
+            if (!profileResult.success) {
+              console.error('Error ensuring profile exists:', profileResult.error);
+              continue;
+            }
+            
+            // Explicitly exclude the id field to let Supabase generate it
+            const insertData = {
+              user_id: user.id,
+              goal_id: task.goalId || null,
+              title: task.title,
+              description: task.description,
+              completed: task.completed,
+              due_at: task.date && !task.isHabit ? new Date(task.date + 'T12:00:00.000Z').toISOString() : null,
+              task_date: task.isHabit && task.date ? task.date : null, // For streak tasks
+              type: task.isHabit ? 'streak' : 'today',
+              priority: task.priority || 'medium',
+              xp_value: task.xpValue || 30,
+              is_habit: task.isHabit || false,
+              streak: task.streak || 0,
+              completed_at: task.completedAt ? new Date(task.completedAt).toISOString() : null,
+              load_score: 1,
+              proof_mode: 'flex'
+            };
+            
+            // Use elevated permissions function for task creation
+            const { data, error } = await createTaskWithElevatedPermissions(insertData);
+              
+            if (error) {
+              console.error('Task insertion failed:', serializeError(error));
+              continue;
+            }
+            
+            // Update local state with the proper UUID from database
+            if (data) {
+              set((state) => ({
+                tasks: state.tasks.map(t => 
+                  t.id === task.id ? { ...t, id: data.id } : t
+                )
+              }));
+            }
+          } catch (error) {
+            console.error('Error saving task:', serializeError(error));
+          }
+        }
+      },
       
       addTask: async (task: Omit<Task, 'id'>) => {
         // Save to Supabase first to get the proper UUID
