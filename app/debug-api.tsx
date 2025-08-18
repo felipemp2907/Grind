@@ -3,7 +3,7 @@ import { StyleSheet, View, Text, TouchableOpacity, ScrollView } from 'react-nati
 import { Stack } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Colors from '@/constants/colors';
-import ApiHealthCheck from '@/components/ApiHealthCheck';
+
 import { trpcClient } from '@/lib/trpc';
 
 export default function DebugScreen() {
@@ -47,7 +47,12 @@ export default function DebugScreen() {
       
       <SafeAreaView style={styles.container} edges={['bottom']}>
         <ScrollView contentContainerStyle={styles.content}>
-          <ApiHealthCheck />
+          <View style={styles.infoSection}>
+            <Text style={styles.sectionTitle}>API Debug</Text>
+            <Text style={styles.infoText}>
+              This screen is for testing API functionality. The app now uses client-side task generation for better reliability.
+            </Text>
+          </View>
           
           <View style={styles.testSection}>
             <Text style={styles.sectionTitle}>Goal Creation Test</Text>
@@ -80,6 +85,16 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: 16,
+  },
+  infoSection: {
+    backgroundColor: Colors.dark.card,
+    borderRadius: 12,
+    padding: 16,
+  },
+  infoText: {
+    fontSize: 14,
+    color: Colors.dark.subtext,
+    lineHeight: 20,
   },
   testSection: {
     backgroundColor: Colors.dark.card,

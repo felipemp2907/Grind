@@ -3,7 +3,7 @@ import { useFonts } from "expo-font";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { useEffect, useCallback } from "react";
-import { Platform, StatusBar, Alert } from "react-native";
+import { StatusBar } from "react-native";
 import { useGoalStore } from "@/store/goalStore";
 import { useAuthStore } from "@/store/authStore";
 import { useUserStore } from "@/store/userStore";
@@ -16,7 +16,7 @@ import { supabase } from "@/lib/supabase";
 import { AuthChangeEvent, Session } from "@supabase/supabase-js";
 import Toast from 'react-native-toast-message';
 import { TabTransitionProvider } from '@/components/TabTransitionProvider';
-import { ConnectivityBanner } from '@/components/ConnectivityBanner';
+
 import 'react-native-reanimated';
 
 export const unstable_settings = {
@@ -34,7 +34,7 @@ export default function RootLayout() {
     ...FontAwesome.font,
   });
   
-  const { refreshSession, user } = useAuthStore();
+  const { refreshSession } = useAuthStore();
   const { fetchProfile } = useUserStore();
   const { fetchTasks } = useTaskStore();
   const { fetchGoals } = useGoalStore();
@@ -265,7 +265,7 @@ function RootLayoutNav() {
     <trpc.Provider client={trpcClient} queryClient={queryClient}>
       <QueryClientProvider client={queryClient}>
         <TabTransitionProvider>
-          <ConnectivityBanner showWhenConnected={true} />
+
           <StatusBar barStyle="light-content" backgroundColor={Colors.dark.background} />
           <Stack
           screenOptions={{
