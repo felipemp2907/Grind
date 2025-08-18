@@ -150,13 +150,14 @@ export const protectedProcedure = t.procedure.use(async ({ ctx, next }) => {
   }
 
   try {
-    const { data: profileData, error: profileError } = await supabase
+    // Use service role for profile operations to bypass RLS
+    const { data: profileData, error: profileError } = await supabaseAdmin
       .from('profiles')
       .select('id')
       .eq('id', user.id)
       .single();
     if (profileError || !profileData) {
-      await supabase
+      await supabaseAdmin
         .from('profiles')
         .upsert({
           id: user.id,
@@ -176,10 +177,12 @@ export const protectedProcedure = t.procedure.use(async ({ ctx, next }) => {
     ctx: {
       ...ctx,
       user: { id: user.id },
+      // Provide both user-scoped and admin clients
       supabase: createClient(supabaseUrl, supabaseAnonKey, {
         auth: { persistSession: false },
         global: { headers: { Authorization: `Bearer ${token}` } as Record<string, string> }
-      })
+      }),
+      supabaseAdmin // Service role client for backend operations
     }
   });
 });
@@ -187,4 +190,5 @@ export const protectedProcedure = t.procedure.use(async ({ ctx, next }) => {
 export type ProtectedContext = {
   user: { id: string };
   supabase: SupabaseClient;
+  supabaseAdmin: SupabaseClient;
 } & Context;

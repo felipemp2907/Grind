@@ -136,7 +136,7 @@ export const createUltimateGoalProcedure = protectedProcedure
           category: input.category || null
         };
         
-        const { data: goalData, error: goalError } = await ctx.supabase
+        const { data: goalData, error: goalError } = await ctx.supabaseAdmin
           .from('goals')
           .insert(goalInsertData)
           .select()
