@@ -53,7 +53,7 @@ export const getApiBaseUrl = (): string => {
   
   // 1. Environment variable (highest priority)
   const envUrl = process.env.EXPO_PUBLIC_API_URL as string | undefined;
-  if (envUrl && envUrl !== 'https://rork.app') {
+  if (envUrl) {
     console.log('Using env URL:', envUrl);
     return envUrl.replace(/\/$/, '');
   }
@@ -72,26 +72,10 @@ export const getApiBaseUrl = (): string => {
     return derived;
   }
   
-  // 4. Check if we're in Expo Go and no local dev server found
-  const isExpoGo = Constants.appOwnership === 'expo';
-  if (isExpoGo && envUrl === 'https://rork.app') {
-    // Only use deployed URL if we couldn't find a local dev server
-    console.log('Using deployed URL for Expo Go (no local dev server found):', envUrl);
-    return envUrl;
-  }
-  
-  // 5. Platform-specific defaults for development
-  let defaultUrl: string;
-  if (Platform.OS === 'android') {
-    defaultUrl = 'http://10.0.2.2:3000';
-  } else if (Platform.OS === 'ios') {
-    defaultUrl = 'http://localhost:3000';
-  } else {
-    defaultUrl = 'http://127.0.0.1:3000';
-  }
-  
-  console.log('Using platform default:', defaultUrl);
-  return defaultUrl;
+  // 4. Default to deployed API if no local dev server found
+  const deployedUrl = 'https://rork.app';
+  console.log('Using deployed API as fallback:', deployedUrl);
+  return deployedUrl;
 };
 
 // Cache the base URL

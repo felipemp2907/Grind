@@ -294,10 +294,10 @@ export const useGoalStore = create<GoalState>()(
                 type: task.type,
                 task_date: task.type === 'streak' ? task.taskDate : null,
                 due_at: task.type === 'today' ? new Date(`${task.date}T09:00:00.000Z`).toISOString() : null,
-                scheduled_for_date: task.date, // Add this field that the database expects
+                scheduled_for_date: task.date, // Required field
                 load_score: Math.floor(task.xpValue / 10), // Convert XP back to load
                 proof_mode: task.proofRequired ? 'realtime' : 'flex',
-                completed: false, // Explicitly set completed field
+                status: 'pending', // Use status instead of completed
                 xp_value: task.xpValue,
                 is_habit: task.type === 'streak',
                 priority: task.priority || 'medium'
