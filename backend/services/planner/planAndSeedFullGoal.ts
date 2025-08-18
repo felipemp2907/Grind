@@ -13,6 +13,11 @@ interface TaskInsert {
   load_score: number;
   proof_mode: 'realtime' | 'flex';
   status: string;
+  completed: boolean;
+  scheduled_for_date: string;
+  xp_value: number;
+  is_habit: boolean;
+  priority: string;
 }
 
 export async function planAndSeedFullGoal(
@@ -262,6 +267,11 @@ function convertPlanToTasks(
         load_score: habit.load,
         proof_mode: habit.proof_mode,
         status: 'pending',
+        completed: false,
+        scheduled_for_date: key,
+        xp_value: habit.load * 10,
+        is_habit: true,
+        priority: 'medium',
       });
     }
 
@@ -300,6 +310,11 @@ function convertPlanToTasks(
         load_score: t.load,
         proof_mode: t.proof_mode,
         status: 'pending',
+        completed: false,
+        scheduled_for_date: key,
+        xp_value: t.load * 10,
+        is_habit: false,
+        priority: 'medium',
       });
     }
   }

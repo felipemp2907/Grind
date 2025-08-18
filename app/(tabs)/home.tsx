@@ -36,7 +36,7 @@ import Button from '@/components/Button';
 import GoalCard from '@/components/GoalCard';
 import AgendaCard from '@/components/AgendaCard';
 import MotivationToast from '@/components/MotivationToast';
-import { ConnectivityBanner } from '@/components/ConnectivityBanner';
+
 
 import GoalClarifyWizard from '@/components/GoalClarifyWizard';
 import { generateMotivationMessage } from '@/utils/aiUtils';
@@ -153,8 +153,7 @@ export default function DashboardScreen() {
           />
         }
       >
-        {/* API Connectivity Banner */}
-        <ConnectivityBanner />
+
         
         {/* Agenda functionality removed */}
         
@@ -318,13 +317,6 @@ export default function DashboardScreen() {
             onPress={() => router.push('/journal')}
             variant="outline"
             icon={<BookOpen size={16} />}
-            style={styles.actionButton}
-          />
-          <Button
-            title="API Debug"
-            onPress={() => router.push('/debug-api')}
-            variant="outline"
-            icon={<Settings size={16} />}
             style={styles.actionButton}
           />
         </View>
