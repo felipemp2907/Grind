@@ -1,6 +1,5 @@
-import { supabaseAdmin } from '../../lib/supabaseAdmin';
-import { FullPlan, validatePlan } from './schema';
-import { PLANNER_SYSTEM_PROMPT, PLANNER_USER_PROMPT } from './prompt';
+// Re-export the new planner implementation
+export { planAndSeedFullGoal } from './index';
 
 interface TaskInsert {
   user_id: string;
