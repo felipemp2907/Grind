@@ -294,9 +294,13 @@ export const useGoalStore = create<GoalState>()(
                 type: task.type,
                 task_date: task.type === 'streak' ? task.taskDate : null,
                 due_at: task.type === 'today' ? new Date(`${task.date}T09:00:00.000Z`).toISOString() : null,
+                scheduled_for_date: task.date, // Add this field that the database expects
                 load_score: Math.floor(task.xpValue / 10), // Convert XP back to load
-                proof_mode: task.proofRequired ? 'realtime' : 'flex'
-                // completed field will be set by database default (false)
+                proof_mode: task.proofRequired ? 'realtime' : 'flex',
+                completed: false, // Explicitly set completed field
+                xp_value: task.xpValue,
+                is_habit: task.type === 'streak',
+                priority: task.priority || 'medium'
               }));
               
               const { error: insertError } = await supabase
