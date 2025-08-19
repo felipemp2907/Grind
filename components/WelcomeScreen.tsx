@@ -22,7 +22,10 @@ export default function WelcomeScreen() {
           />
 
           {/* Title */}
-          <Text style={styles.title}>Welcome to the Grind</Text>
+          <Text style={styles.title}>
+            <Text style={styles.titleRegular}>Welcome to </Text>
+            <Text style={styles.titleBold}>Grind</Text>
+          </Text>
         </View>
 
         <View style={styles.bottomSection}>
@@ -42,32 +45,37 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#000",
     alignItems: "center",
-    justifyContent: "space-between",
+    justifyContent: "center",
     paddingHorizontal: 24,
-    paddingTop: 80,
-    paddingBottom: 50,
+    paddingTop: 60,
+    paddingBottom: 80,
   },
   content: {
     alignItems: "center",
-    flex: 1,
-    justifyContent: "center",
-    gap: 48,
+    gap: 32,
+    marginTop: -60,
   },
   target: {
-    width: 120,
-    height: 120,
+    width: 160,
+    height: 160,
   },
   title: {
     color: "#fff",
     textAlign: "center",
-    fontSize: 48,
-    fontWeight: "700",
     lineHeight: 56,
+  },
+  titleRegular: {
+    fontSize: 48,
+    fontWeight: "400",
+  },
+  titleBold: {
+    fontSize: 52,
+    fontWeight: "700",
   },
   bottomSection: {
     alignItems: "center",
     width: "100%",
-    paddingBottom: 20,
+    marginTop: 40,
   },
   cta: {
     backgroundColor: "#fff",
