@@ -23,7 +23,7 @@ export default function WelcomeScreen() {
 
           {/* Title */}
           <Text style={styles.title}>
-            <Text style={styles.titleRegular}>Welcome to </Text>
+            <Text style={styles.titleRegular}>Welcome to the </Text>
             <Text style={styles.titleBold}>Grind</Text>
           </Text>
         </View>
@@ -56,8 +56,8 @@ const styles = StyleSheet.create({
     marginTop: -60,
   },
   target: {
-    width: 160,
-    height: 160,
+    width: 240,
+    height: 240,
   },
   title: {
     color: "#fff",
