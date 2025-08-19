@@ -6,9 +6,8 @@ import * as Haptics from 'expo-haptics';
 import { Goal, Milestone, ProgressUpdate, MilestoneAlert, GoalShareCard } from '@/types';
 import { supabase, setupDatabase, serializeError, getCurrentUser, ensureUserProfile } from '@/lib/supabase';
 
-import { createClientPlan, convertPlanToTasks } from '@/lib/clientPlanner';
-import { createGoalDirect } from '@/lib/directApi';
 import { useTaskStore } from './taskStore';
+import { trpcClient } from '@/lib/trpc';
 
 interface GoalState {
   goals: Goal[];
@@ -196,89 +195,26 @@ export const useGoalStore = create<GoalState>()(
       },
       
       createUltimateGoal: async (goalData) => {
+        const { fetchTasks } = useTaskStore.getState();
         try {
-          console.log('🎯 Creating ultimate goal with direct API:', goalData.title);
-          
-          // Try direct API first (database + tasks)
-          const directResult = await createGoalDirect({
+          console.log('🎯 Creating ultimate goal via tRPC server planner:', goalData.title);
+
+          const result = await trpcClient.goals.createUltimate.mutate({
             title: goalData.title,
             description: goalData.description || '',
-            deadline: goalData.deadline,
+            deadlineISO: goalData.deadline,
             category: goalData.category,
-            targetValue: goalData.targetValue,
+            targetValue: goalData.targetValue ?? 100,
             unit: goalData.unit,
-            priority: goalData.priority,
+            priority: goalData.priority ?? 'medium',
             color: goalData.color,
-            coverImage: goalData.coverImage
+            coverImage: goalData.coverImage,
           });
-          
-          if (directResult.success && directResult.goalId) {
-            console.log('✅ Goal created successfully via direct API');
-            
-            // Create goal object for local state
-            const newGoal: Goal = {
-              id: directResult.goalId,
-              title: goalData.title,
-              description: goalData.description || '',
-              deadline: goalData.deadline,
-              category: goalData.category || '',
-              createdAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString(),
-              progressValue: 0,
-              targetValue: goalData.targetValue || 100,
-              unit: goalData.unit || '',
-              xpEarned: 0,
-              streakCount: 0,
-              todayTasksIds: [],
-              streakTaskIds: [],
-              status: 'active',
-              coverImage: goalData.coverImage,
-              color: goalData.color,
-              priority: goalData.priority || 'medium',
-              milestones: []
-            };
-            
-            // Add goal to local state
-            set((state) => {
-              // Only allow up to 3 goals
-              if (state.goals.length >= 3) {
-                return state;
-              }
-              
-              const newGoals = [...state.goals, newGoal];
-              
-              // If this is the first goal, set it as active
-              const newActiveGoalId = state.activeGoalId || newGoal.id;
-              
-              return { 
-                goals: newGoals,
-                activeGoalId: newActiveGoalId
-              };
-            });
-            
-            // Trigger heavy haptic feedback on successful goal creation
-            if (Platform.OS !== 'web') {
-              try {
-                await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-                console.log('Heavy haptic feedback triggered for goal creation');
-              } catch (hapticError) {
-                console.log('Haptic feedback failed:', hapticError);
-              }
-            }
-            
-            // Log success with summary
-            if (directResult.summary) {
-              console.log(`✅ DIRECT_API_PLAN_SEEDED { goalId: ${directResult.goalId}, days: ${directResult.summary.days}, streak_count: ${directResult.summary.streak_count}, total_today: ${directResult.summary.total_today} }`);
-            }
-            
-            return;
-          }
-          
-          // Fallback to offline planner if direct API fails
-          console.log('⚠️ Direct API failed, falling back to offline planner:', directResult.error);
-          
-          const goalId = `goal_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-          
+
+          if (!result || !result.goal?.id) throw new Error('Server did not return goal');
+
+          const goalId = result.goal.id;
+
           const newGoal: Goal = {
             id: goalId,
             title: goalData.title,
@@ -288,7 +224,7 @@ export const useGoalStore = create<GoalState>()(
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
             progressValue: 0,
-            targetValue: goalData.targetValue || 100,
+            targetValue: goalData.targetValue ?? 100,
             unit: goalData.unit || '',
             xpEarned: 0,
             streakCount: 0,
@@ -297,92 +233,32 @@ export const useGoalStore = create<GoalState>()(
             status: 'active',
             coverImage: goalData.coverImage,
             color: goalData.color,
-            priority: goalData.priority || 'medium',
-            milestones: []
+            priority: goalData.priority ?? 'medium',
+            milestones: [],
           };
-          
-          // Generate tasks using offline planner
-          console.log('🤖 Generating tasks with offline planner...');
-          const clientPlan = createClientPlan({
-            title: goalData.title,
-            description: goalData.description || '',
-            deadline: goalData.deadline
-          });
-          
-          const tasks = convertPlanToTasks(clientPlan, goalId);
-          
-          // Add tasks to task store
-          const { addTasks } = useTaskStore.getState();
-          await addTasks(tasks.map(task => ({
-            ...task,
-            id: `task_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-            completed: false,
-            completedAt: undefined,
-            streak: 0
-          })));
-          
-          console.log(`✅ OFFLINE_PLAN_SEEDED { goalId: ${goalId}, days: ${clientPlan.daily_plan.length}, streak_count: ${clientPlan.streak_habits.length}, total_today: ${clientPlan.daily_plan.reduce((sum, day) => sum + day.today_tasks.length, 0)} }`);
-          
-          // Add goal to local state
+
           set((state) => {
-            // Only allow up to 3 goals
-            if (state.goals.length >= 3) {
-              return state;
-            }
-            
+            if (state.goals.length >= 3) return state;
             const newGoals = [...state.goals, newGoal];
-            
-            // If this is the first goal, set it as active
-            const newActiveGoalId = state.activeGoalId || newGoal.id;
-            
-            return { 
+            return {
               goals: newGoals,
-              activeGoalId: newActiveGoalId
+              activeGoalId: state.activeGoalId || newGoal.id,
             };
           });
-          
-          // Trigger heavy haptic feedback on successful goal creation
+
+          await fetchTasks();
           if (Platform.OS !== 'web') {
-            try {
-              await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-              console.log('Heavy haptic feedback triggered for goal creation');
-            } catch (hapticError) {
-              console.log('Haptic feedback failed:', hapticError);
-            }
+            try { await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy); } catch {}
           }
-          
-          console.log('✅ Goal created successfully using offline planner');
-          
+          console.log('✅ Goal created and tasks fetched from DB (server-seeded)');
         } catch (error) {
-          console.error('❌ Error creating ultimate goal:', error);
-          throw error; // Re-throw so UI can handle it properly
+          console.error('❌ Error creating ultimate goal (server planner):', error);
+          throw error;
         }
       },
       
-      // Background sync method (non-blocking) - now uses direct API
-      syncGoalToBackend: async (goal: Goal) => {
-        try {
-          const result = await createGoalDirect({
-            title: goal.title,
-            description: goal.description,
-            deadline: goal.deadline,
-            category: goal.category,
-            targetValue: goal.targetValue,
-            unit: goal.unit,
-            priority: goal.priority,
-            color: goal.color,
-            coverImage: goal.coverImage
-          });
-          
-          if (result.success) {
-            console.log('✅ Goal synced to backend via direct API');
-          } else {
-            console.log('Background sync failed:', result.error);
-          }
-        } catch (error) {
-          console.log('Background sync failed:', serializeError(error));
-        }
-      },
+      // Background sync disabled; server planner handles seeding
+      syncGoalToBackend: async (_goal: Goal) => { console.log('syncGoalToBackend disabled; use server planner'); },
       
       updateGoal: async (id, updates) => {
         // Update local state first

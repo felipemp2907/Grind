@@ -1,6 +1,6 @@
 import { createTRPCRouter } from "./create-context";
 import { hiProcedure, testProtectedProcedure } from "./routes/example/hi/route";
-import { createUltimateGoalProcedure, createGoalProcedure, updateUltimateGoalProcedure } from "./routes/goals/create-ultimate-goal";
+import { createUltimateGoalProcedure, createGoalProcedure, updateUltimateGoalProcedure, reseedGoalProcedure } from "./routes/goals/create-ultimate-goal";
 import { getStreakTasksProcedure, getTodayTasksProcedure, getAllTasksForDateProcedure } from "./routes/tasks/get-tasks";
 import { healthPingProcedure, healthProcedure, testInsertProcedure, testGoalInsertProcedure, testTaskInsertProcedure } from "./routes/health/route";
 
@@ -20,6 +20,7 @@ export const appRouter = createTRPCRouter({
     create: createGoalProcedure,
     createUltimate: createUltimateGoalProcedure,
     updateUltimate: updateUltimateGoalProcedure,
+    reseed: reseedGoalProcedure,
   }),
   tasks: createTRPCRouter({
     getStreakTasks: getStreakTasksProcedure,

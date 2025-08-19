@@ -263,6 +263,61 @@ export const createUltimateGoalProcedure = protectedProcedure
     return Promise.race([createGoalPromise(), timeoutPromise]);
   });
 
+// Reseed an existing goal by clearing tasks and running planner again
+export const reseedGoalProcedure = protectedProcedure
+  .input(z.object({ goalId: z.string().uuid() }))
+  .mutation(async ({ input, ctx }) => {
+    const user = ctx.user;
+    const goalId = input.goalId;
+
+    const { error: deleteTasksError } = await ctx.supabaseAdmin
+      .from('tasks')
+      .delete()
+      .eq('user_id', user.id)
+      .eq('goal_id', goalId);
+
+    if (deleteTasksError) {
+      throw new TRPCError({
+        code: 'INTERNAL_SERVER_ERROR',
+        message: `Failed to clear tasks: ${deleteTasksError.message}`,
+      });
+    }
+
+    const { data: goal } = await ctx.supabaseAdmin
+      .from('goals')
+      .select('*')
+      .eq('id', goalId)
+      .eq('user_id', user.id)
+      .single();
+
+    if (!goal) throw new TRPCError({ code: 'NOT_FOUND', message: 'Goal not found' });
+
+    const { data: profile } = await ctx.supabaseAdmin
+      .from('profiles')
+      .select('*')
+      .eq('id', user.id)
+      .single();
+
+    const planResult = await planAndSeedFullGoal(
+      user.id,
+      goalId,
+      goal.title,
+      goal.description ?? '',
+      goal.deadline,
+      profile?.experience_level ?? 'beginner',
+      0
+    );
+
+    if (!planResult.success) {
+      throw new TRPCError({
+        code: 'INTERNAL_SERVER_ERROR',
+        message: planResult.error ?? 'Plan seeding failed',
+      });
+    }
+
+    return { ok: true as const, summary: planResult.summary };
+  });
+
 // Update schema that includes the id field
 const updateUltimateGoalSchema = z.object({
   goalId: z.string().uuid(),
