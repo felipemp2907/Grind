@@ -1,7 +1,6 @@
 import React from "react";
-import { SafeAreaView, View, Text, Pressable, StatusBar, StyleSheet } from "react-native";
+import { SafeAreaView, View, Text, Pressable, StatusBar, StyleSheet, Image } from "react-native";
 import { useRouter } from "expo-router";
-import Svg, { Circle } from "react-native-svg";
 
 export default function WelcomeScreen() {
   const router = useRouter();
@@ -15,31 +14,18 @@ export default function WelcomeScreen() {
       <StatusBar barStyle="light-content" />
       <View style={styles.container}>
         <View style={styles.content}>
-          {/* Target icon */}
-          <Svg width={120} height={120} viewBox="0 0 120 120" style={styles.target}>
-            <Circle cx="60" cy="60" r="58" fill="#fff" />
-            <Circle cx="60" cy="60" r="44" fill="#000" />
-            <Circle cx="60" cy="60" r="30" fill="#fff" />
-            <Circle cx="60" cy="60" r="16" fill="#000" />
-            <Circle cx="60" cy="60" r="8" fill="#fff" />
-          </Svg>
+          {/* Target icon - using the adaptive icon */}
+          <Image 
+            source={require('@/assets/images/adaptive-icon.png')} 
+            style={styles.target}
+            resizeMode="contain"
+          />
 
           {/* Title */}
-          <Text style={styles.title}>Welcome to{"\n"}Grind</Text>
-          
-          {/* Subtitle */}
-          <Text style={styles.subtitle}>Your AI discipline & goal{"\n"}execution system</Text>
+          <Text style={styles.title}>Welcome to the Grind</Text>
         </View>
 
         <View style={styles.bottomSection}>
-          {/* Dots */}
-          <View style={styles.dots}>
-            <View style={[styles.dot, styles.dotActive]} />
-            <View style={styles.dot} />
-            <View style={styles.dot} />
-            <View style={styles.dot} />
-          </View>
-
           {/* Primary CTA */}
           <Pressable onPress={onGetStarted} style={({ pressed }) => [styles.cta, pressed && styles.ctaPressed]}>
             <Text style={styles.ctaText}>Let&apos;s Get Started</Text>
@@ -65,10 +51,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     flex: 1,
     justifyContent: "center",
-    gap: 32,
+    gap: 48,
   },
   target: {
-    marginBottom: 8,
+    width: 120,
+    height: 120,
   },
   title: {
     color: "#fff",
@@ -77,35 +64,14 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     lineHeight: 56,
   },
-  subtitle: {
-    color: "#fff",
-    textAlign: "center",
-    fontSize: 18,
-    fontWeight: "400",
-    lineHeight: 24,
-    opacity: 0.8,
-  },
   bottomSection: {
     alignItems: "center",
-    gap: 32,
     width: "100%",
-  },
-  dots: {
-    flexDirection: "row",
-    gap: 8,
-  },
-  dot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: "#333",
-  },
-  dotActive: {
-    backgroundColor: "#fff",
+    paddingBottom: 20,
   },
   cta: {
     backgroundColor: "#fff",
-    borderRadius: 16,
+    borderRadius: 12,
     paddingVertical: 18,
     paddingHorizontal: 32,
     width: "100%",
