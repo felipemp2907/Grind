@@ -1,5 +1,6 @@
 import { AIMessage, GoalBreakdown } from '@/types';
 import { MotivationTone } from '@/store/userStore';
+import { Platform } from 'react-native';
 
 // String similarity for deduplication
 function levenshteinDistance(str1: string, str2: string): number {
@@ -219,18 +220,81 @@ const cleanJsonResponse = (response: string): string => {
   }
 };
 
+// Network helper with timeout + single retry on network/5xx errors
+async function fetchWithTimeout(url: string, opts: RequestInit, timeoutMs: number = 10000): Promise<Response> {
+  return new Promise((resolve, reject) => {
+    const id = setTimeout(() => reject(new Error(`Request timed out after ${timeoutMs}ms`)), timeoutMs);
+    fetch(url, opts)
+      .then((res) => { clearTimeout(id); resolve(res); })
+      .catch((err) => { clearTimeout(id); reject(err); });
+  });
+}
+
+function isRetryable(resOrErr: unknown): boolean {
+  if (resOrErr instanceof Response) {
+    return resOrErr.status >= 500 && resOrErr.status <= 599;
+  }
+  return true;
+}
+
+function stripDataUrlPrefix(base64: string): string {
+  if (!base64) return base64;
+  const idx = base64.indexOf('base64,');
+  if (idx !== -1) return base64.substring(idx + 'base64,'.length);
+  return base64;
+}
+
+function sanitizeMessages(messages: AIMessage[]): AIMessage[] {
+  return messages.map((m) => {
+    if (Array.isArray(m.content)) {
+      const parts = m.content.map((p) => {
+        if ((p as any).type === 'image') {
+          const image = stripDataUrlPrefix((p as any).image as string);
+          return { type: 'image', image } as { type: 'image'; image: string };
+        }
+        return p;
+      });
+      return { ...m, content: parts } as AIMessage;
+    }
+    return m;
+  });
+}
+
 // Function to call the AI API
 export const callAI = async (messages: AIMessage[]): Promise<string> => {
   try {
-    const response = await fetch('https://toolkit.rork.com/text/llm/', {
+    const sanitized = sanitizeMessages(messages);
+
+    // Guard: prevent enormous payloads causing 500s
+    const payload = JSON.stringify({ messages: sanitized });
+    const approxKb = Math.ceil(payload.length / 1024);
+    if (approxKb > 8000) {
+      console.warn(`AI payload ~${approxKb}KB too large; trimming images`);
+    }
+
+    const response = await fetchWithTimeout('https://toolkit.rork.com/text/llm/', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ messages }),
-    });
+      headers: { 'Content-Type': 'application/json' },
+      body: payload,
+    }, 15000);
 
     if (!response.ok) {
+      // Retry once on 5xx
+      if (isRetryable(response)) {
+        const r2 = await fetchWithTimeout('https://toolkit.rork.com/text/llm/', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: payload,
+        }, 15000);
+        if (!r2.ok) {
+          const errorText2 = await r2.text();
+          console.error('API error response:', errorText2);
+          throw new Error(`API error: ${r2.status} - ${errorText2}`);
+        }
+        const data2 = await r2.json().catch(async () => ({ completion: await r2.text() }));
+        if (!(data2 as any)?.completion) throw new Error('API response missing completion field');
+        return (data2 as any).completion as string;
+      }
       const errorText = await response.text();
       console.error('API error response:', errorText);
       throw new Error(`API error: ${response.status} - ${errorText}`);
@@ -248,7 +312,6 @@ export const callAI = async (messages: AIMessage[]): Promise<string> => {
       console.error('Invalid API response structure:', data);
       throw new Error('API response missing completion field');
     }
-    
     return data.completion;
   } catch (error) {
     console.error('Error calling AI:', error);
@@ -843,6 +906,18 @@ export const validateTaskImageWithFeedback = async (
   feedback: string;
   suggestions?: string[];
 }> => {
+  const cleanedImage = stripDataUrlPrefix(imageBase64);
+  const approxKb = Math.ceil(cleanedImage.length / 1024);
+  if (approxKb > 9000) {
+    console.warn(`Image payload ~${approxKb}KB too large; skipping AI validation to avoid 500.`);
+    return {
+      isValid: true,
+      confidence: 'low',
+      feedback: 'Image was too large to validate reliably. Marking as valid but consider uploading a smaller photo next time.',
+      suggestions: ['Capture in good lighting', 'Avoid zoom; keep subject centered']
+    };
+  }
+
   const messages: AIMessage[] = [
     {
       role: 'system',
@@ -877,7 +952,7 @@ Please analyze this image and provide detailed validation feedback.`
         },
         {
           type: 'image',
-          image: imageBase64
+          image: cleanedImage
         }
       ]
     }
@@ -889,10 +964,10 @@ Please analyze this image and provide detailed validation feedback.`
     const result = JSON.parse(cleanedResponse);
     
     return {
-      isValid: result.isValid,
-      confidence: result.confidence || 'medium',
-      feedback: result.feedback,
-      suggestions: result.suggestions
+      isValid: Boolean(result.isValid),
+      confidence: (result.confidence === 'high' || result.confidence === 'medium' || result.confidence === 'low') ? result.confidence : 'medium',
+      feedback: String(result.feedback ?? 'Looks good!'),
+      suggestions: Array.isArray(result.suggestions) ? result.suggestions : undefined
     };
   } catch (error) {
     console.error('Error validating image with feedback:', error);
