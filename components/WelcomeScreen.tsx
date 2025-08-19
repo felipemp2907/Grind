@@ -10,39 +10,41 @@ export default function WelcomeScreen() {
     router.push("/login");
   };
 
-  const onSignIn = () => {
-    router.push("/login");
-  };
-
   return (
     <SafeAreaView style={styles.safe}>
       <StatusBar barStyle="light-content" />
       <View style={styles.container}>
-        {/* Target icon */}
-        <Svg width={132} height={132} viewBox="0 0 132 132" style={styles.target}>
-          <Circle cx="66" cy="66" r="64" stroke="#fff" strokeWidth="8" fill="none" />
-          <Circle cx="66" cy="66" r="44" stroke="#fff" strokeWidth="8" fill="none" />
-          <Circle cx="66" cy="66" r="24" stroke="#fff" strokeWidth="8" fill="none" />
-          <Circle cx="66" cy="66" r="6"  fill="#fff" />
-        </Svg>
+        <View style={styles.content}>
+          {/* Target icon */}
+          <Svg width={120} height={120} viewBox="0 0 120 120" style={styles.target}>
+            <Circle cx="60" cy="60" r="58" fill="#fff" />
+            <Circle cx="60" cy="60" r="44" fill="#000" />
+            <Circle cx="60" cy="60" r="30" fill="#fff" />
+            <Circle cx="60" cy="60" r="16" fill="#000" />
+            <Circle cx="60" cy="60" r="8" fill="#fff" />
+          </Svg>
 
-        {/* Title */}
-        <Text style={styles.title}>
-          <Text style={styles.titleLine}>Welcome to{"\n"}</Text>
-          <Text style={styles.titleStrong}>Grind</Text>
-        </Text>
+          {/* Title */}
+          <Text style={styles.title}>Welcome to{"\n"}Grind</Text>
+          
+          {/* Subtitle */}
+          <Text style={styles.subtitle}>Your AI discipline & goal{"\n"}execution system</Text>
+        </View>
 
-        {/* Primary CTA */}
-        <Pressable onPress={onGetStarted} style={({ pressed }) => [styles.cta, pressed && styles.ctaPressed]}>
-          <Text style={styles.ctaText}>Let&apos;s Get Started</Text>
-        </Pressable>
+        <View style={styles.bottomSection}>
+          {/* Dots */}
+          <View style={styles.dots}>
+            <View style={[styles.dot, styles.dotActive]} />
+            <View style={styles.dot} />
+            <View style={styles.dot} />
+            <View style={styles.dot} />
+          </View>
 
-        {/* Secondary link */}
-        <Pressable onPress={onSignIn} style={styles.secondary}>
-          <Text style={styles.secondaryText}>
-            I have an account <Text style={styles.secondaryEm}>→ Sign In</Text>
-          </Text>
-        </Pressable>
+          {/* Primary CTA */}
+          <Pressable onPress={onGetStarted} style={({ pressed }) => [styles.cta, pressed && styles.ctaPressed]}>
+            <Text style={styles.ctaText}>Let&apos;s Get Started</Text>
+          </Pressable>
+        </View>
       </View>
     </SafeAreaView>
   );
@@ -54,26 +56,62 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#000",
     alignItems: "center",
-    justifyContent: "center",
+    justifyContent: "space-between",
     paddingHorizontal: 24,
-    gap: 28,
+    paddingTop: 80,
+    paddingBottom: 50,
   },
-  target: { marginBottom: 4 },
-  title: { color: "#fff", textAlign: "center", lineHeight: 44 },
-  titleLine: { fontSize: 36, fontWeight: "700" },
-  titleStrong: { fontSize: 48, fontWeight: "800" },
-  cta: {
-    marginTop: 8,
+  content: {
+    alignItems: "center",
+    flex: 1,
+    justifyContent: "center",
+    gap: 32,
+  },
+  target: {
+    marginBottom: 8,
+  },
+  title: {
+    color: "#fff",
+    textAlign: "center",
+    fontSize: 48,
+    fontWeight: "700",
+    lineHeight: 56,
+  },
+  subtitle: {
+    color: "#fff",
+    textAlign: "center",
+    fontSize: 18,
+    fontWeight: "400",
+    lineHeight: 24,
+    opacity: 0.8,
+  },
+  bottomSection: {
+    alignItems: "center",
+    gap: 32,
+    width: "100%",
+  },
+  dots: {
+    flexDirection: "row",
+    gap: 8,
+  },
+  dot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: "#333",
+  },
+  dotActive: {
     backgroundColor: "#fff",
-    borderRadius: 28,
-    paddingVertical: 16,
-    paddingHorizontal: 28,
-    minWidth: 280,
+  },
+  cta: {
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    paddingVertical: 18,
+    paddingHorizontal: 32,
+    width: "100%",
+    maxWidth: 320,
     alignItems: "center",
   },
   ctaPressed: { opacity: 0.9, transform: [{ scale: 0.98 }] },
   ctaText: { color: "#000", fontSize: 18, fontWeight: "700" },
-  secondary: { marginTop: 8 },
-  secondaryText: { color: "#BFBFBF", fontSize: 16 },
-  secondaryEm: { color: "#ffffff", fontWeight: "700" },
 });
