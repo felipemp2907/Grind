@@ -43,7 +43,6 @@ export async function planAndInsertAll(goal: GoalInput, supa: SupabaseClient, us
         description: s.description,
         xp: s.xp,
         proof_required: s.proofRequired,
-        source: 'client_planner_v2',
       })));
     if (streakErr) console.log('streak_task_defs insert skipped/failed:', (streakErr as any)?.message ?? streakErr);
   } catch (e:any) {
@@ -59,14 +58,11 @@ export async function planAndInsertAll(goal: GoalInput, supa: SupabaseClient, us
       title: t.title,
       description: t.description,
       xp_value: t.xp,
-      due_at: toLocalISODate(t.dateISO) + 'T12:00:00.000Z',
+      due_date: toLocalISODate(t.dateISO) + 'T12:00:00.000Z',
       is_habit: false,
-      type: 'today',
       priority: goal.priority ?? 'medium',
-      proof_mode: t.proofRequired ? 'required' : 'optional',
-      source: 'client_planner_v2',
     })));
-  if (todayErr) throw todayErr;
+  if (todayErr) throw todayErr as any;
 
   console.log('planAndInsertAll: inserted tasks');
   return { ok: true, notes: plan.notes, goalId };
