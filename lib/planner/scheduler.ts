@@ -82,19 +82,19 @@ export async function planAndInsertAll(goal: GoalInput, supa: SupabaseClient, us
       };
       
       // Handle the tasks_type_shape constraint properly
-      if (map.isStreakCol && map.typeIsString) {
-        // For type='today': set due_at, leave task_date null
+      // Constraint: (type = 'streak' AND task_date IS NOT NULL AND due_at IS NULL) OR
+      //            (type = 'today' AND task_date IS NULL AND due_at IS NOT NULL) OR
+      //            (type IS NULL)
+      if (map.isStreakCol && (map.typeIsString || map.typeIsJSON)) {
+        // For scheduled tasks, use type='today' with due_at set, task_date null
         row[map.isStreakCol] = 'today';
         row['due_at'] = new Date(isoDate + 'T23:59:59Z').toISOString();
-        // Don't set task_date for 'today' type
+        // Explicitly set task_date to null for 'today' type
+        row['task_date'] = null;
       } else {
-        // Fallback: set date columns but don't set type to avoid constraint
+        // Fallback: don't set type (leave as null) and use primary date column
         row[primaryDateCol] = isoDate;
-        for (const c of availableDateCols) {
-          if (c !== 'task_date' && c !== 'due_at') {
-            row[c] = isoDate;
-          }
-        }
+        // Don't set task_date or due_at to avoid constraint issues
       }
       
       if (map.proofCol) row[map.proofCol] = true;
