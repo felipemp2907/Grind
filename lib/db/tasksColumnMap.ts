@@ -6,6 +6,7 @@ export type TaskColumnMap = {
   proofCol?: string;
   tagsCol?: string;
   typeIsString?: boolean;
+  typeIsJSON?: boolean;
 };
 
 async function columnExists(supa: SupabaseClient, col: string) {
@@ -36,13 +37,15 @@ export async function detectTasksColumnMap(
     }
   }
 
-  const streakCandidates = ['is_streak', 'streak', 'is_recurring', 'recurring', 'task_type', 'is_habit'];
+  const streakCandidates = ['is_streak', 'streak', 'is_recurring', 'recurring', 'task_type', 'is_habit', 'type'];
   let isStreakCol: string | undefined;
   let typeIsString = false;
+  let typeIsJSON = false;
   for (const c of streakCandidates) {
     if (await columnExists(supa, c)) {
       isStreakCol = c;
       typeIsString = c === 'task_type';
+      typeIsJSON = c === 'type';
       break;
     }
   }
@@ -65,5 +68,5 @@ export async function detectTasksColumnMap(
     }
   }
 
-  return { dateCol, isStreakCol, proofCol, tagsCol, typeIsString };
+  return { dateCol, isStreakCol, proofCol, tagsCol, typeIsString, typeIsJSON };
 }

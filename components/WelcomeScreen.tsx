@@ -66,12 +66,12 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingHorizontal: 24,
     paddingTop: 40,
-    paddingBottom: 64,
+    paddingBottom: 24,
   },
   content: {
     alignItems: "center",
     gap: 0,
-    marginTop: -260,
+    marginTop: 0,
   },
   target: {
     width: 220,
@@ -82,7 +82,7 @@ const styles = StyleSheet.create({
     color: "#fff",
     textAlign: "center",
     lineHeight: 46,
-    marginTop: -60,
+    marginTop: 0,
   },
   titleRegular: {
     fontSize: 42,
@@ -95,6 +95,7 @@ const styles = StyleSheet.create({
   bottomSection: {
     alignItems: "center",
     width: "100%",
+    marginBottom: 24,
   },
   cta: {
     backgroundColor: "#fff",
