@@ -73,40 +73,13 @@ export default function CreateGoalScreen() {
       );
       
     } catch (error) {
-      console.error('❌ Error creating goal:', error);
-      
-      // Check if goal was actually created successfully using offline planner
-      const { goals } = useGoalStore.getState();
-      const wasCreated = goals.some(goal => goal.title === title);
-      
-      if (wasCreated) {
-        // Goal was created successfully using offline planner
-        Alert.alert(
-          "Goal Created Successfully! 🎯",
-          `Your goal "${title}" has been created using our offline planner! Your tasks are ready and waiting for you.`,
-          [{ text: "View Today", onPress: () => router.replace('/(tabs)/home') }]
-        );
-        return;
-      }
-      
-      let errorMessage = "There was an issue creating your goal. Please try again.";
-      
-      if (error instanceof Error) {
-        if (error.message.includes('Network request failed') || error.message.includes('Failed to fetch') || error.message.includes('Request timeout')) {
-          errorMessage = "Connection failed. Your goal has been created offline with a personalized plan!";
-        } else if (error.message.includes('Authentication required')) {
-          errorMessage = "Authentication required. Please sign in again.";
-        } else if (error.message.includes('Database setup failed')) {
-          errorMessage = "Database connection failed. Please check your internet connection.";
-        } else if (error.message.includes('Goal creation failed') || error.message.includes('Task creation failed')) {
-          errorMessage = `Goal creation failed: ${error.message}. Please try again.`;
-        }
-      }
-      
+      const errMsg = error instanceof Error ? error.message : (() => { try { return JSON.stringify(error); } catch { return String(error); } })();
+      console.error('❌ Error creating goal:', errMsg);
+
       Alert.alert(
-        "Goal Creation Status",
-        errorMessage,
-        [{ text: "OK" }]
+        'Goal Creation Failed',
+        errMsg || 'There was an issue creating your goal. Please try again.',
+        [{ text: 'OK' }]
       );
     } finally {
       setCreating(false);

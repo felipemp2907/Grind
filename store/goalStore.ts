@@ -262,8 +262,9 @@ export const useGoalStore = create<GoalState>()(
           }
           console.log('✅ Goal created and tasks fetched from DB (client-seeded)');
         } catch (error) {
-          console.error('❌ Error creating ultimate goal (client planner):', error);
-          throw error;
+          const errMsg = (error as any)?.message ? String((error as any).message) : serializeError(error);
+          console.error('❌ Error creating ultimate goal (client planner):', errMsg);
+          throw new Error(errMsg);
         }
       },
       
