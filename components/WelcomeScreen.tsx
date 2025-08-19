@@ -94,7 +94,7 @@ const styles = StyleSheet.create({
   bottomSection: {
     alignItems: "center",
     width: "100%",
-    marginTop: 8,
+    marginTop: 20,
   },
   cta: {
     backgroundColor: "#fff",
