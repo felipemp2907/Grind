@@ -1,22 +1,13 @@
 import { PlanResult, GoalInput } from './types';
 import { chooseBlueprint } from './blueprints';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { detectTasksColumnMap, TaskColumnMap } from '../db/tasksColumnMap';
+import { detectTasksColumnMap, TaskColumnMap, applyTaskType } from '../db/tasksColumnMap';
 
 function toLocalISODate(d: string) { return d; }
 
 function isUuid(v: string | undefined): boolean {
   if (!v) return false;
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v);
-}
-
-async function columnExists(supa: SupabaseClient, col: string) {
-  try {
-    const { error } = await supa.from('tasks').select(col).limit(0);
-    return !error;
-  } catch {
-    return false;
-  }
 }
 
 export async function planAndInsertAll(goal: GoalInput, supa: SupabaseClient, userId: string) {
@@ -61,47 +52,55 @@ export async function planAndInsertAll(goal: GoalInput, supa: SupabaseClient, us
 
   // Detect flexible column names on tasks table
   const map: TaskColumnMap = await detectTasksColumnMap(supa);
-  const allDateCols = ['scheduled_for_date','scheduled_for','due_date','date','due_at','dueOn','due'];
-  const availableDateCols: string[] = [];
-  for (const c of allDateCols) {
-    // eslint-disable-next-line no-await-in-loop
-    if (await columnExists(supa, c)) availableDateCols.push(c);
-  }
   const primaryDateCol = map.dateCol;
 
-  const { error: todayErr } = await supa
-    .from('tasks')
-    .insert(plan.schedule.map((t) => {
-      const isoDate = toLocalISODate(t.dateISO);
-      const row: Record<string, unknown> = {
+  // Insert TODAY tasks
+  const todayRows = plan.schedule.map((t) => {
+    const isoDate = toLocalISODate(t.dateISO);
+    const row: Record<string, unknown> = {
+      user_id: userId,
+      goal_id: goalId,
+      title: t.title,
+      description: t.description,
+      xp_value: t.xp ?? 0,
+      [primaryDateCol]: isoDate,
+      source: 'client_planner_v2',
+    };
+    applyTaskType(row, map.typeMap, 'today');
+    if (map.proofCol) row[map.proofCol] = t.proofRequired;
+    if (map.tagsCol) row[map.tagsCol] = t.tags ?? [];
+    return row;
+  });
+  const { error: todayErr } = await supa.from('tasks').insert(todayRows);
+  if (todayErr) throw todayErr as any;
+
+  // Insert STREAK tasks as daily rows up to a safe horizon (<=120 days)
+  const start = new Date(goal.createdAtISO);
+  const end = new Date(goal.deadlineISO);
+  const diffDays = Math.max(1, Math.ceil((end.getTime() - start.getTime()) / 86400000));
+  const horizonDays = Math.min(diffDays, 120);
+  const streakRows: Record<string, unknown>[] = [];
+  for (let d = 0; d < horizonDays; d++) {
+    const day = new Date(start.getTime() + d * 86400000).toISOString().slice(0, 10);
+    for (const s of plan.streaks) {
+      const r: Record<string, unknown> = {
         user_id: userId,
         goal_id: goalId,
-        title: t.title,
-        description: t.description,
-        xp_value: t.xp ?? 0,
+        title: s.title,
+        description: s.description,
+        xp_value: s.xp ?? 0,
+        [primaryDateCol]: day,
+        source: 'client_planner_v2',
       };
-      
-      // Handle the tasks_type_shape constraint properly
-      // Constraint: (type = 'streak' AND task_date IS NOT NULL AND due_at IS NULL) OR
-      //            (type = 'today' AND task_date IS NULL AND due_at IS NOT NULL) OR
-      //            (type IS NULL)
-      if (map.isStreakCol && (map.typeIsString || map.typeIsJSON)) {
-        // For scheduled tasks, use type='today' with due_at set, task_date null
-        row[map.isStreakCol] = 'today';
-        row['due_at'] = new Date(isoDate + 'T23:59:59Z').toISOString();
-        // Explicitly set task_date to null for 'today' type
-        row['task_date'] = null;
-      } else {
-        // Fallback: don't set type (leave as null) and use primary date column
-        row[primaryDateCol] = isoDate;
-        // Don't set task_date or due_at to avoid constraint issues
-      }
-      
-      if (map.proofCol) row[map.proofCol] = true;
-      if (map.tagsCol) row[map.tagsCol] = [];
-      return row;
-    }));
-  if (todayErr) throw todayErr as any;
+      applyTaskType(r, map.typeMap, 'streak');
+      if (map.proofCol) r[map.proofCol] = s.proofRequired;
+      streakRows.push(r);
+    }
+  }
+  if (streakRows.length) {
+    const { error: streakErr } = await supa.from('tasks').insert(streakRows);
+    if (streakErr) throw streakErr as any;
+  }
 
   console.log('planAndInsertAll: inserted tasks');
   return { ok: true, notes: plan.notes, goalId };

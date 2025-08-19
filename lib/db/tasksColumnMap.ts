@@ -1,12 +1,15 @@
 import { SupabaseClient } from '@supabase/supabase-js';
 
+export type TaskTypeMapping =
+  | { kind: 'json'; col: string }
+  | { kind: 'text'; col: string }
+  | { kind: 'bool'; col: string };
+
 export type TaskColumnMap = {
   dateCol: string;
-  isStreakCol?: string;
+  typeMap?: TaskTypeMapping;
   proofCol?: string;
   tagsCol?: string;
-  typeIsString?: boolean;
-  typeIsJSON?: boolean;
 };
 
 async function columnExists(supa: SupabaseClient, col: string) {
@@ -18,55 +21,78 @@ async function columnExists(supa: SupabaseClient, col: string) {
   }
 }
 
+async function anyOf(supa: SupabaseClient, cols: string[]) {
+  for (const c of cols) {
+    // eslint-disable-next-line no-await-in-loop
+    if (await columnExists(supa, c)) return c;
+  }
+  return undefined;
+}
+
 export async function detectTasksColumnMap(
   supa: SupabaseClient,
-  envOverride?: Partial<TaskColumnMap>
 ): Promise<TaskColumnMap> {
-  const tryCols = (cands: string[], fallback: string) =>
-    cands.includes(fallback) ? cands : [fallback, ...cands];
-
-  const dateCandidates = tryCols(
-    ['scheduled_for_date', 'scheduled_for', 'due_date', 'date', 'due_at', 'dueOn', 'due'],
-    envOverride?.dateCol || 'scheduled_for_date'
-  );
+  const dateCandidates = ['scheduled_for_date', 'scheduled_for', 'due_date', 'date', 'due_at', 'dueOn', 'due'];
   let dateCol = 'due_date';
   for (const c of dateCandidates) {
+    // eslint-disable-next-line no-await-in-loop
+    if (await columnExists(supa, c)) { dateCol = c; break; }
+  }
+
+  // Prefer JSONB type column commonly named 'type'
+  const jsonCandidates = ['type'];
+  for (const c of jsonCandidates) {
+    // eslint-disable-next-line no-await-in-loop
     if (await columnExists(supa, c)) {
-      dateCol = c;
-      break;
+      return {
+        dateCol,
+        typeMap: { kind: 'json', col: c },
+        proofCol: await anyOf(supa, ['proof_required','requires_proof','require_proof','needs_proof']),
+        tagsCol: await anyOf(supa, ['tags','labels']),
+      };
     }
   }
 
-  const streakCandidates = ['is_streak', 'streak', 'is_recurring', 'recurring', 'task_type', 'is_habit', 'type'];
-  let isStreakCol: string | undefined;
-  let typeIsString = false;
-  let typeIsJSON = false;
-  for (const c of streakCandidates) {
+  const textCandidates = ['type','task_type','kind'];
+  for (const c of textCandidates) {
+    // eslint-disable-next-line no-await-in-loop
     if (await columnExists(supa, c)) {
-      isStreakCol = c;
-      typeIsString = c === 'task_type';
-      typeIsJSON = c === 'type';
-      break;
+      return {
+        dateCol,
+        typeMap: { kind: 'text', col: c },
+        proofCol: await anyOf(supa, ['proof_required','requires_proof','require_proof','needs_proof']),
+        tagsCol: await anyOf(supa, ['tags','labels']),
+      };
     }
   }
 
-  const proofCandidates = ['proof_required', 'requires_proof', 'require_proof', 'needs_proof'];
-  let proofCol: string | undefined;
-  for (const c of proofCandidates) {
+  const boolCandidates = ['is_streak','streak','is_recurring','recurring'];
+  for (const c of boolCandidates) {
+    // eslint-disable-next-line no-await-in-loop
     if (await columnExists(supa, c)) {
-      proofCol = c;
-      break;
+      return {
+        dateCol,
+        typeMap: { kind: 'bool', col: c },
+        proofCol: await anyOf(supa, ['proof_required','requires_proof','require_proof','needs_proof']),
+        tagsCol: await anyOf(supa, ['tags','labels']),
+      };
     }
   }
 
-  const tagCandidates = ['tags', 'labels'];
-  let tagsCol: string | undefined;
-  for (const c of tagCandidates) {
-    if (await columnExists(supa, c)) {
-      tagsCol = c;
-      break;
-    }
-  }
+  return {
+    dateCol,
+    proofCol: await anyOf(supa, ['proof_required','requires_proof','require_proof','needs_proof']),
+    tagsCol: await anyOf(supa, ['tags','labels']),
+  };
+}
 
-  return { dateCol, isStreakCol, proofCol, tagsCol, typeIsString, typeIsJSON };
+export function applyTaskType(row: Record<string, unknown>, typeMap: TaskTypeMapping | undefined, logicalKind: 'today'|'streak') {
+  if (!typeMap) return;
+  if (typeMap.kind === 'json') {
+    row[typeMap.col] = { kind: logicalKind };
+  } else if (typeMap.kind === 'text') {
+    row[typeMap.col] = logicalKind;
+  } else {
+    row[typeMap.col] = (logicalKind === 'streak');
+  }
 }
