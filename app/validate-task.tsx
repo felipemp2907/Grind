@@ -23,7 +23,6 @@ import {
   Flame,
   Eye,
   ThumbsUp,
-  RefreshCw
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { useTaskStore } from '@/store/taskStore';
@@ -237,7 +236,7 @@ export default function ValidateTaskScreen() {
     setLoading(true);
     
     try {
-      // Create journal entry for validation
+      // Create a simple journal entry locally first
       const journalEntryData = {
         date: task.date,
         title: `Task: ${task.title}`,
@@ -253,19 +252,33 @@ export default function ValidateTaskScreen() {
       
       console.log('Creating journal entry for task completion...');
       
-      // Add journal entry and get the created entry with UUID
-      const journalEntry = await addEntry(journalEntryData);
-      
-      if (!journalEntry) {
-        console.error('Journal entry creation returned null');
-        throw new Error('Failed to create journal entry');
+      // Try to create journal entry, but don't fail if it doesn't work
+      let journalEntryId = `temp-${Date.now()}`; // Fallback ID
+      try {
+        const journalEntry = await addEntry(journalEntryData);
+        if (journalEntry?.id) {
+          journalEntryId = journalEntry.id;
+          console.log('Journal entry created successfully:', journalEntry.id);
+        } else {
+          console.warn('Journal entry creation returned null, using fallback ID');
+        }
+      } catch (journalError) {
+        console.warn('Journal entry creation failed, continuing with task completion:', journalError);
       }
       
-      console.log('Journal entry created successfully:', journalEntry.id);
-      
-      // Mark task as completed
+      // Mark task as completed regardless of journal entry success
       console.log('Marking task as completed...');
-      await completeTask(task.id, journalEntry.id);
+      try {
+        await completeTask(task.id, journalEntryId);
+      } catch (taskError) {
+        console.warn('Task completion in store failed, updating locally:', taskError);
+        // Update task locally as fallback
+        updateTask(task.id, {
+          completed: true,
+          completedAt: new Date().toISOString(),
+          journalEntryId
+        });
+      }
       
       // Add XP with bonus for high confidence validation
       let xpBonus = 0;
@@ -274,12 +287,20 @@ export default function ValidateTaskScreen() {
       }
       
       console.log('Adding XP:', task.xpValue + xpBonus);
-      await addXP(task.xpValue + xpBonus);
+      try {
+        await addXP(task.xpValue + xpBonus);
+      } catch (xpError) {
+        console.warn('XP addition failed:', xpError);
+      }
       
       // Update streak if it's a habit
       if (task.isHabit) {
         console.log('Updating user streak for habit task');
-        await updateUserStreak(true);
+        try {
+          await updateUserStreak(true);
+        } catch (streakError) {
+          console.warn('Streak update failed:', streakError);
+        }
       }
       
       // Provide haptic feedback
@@ -531,7 +552,7 @@ export default function ValidateTaskScreen() {
                 <View style={styles.bonusContainer}>
                   <ThumbsUp size={16} color={Colors.dark.success} />
                   <Text style={styles.bonusText}>
-                    Excellent proof! You'll earn a 20% XP bonus.
+                    Excellent proof! You&apos;ll earn a 20% XP bonus.
                   </Text>
                 </View>
               )}
