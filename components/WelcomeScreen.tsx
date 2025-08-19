@@ -1,36 +1,44 @@
-import React from "react";
-import { SafeAreaView, View, Text, Pressable, StatusBar, StyleSheet, Image } from "react-native";
+import React, { useCallback } from "react";
+import { SafeAreaView, View, Text, Pressable, StatusBar, StyleSheet } from "react-native";
 import { useRouter } from "expo-router";
+import { Image } from "expo-image";
 
 export default function WelcomeScreen() {
   const router = useRouter();
 
-  const onGetStarted = () => {
+  const onGetStarted = useCallback(() => {
+    console.log("WelcomeScreen: Get Started pressed");
     router.push("/login");
-  };
+  }, [router]);
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView style={styles.safe} testID="welcome-safe">
       <StatusBar barStyle="light-content" />
-      <View style={styles.container}>
-        <View style={styles.content}>
-          {/* Target icon - using the adaptive icon */}
-          <Image 
-            source={require('@/assets/images/adaptive-icon.png')} 
+      <View style={styles.container} testID="welcome-container">
+        <View style={styles.content} testID="welcome-content">
+          <Image
+            source={{ uri: "https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/486prhpy709lci47un0b2" }}
             style={styles.target}
-            resizeMode="contain"
+            contentFit="contain"
+            cachePolicy="memory-disk"
+            transition={100}
+            testID="welcome-target"
           />
 
-          {/* Title */}
-          <Text style={styles.title}>
+          <Text style={styles.title} testID="welcome-title">
             <Text style={styles.titleRegular}>Welcome to the </Text>
             <Text style={styles.titleBold}>Grind</Text>
           </Text>
         </View>
 
-        <View style={styles.bottomSection}>
-          {/* Primary CTA */}
-          <Pressable onPress={onGetStarted} style={({ pressed }) => [styles.cta, pressed && styles.ctaPressed]}>
+        <View style={styles.bottomSection} testID="welcome-bottom">
+          <Pressable
+            onPress={onGetStarted}
+            style={({ pressed }) => [styles.cta, pressed && styles.ctaPressed]}
+            testID="welcome-cta"
+            accessibilityRole="button"
+            accessibilityLabel="Let's Get Started"
+          >
             <Text style={styles.ctaText}>Let&apos;s Get Started</Text>
           </Pressable>
         </View>
@@ -47,13 +55,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 24,
-    paddingTop: 60,
-    paddingBottom: 80,
+    paddingTop: 40,
+    paddingBottom: 64,
   },
   content: {
     alignItems: "center",
-    gap: 24,
-    marginTop: -80,
+    gap: 4,
+    marginTop: -56,
   },
   target: {
     width: 360,
@@ -62,10 +70,11 @@ const styles = StyleSheet.create({
   title: {
     color: "#fff",
     textAlign: "center",
-    lineHeight: 56,
+    lineHeight: 52,
+    marginTop: 0,
   },
   titleRegular: {
-    fontSize: 48,
+    fontSize: 46,
     fontWeight: "400",
   },
   titleBold: {
@@ -75,7 +84,7 @@ const styles = StyleSheet.create({
   bottomSection: {
     alignItems: "center",
     width: "100%",
-    marginTop: 40,
+    marginTop: 28,
   },
   cta: {
     backgroundColor: "#fff",
