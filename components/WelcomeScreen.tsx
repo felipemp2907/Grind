@@ -71,18 +71,18 @@ const styles = StyleSheet.create({
   content: {
     alignItems: "center",
     gap: 0,
-    marginTop: -160,
+    marginTop: -200,
   },
   target: {
-    width: 240,
-    height: 240,
-    marginBottom: -8,
+    width: 220,
+    height: 220,
+    marginBottom: -16,
   },
   title: {
     color: "#fff",
     textAlign: "center",
     lineHeight: 46,
-    marginTop: -56,
+    marginTop: -72,
   },
   titleRegular: {
     fontSize: 42,

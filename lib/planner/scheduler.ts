@@ -1,6 +1,7 @@
 import { PlanResult, GoalInput } from './types';
 import { chooseBlueprint } from './blueprints';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { detectTasksColumnMap } from '../db/tasksColumnMap';
 
 function toLocalISODate(d: string) { return d; }
 
@@ -49,19 +50,27 @@ export async function planAndInsertAll(goal: GoalInput, supa: SupabaseClient, us
     console.log('streak_task_defs table missing or insert failed (non-fatal):', e?.message || e);
   }
 
-  // Insert scheduled today tasks
+  // Detect flexible column names on tasks table
+  const map = await detectTasksColumnMap(supa);
+
+  // Insert scheduled today tasks with dynamic columns
   const { error: todayErr } = await supa
     .from('tasks')
-    .insert(plan.schedule.map((t) => ({
-      user_id: userId,
-      goal_id: goalId,
-      title: t.title,
-      description: t.description,
-      xp_value: t.xp,
-      due_date: toLocalISODate(t.dateISO) + 'T12:00:00.000Z',
-      is_habit: false,
-      priority: goal.priority ?? 'medium',
-    })));
+    .insert(plan.schedule.map((t) => {
+      const row: Record<string, unknown> = {
+        user_id: userId,
+        goal_id: goalId,
+        title: t.title,
+        description: t.description,
+        xp_value: t.xp,
+        [map.dateCol]: toLocalISODate(t.dateISO) + 'T12:00:00.000Z',
+        priority: goal.priority ?? 'medium',
+      };
+      if (map.isStreakCol) row[map.isStreakCol] = map.typeIsString ? 'today' : false;
+      if (map.proofCol) row[map.proofCol] = true;
+      if (map.tagsCol) row[map.tagsCol] = [];
+      return row;
+    }));
   if (todayErr) throw todayErr as any;
 
   console.log('planAndInsertAll: inserted tasks');
