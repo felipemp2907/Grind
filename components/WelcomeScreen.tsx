@@ -71,7 +71,7 @@ const styles = StyleSheet.create({
   content: {
     alignItems: "center",
     gap: 0,
-    marginTop: -64,
+    marginTop: -96,
   },
   target: {
     width: 360,
@@ -81,7 +81,7 @@ const styles = StyleSheet.create({
     color: "#fff",
     textAlign: "center",
     lineHeight: 52,
-    marginTop: -36,
+    marginTop: -52,
   },
   titleRegular: {
     fontSize: 46,
@@ -94,7 +94,7 @@ const styles = StyleSheet.create({
   bottomSection: {
     alignItems: "center",
     width: "100%",
-    marginTop: 20,
+    marginTop: 32,
   },
   cta: {
     backgroundColor: "#fff",

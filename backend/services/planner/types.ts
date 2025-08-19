@@ -75,3 +75,6 @@ export interface ArchetypeModule {
   getWeekly: (g: NormalizedGoal) => TodayTaskTemplate[];
   getSupport: (g: NormalizedGoal) => SupportTaskTemplate[];
 }
+
+// Minimal task row shape for strict validation
+export type TaskRow = { title: string; description?: string };
