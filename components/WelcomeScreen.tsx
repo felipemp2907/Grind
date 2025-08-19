@@ -52,12 +52,12 @@ const styles = StyleSheet.create({
   },
   content: {
     alignItems: "center",
-    gap: 32,
-    marginTop: -60,
+    gap: 24,
+    marginTop: -80,
   },
   target: {
-    width: 240,
-    height: 240,
+    width: 360,
+    height: 360,
   },
   title: {
     color: "#fff",
