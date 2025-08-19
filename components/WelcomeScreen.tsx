@@ -1,13 +1,23 @@
 import React, { useCallback } from "react";
-import { SafeAreaView, View, Text, Pressable, StatusBar, StyleSheet } from "react-native";
+import { SafeAreaView, View, Text, Pressable, StatusBar, StyleSheet, Platform } from "react-native";
 import { useRouter } from "expo-router";
 import { Image } from "expo-image";
+import * as Haptics from "expo-haptics";
 
 export default function WelcomeScreen() {
   const router = useRouter();
 
-  const onGetStarted = useCallback(() => {
+  const onGetStarted = useCallback(async () => {
     console.log("WelcomeScreen: Get Started pressed");
+    try {
+      if (Platform.OS !== "web") {
+        await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+      } else {
+        console.log("Haptics not available on web");
+      }
+    } catch (e) {
+      console.log("Haptics error", e);
+    }
     router.push("/login");
   }, [router]);
 
@@ -60,8 +70,8 @@ const styles = StyleSheet.create({
   },
   content: {
     alignItems: "center",
-    gap: 4,
-    marginTop: -56,
+    gap: 0,
+    marginTop: -64,
   },
   target: {
     width: 360,
@@ -71,7 +81,7 @@ const styles = StyleSheet.create({
     color: "#fff",
     textAlign: "center",
     lineHeight: 52,
-    marginTop: 0,
+    marginTop: -36,
   },
   titleRegular: {
     fontSize: 46,
@@ -84,7 +94,7 @@ const styles = StyleSheet.create({
   bottomSection: {
     alignItems: "center",
     width: "100%",
-    marginTop: 28,
+    marginTop: 8,
   },
   cta: {
     backgroundColor: "#fff",
