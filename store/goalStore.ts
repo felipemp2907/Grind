@@ -7,7 +7,7 @@ import { Goal, Milestone, ProgressUpdate, MilestoneAlert, GoalShareCard } from '
 import { supabase, setupDatabase, serializeError, getCurrentUser, ensureUserProfile } from '@/lib/supabase';
 
 import { useTaskStore } from './taskStore';
-import { trpcClient } from '@/lib/trpc';
+import { planAndInsertAll } from '@/lib/planner/scheduler';
 
 interface GoalState {
   goals: Goal[];
@@ -197,26 +197,13 @@ export const useGoalStore = create<GoalState>()(
       createUltimateGoal: async (goalData) => {
         const { fetchTasks } = useTaskStore.getState();
         try {
-          console.log('🎯 Creating ultimate goal via tRPC server planner:', goalData.title);
+          console.log('🎯 Creating ultimate goal (client-only planner):', goalData.title);
+          const { user } = await supabase.auth.getUser().then(r => ({ user: r.data.user }));
+          if (!user?.id) throw new Error('Not authenticated');
 
-          const result = await trpcClient.goals.createUltimate.mutate({
-            title: goalData.title,
-            description: goalData.description || '',
-            deadlineISO: goalData.deadline,
-            category: goalData.category,
-            targetValue: goalData.targetValue ?? 100,
-            unit: goalData.unit,
-            priority: goalData.priority ?? 'medium',
-            color: goalData.color,
-            coverImage: goalData.coverImage,
-          });
-
-          if (!result || !result.goal?.id) throw new Error('Server did not return goal');
-
-          const goalId = result.goal.id;
-
+          const tempId = `goal_${Date.now()}`;
           const newGoal: Goal = {
-            id: goalId,
+            id: tempId,
             title: goalData.title,
             description: goalData.description || '',
             deadline: goalData.deadline,
@@ -246,13 +233,27 @@ export const useGoalStore = create<GoalState>()(
             };
           });
 
+          const goalInput = {
+            id: tempId,
+            title: goalData.title,
+            description: goalData.description || '',
+            category: goalData.category,
+            deadlineISO: goalData.deadline,
+            createdAtISO: new Date().toISOString(),
+            targetValue: goalData.targetValue ?? 100,
+            unit: goalData.unit,
+            priority: goalData.priority ?? 'medium',
+          };
+
+          await planAndInsertAll(goalInput as any, supabase, user.id);
+
           await fetchTasks();
           if (Platform.OS !== 'web') {
             try { await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy); } catch {}
           }
-          console.log('✅ Goal created and tasks fetched from DB (server-seeded)');
+          console.log('✅ Goal created and tasks fetched from DB (client-seeded)');
         } catch (error) {
-          console.error('❌ Error creating ultimate goal (server planner):', error);
+          console.error('❌ Error creating ultimate goal (client planner):', error);
           throw error;
         }
       },
