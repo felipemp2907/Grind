@@ -33,6 +33,7 @@ import Button from '@/components/Button';
 import * as ImagePicker from 'expo-image-picker';
 import * as Haptics from 'expo-haptics';
 import { validateTaskImageWithFeedback } from '@/utils/aiUtils';
+import { updateTaskCompletion } from '@/lib/directApi';
 
 export default function ValidateTaskScreen() {
   const router = useRouter();
@@ -266,12 +267,21 @@ export default function ValidateTaskScreen() {
         console.warn('Journal entry creation failed, continuing with task completion:', journalError);
       }
       
-      // Mark task as completed regardless of journal entry success
+      // Mark task as completed using direct API first, then update local store
       console.log('Marking task as completed...');
       try {
+        // Use direct API to update task completion in database
+        const result = await updateTaskCompletion(task.id, true);
+        if (result.success) {
+          console.log('✅ Task completion updated in database');
+        } else {
+          console.warn('❌ Database update failed:', result.error);
+        }
+        
+        // Update local store regardless of database result
         await completeTask(task.id, journalEntryId);
       } catch (taskError) {
-        console.warn('Task completion in store failed, updating locally:', taskError);
+        console.warn('Task completion failed, updating locally only:', taskError);
         // Update task locally as fallback
         updateTask(task.id, {
           completed: true,
