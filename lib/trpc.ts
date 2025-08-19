@@ -8,6 +8,12 @@ import { useAuthStore } from '@/store/authStore';
 
 let lastError: unknown = null;
 
+const DEFAULT_TIMEOUT_MS = Number(process.env.EXPO_PUBLIC_TRPC_TIMEOUT_MS ?? 15000);
+const LONG_TIMEOUT: Record<string, number> = {
+  'goals.createUltimate': 30000,
+  'goals.reseed': 30000,
+};
+
 function deriveLanFromExpo(): string | null {
   try {
     const hostUri: string | undefined = (Constants as any)?.expoConfig?.hostUri || (Constants as any)?.manifest?.debuggerHost;
@@ -35,7 +41,7 @@ export function resolveApiBaseUrl(): string {
   return 'http://localhost:3000';
 }
 
-async function withTimeout<T>(p: Promise<T>, ms = 5000): Promise<T> {
+async function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
   return new Promise((resolve, reject) => {
     const t = setTimeout(() => reject(new Error(`Request timeout after ${ms}ms`)), ms);
     p.then((v) => { clearTimeout(t); resolve(v); }).catch((e) => { clearTimeout(t); reject(e); });
@@ -45,7 +51,7 @@ async function withTimeout<T>(p: Promise<T>, ms = 5000): Promise<T> {
 export async function pingHealth() {
   const base = resolveApiBaseUrl();
   try {
-    const res = await withTimeout(fetch(`${base}/health`, { method: 'GET' }), 5000);
+    const res = await withTimeout(fetch(`${base}/health`, { method: 'GET' }), 7000);
     const json = await res.json();
     lastError = null;
     return { ok: true as const, base, json };
@@ -60,6 +66,12 @@ export function getBaseUrl() { return resolveApiBaseUrl(); }
 
 export const trpc: CreateTRPCReact<AppRouter, unknown> = createTRPCReact<AppRouter, unknown>();
 
+function resolveTimeoutFromUrl(url: string): number {
+  const m = /trpc\/([^?]+)/.exec(url);
+  const path = m?.[1] ?? '';
+  return LONG_TIMEOUT[path] ?? DEFAULT_TIMEOUT_MS;
+}
+
 export const trpcClient = createTRPCClient<AppRouter>({
   links: [
     httpBatchLink({
@@ -70,14 +82,15 @@ export const trpcClient = createTRPCClient<AppRouter>({
         try {
           const token = useAuthStore.getState().session?.access_token;
           if (token) headers.set('authorization', `Bearer ${token}`);
-        } catch (e) {}
+        } catch {}
 
+        const timeout = resolveTimeoutFromUrl(String(url));
+        const tryFetch = () => fetch(url, { ...opts, headers });
         try {
-          return await withTimeout(fetch(url, { ...opts, headers }), 5000);
+          return await withTimeout(tryFetch(), timeout);
         } catch (e) {
           lastError = e;
-          try { return await withTimeout(fetch(url, { ...opts, headers }), 5000); }
-          catch (e2) { lastError = e2; throw e2; }
+          return await withTimeout(tryFetch(), timeout);
         }
       },
     }),
@@ -95,12 +108,13 @@ export const makeTrpcClient = (getToken?: () => Promise<string | null>) =>
           if (getToken) {
             try { const t = await getToken(); if (t) headers.set('authorization', `Bearer ${t}`); } catch {}
           }
+          const timeout = resolveTimeoutFromUrl(String(url));
+          const tryFetch = () => fetch(url, { ...opts, headers });
           try {
-            return await withTimeout(fetch(url, { ...opts, headers }), 5000);
+            return await withTimeout(tryFetch(), timeout);
           } catch (e) {
             lastError = e;
-            try { return await withTimeout(fetch(url, { ...opts, headers }), 5000); }
-            catch (e2) { lastError = e2; throw e2; }
+            return await withTimeout(tryFetch(), timeout);
           }
         },
       }),
