@@ -4,16 +4,33 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 
 function toLocalISODate(d: string) { return d; }
 
+function isUuid(v: string | undefined): boolean {
+  if (!v) return false;
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v);
+}
+
 export async function planAndInsertAll(goal: GoalInput, supa: SupabaseClient, userId: string) {
   console.log('planAndInsertAll: start', { goalTitle: goal.title, userId });
   const plan: PlanResult = chooseBlueprint(goal);
   console.log('planAndInsertAll: blueprint chosen', plan.notes);
 
-  // Ensure goal exists
-  const { error: goalErr } = await supa
-    .from('goals')
-    .upsert({ id: goal.id, user_id: userId, title: goal.title, description: goal.description ?? '', deadline: goal.deadlineISO }, { onConflict: 'id' });
-  if (goalErr) throw goalErr as any;
+  // Ensure goal exists and get a valid UUID id
+  let goalId: string | undefined = isUuid(goal.id) ? goal.id : undefined;
+
+  if (!goalId) {
+    const { data: inserted, error: insertErr } = await supa
+      .from('goals')
+      .insert({ user_id: userId, title: goal.title, description: goal.description ?? '', deadline: goal.deadlineISO })
+      .select('id')
+      .single();
+    if (insertErr) throw insertErr as any;
+    goalId = inserted?.id as string;
+  } else {
+    const { error: upErr } = await supa
+      .from('goals')
+      .upsert({ id: goalId, user_id: userId, title: goal.title, description: goal.description ?? '', deadline: goal.deadlineISO }, { onConflict: 'id' });
+    if (upErr) throw upErr as any;
+  }
 
   // Insert streak definitions if table exists; ignore failure if not
   try {
@@ -21,7 +38,7 @@ export async function planAndInsertAll(goal: GoalInput, supa: SupabaseClient, us
       .from('streak_task_defs')
       .insert(plan.streaks.map((s) => ({
         user_id: userId,
-        goal_id: goal.id,
+        goal_id: goalId,
         title: s.title,
         description: s.description,
         xp: s.xp,
@@ -38,7 +55,7 @@ export async function planAndInsertAll(goal: GoalInput, supa: SupabaseClient, us
     .from('tasks')
     .insert(plan.schedule.map((t) => ({
       user_id: userId,
-      goal_id: goal.id,
+      goal_id: goalId,
       title: t.title,
       description: t.description,
       xp_value: t.xp,
@@ -52,5 +69,5 @@ export async function planAndInsertAll(goal: GoalInput, supa: SupabaseClient, us
   if (todayErr) throw todayErr;
 
   console.log('planAndInsertAll: inserted tasks');
-  return { ok: true, notes: plan.notes };
+  return { ok: true, notes: plan.notes, goalId };
 }

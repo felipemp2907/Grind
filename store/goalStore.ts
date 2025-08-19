@@ -201,9 +201,8 @@ export const useGoalStore = create<GoalState>()(
           const { user } = await supabase.auth.getUser().then(r => ({ user: r.data.user }));
           if (!user?.id) throw new Error('Not authenticated');
 
-          const tempId = `goal_${Date.now()}`;
           const newGoal: Goal = {
-            id: tempId,
+            id: 'temp',
             title: goalData.title,
             description: goalData.description || '',
             deadline: goalData.deadline,
@@ -234,7 +233,7 @@ export const useGoalStore = create<GoalState>()(
           });
 
           const goalInput = {
-            id: tempId,
+            id: undefined as unknown as string,
             title: goalData.title,
             description: goalData.description || '',
             category: goalData.category,
@@ -245,7 +244,17 @@ export const useGoalStore = create<GoalState>()(
             priority: goalData.priority ?? 'medium',
           };
 
-          await planAndInsertAll(goalInput as any, supabase, user.id);
+          const res = await planAndInsertAll(goalInput as any, supabase, user.id);
+
+          // Replace temp goal id with real UUID from DB
+          if (res?.goalId) {
+            set((state) => ({
+              goals: state.goals.map(g =>
+                g.id === 'temp' ? { ...g, id: res.goalId } : g
+              ),
+              activeGoalId: state.activeGoalId === 'temp' ? res.goalId : state.activeGoalId,
+            }));
+          }
 
           await fetchTasks();
           if (Platform.OS !== 'web') {
