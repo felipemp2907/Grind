@@ -80,16 +80,23 @@ export async function planAndInsertAll(goal: GoalInput, supa: SupabaseClient, us
         description: t.description,
         xp_value: t.xp ?? 0,
       };
-      row[primaryDateCol] = isoDate;
-      for (const c of availableDateCols) {
-        row[c] = isoDate;
+      
+      // Handle the tasks_type_shape constraint properly
+      if (map.isStreakCol && map.typeIsString) {
+        // For type='today': set due_at, leave task_date null
+        row[map.isStreakCol] = 'today';
+        row['due_at'] = new Date(isoDate + 'T23:59:59Z').toISOString();
+        // Don't set task_date for 'today' type
+      } else {
+        // Fallback: set date columns but don't set type to avoid constraint
+        row[primaryDateCol] = isoDate;
+        for (const c of availableDateCols) {
+          if (c !== 'task_date' && c !== 'due_at') {
+            row[c] = isoDate;
+          }
+        }
       }
-      if (map.isStreakCol) {
-        if (map.typeIsString) row[map.isStreakCol] = 'today';
-        else if ((map as any).typeIsJSON) {
-          // leave unset to allow DB default/trigger to populate valid shape
-        } else row[map.isStreakCol] = false;
-      }
+      
       if (map.proofCol) row[map.proofCol] = true;
       if (map.tagsCol) row[map.tagsCol] = [];
       return row;

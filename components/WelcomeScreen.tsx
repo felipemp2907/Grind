@@ -71,12 +71,13 @@ const styles = StyleSheet.create({
   content: {
     alignItems: "center",
     gap: 0,
-    marginTop: 0,
+    flex: 1,
+    justifyContent: "center",
   },
   target: {
     width: 220,
     height: 220,
-    marginBottom: 8,
+    marginBottom: 24,
   },
   title: {
     color: "#fff",
@@ -95,7 +96,7 @@ const styles = StyleSheet.create({
   bottomSection: {
     alignItems: "center",
     width: "100%",
-    marginBottom: 24,
+    paddingBottom: 40,
   },
   cta: {
     backgroundColor: "#fff",

@@ -262,7 +262,18 @@ export const useGoalStore = create<GoalState>()(
           }
           console.log('✅ Goal created and tasks fetched from DB (client-seeded)');
         } catch (error) {
-          const errMsg = (error as any)?.message ? String((error as any).message) : serializeError(error);
+          let errMsg: string;
+          if (error && typeof error === 'object') {
+            if ('message' in error) {
+              errMsg = String(error.message);
+            } else if ('code' in error && 'details' in error) {
+              errMsg = `${(error as any).code}: ${(error as any).message || 'Database constraint violation'}`;
+            } else {
+              errMsg = JSON.stringify(error);
+            }
+          } else {
+            errMsg = String(error);
+          }
           console.error('❌ Error creating ultimate goal (client planner):', errMsg);
           throw new Error(errMsg);
         }

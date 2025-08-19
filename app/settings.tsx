@@ -194,16 +194,18 @@ export default function SettingsScreen() {
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Manage Ultimate Goals</Text>
             {goals.map((goal, index) => (
-              renderSettingItem(
-                <Target size={20} color={Colors.dark.primary} />,
-                `Goal ${index + 1}: ${goal.title}`,
-                `Deadline: ${goal.deadline ? new Date(goal.deadline).toLocaleDateString() : 'No deadline set'}`,
-                <ChevronRight size={20} color={Colors.dark.subtext} />,
-                () => router.push({
-                  pathname: '/goals/edit',
-                  params: { id: goal.id }
-                })
-              )
+              <View key={goal.id}>
+                {renderSettingItem(
+                  <Target size={20} color={Colors.dark.primary} />,
+                  `Goal ${index + 1}: ${goal.title}`,
+                  `Deadline: ${goal.deadline ? new Date(goal.deadline).toLocaleDateString() : 'No deadline set'}`,
+                  <ChevronRight size={20} color={Colors.dark.subtext} />,
+                  () => router.push({
+                    pathname: '/goals/edit',
+                    params: { id: goal.id }
+                  })
+                )}
+              </View>
             ))}
             
             {goals.length < 3 && (
