@@ -63,7 +63,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#000",
     alignItems: "center",
-    justifyContent: "center",
+    justifyContent: "space-between",
     paddingHorizontal: 24,
     paddingTop: 40,
     paddingBottom: 64,
@@ -71,18 +71,18 @@ const styles = StyleSheet.create({
   content: {
     alignItems: "center",
     gap: 0,
-    marginTop: -220,
+    marginTop: -260,
   },
   target: {
     width: 220,
     height: 220,
-    marginBottom: 20,
+    marginBottom: 8,
   },
   title: {
     color: "#fff",
     textAlign: "center",
     lineHeight: 46,
-    marginTop: -48,
+    marginTop: -60,
   },
   titleRegular: {
     fontSize: 42,
@@ -95,7 +95,6 @@ const styles = StyleSheet.create({
   bottomSection: {
     alignItems: "center",
     width: "100%",
-    marginTop: 32,
   },
   cta: {
     backgroundColor: "#fff",
@@ -105,6 +104,7 @@ const styles = StyleSheet.create({
     width: "100%",
     maxWidth: 320,
     alignItems: "center",
+    marginBottom: 8,
   },
   ctaPressed: { opacity: 0.9, transform: [{ scale: 0.98 }] },
   ctaText: { color: "#000", fontSize: 18, fontWeight: "700" },

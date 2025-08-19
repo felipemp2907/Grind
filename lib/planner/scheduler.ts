@@ -10,6 +10,15 @@ function isUuid(v: string | undefined): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v);
 }
 
+async function columnExists(supa: SupabaseClient, col: string) {
+  try {
+    const { error } = await supa.from('tasks').select(col).limit(0);
+    return !error;
+  } catch {
+    return false;
+  }
+}
+
 export async function planAndInsertAll(goal: GoalInput, supa: SupabaseClient, userId: string) {
   console.log('planAndInsertAll: start', { goalTitle: goal.title, userId });
   const plan: PlanResult = chooseBlueprint(goal);
@@ -52,20 +61,34 @@ export async function planAndInsertAll(goal: GoalInput, supa: SupabaseClient, us
 
   // Detect flexible column names on tasks table
   const map = await detectTasksColumnMap(supa);
+  // Proactively set ALL known date columns that exist to avoid NOT NULL violations
+  const allDateCols = ['scheduled_for_date','scheduled_for','due_date','date','due_at','dueOn','due'];
+  const availableDateCols: string[] = [];
+  for (const c of allDateCols) {
+    // eslint-disable-next-line no-await-in-loop
+    if (await columnExists(supa, c)) availableDateCols.push(c);
+  }
+  const primaryDateCol = map.dateCol;
 
   // Insert scheduled today tasks with dynamic columns
   const { error: todayErr } = await supa
     .from('tasks')
     .insert(plan.schedule.map((t) => {
+      const isoDate = toLocalISODate(t.dateISO); // 'YYYY-MM-DD'
       const row: Record<string, unknown> = {
         user_id: userId,
         goal_id: goalId,
         title: t.title,
         description: t.description,
         xp_value: t.xp,
-        [map.dateCol]: toLocalISODate(t.dateISO) + 'T12:00:00.000Z',
         priority: goal.priority ?? 'medium',
       };
+      // Set primary detected date column
+      row[primaryDateCol] = isoDate;
+      // Also set any additional existing date-ish columns for safety
+      for (const c of availableDateCols) {
+        row[c] = isoDate;
+      }
       if (map.isStreakCol) row[map.isStreakCol] = map.typeIsString ? 'today' : false;
       if (map.proofCol) row[map.proofCol] = true;
       if (map.tagsCol) row[map.tagsCol] = [];

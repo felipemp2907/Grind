@@ -25,8 +25,8 @@ export async function detectTasksColumnMap(
     cands.includes(fallback) ? cands : [fallback, ...cands];
 
   const dateCandidates = tryCols(
-    ['due_date', 'date', 'due_at', 'scheduled_for', 'dueOn', 'due'],
-    envOverride?.dateCol || 'due_date'
+    ['scheduled_for_date', 'scheduled_for', 'due_date', 'date', 'due_at', 'dueOn', 'due'],
+    envOverride?.dateCol || 'scheduled_for_date'
   );
   let dateCol = 'due_date';
   for (const c of dateCandidates) {
