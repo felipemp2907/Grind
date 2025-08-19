@@ -64,8 +64,8 @@ export async function planAndInsertAll(goal: GoalInput, supa: SupabaseClient, us
       description: t.description,
       xp_value: t.xp ?? 0,
       [primaryDateCol]: isoDate,
-      source: 'client_planner_v2',
     };
+    if (map.sourceCol) row[map.sourceCol] = 'client_planner_v2';
     applyTaskType(row, map.typeMap, 'today');
     if (map.proofCol) row[map.proofCol] = t.proofRequired;
     if (map.tagsCol) row[map.tagsCol] = t.tags ?? [];
@@ -90,8 +90,8 @@ export async function planAndInsertAll(goal: GoalInput, supa: SupabaseClient, us
         description: s.description,
         xp_value: s.xp ?? 0,
         [primaryDateCol]: day,
-        source: 'client_planner_v2',
       };
+      if (map.sourceCol) r[map.sourceCol] = 'client_planner_v2';
       applyTaskType(r, map.typeMap, 'streak');
       if (map.proofCol) r[map.proofCol] = s.proofRequired;
       streakRows.push(r);

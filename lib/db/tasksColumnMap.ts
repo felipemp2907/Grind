@@ -10,6 +10,7 @@ export type TaskColumnMap = {
   typeMap?: TaskTypeMapping;
   proofCol?: string;
   tagsCol?: string;
+  sourceCol?: string;
 };
 
 async function columnExists(supa: SupabaseClient, col: string) {
@@ -49,6 +50,7 @@ export async function detectTasksColumnMap(
         typeMap: { kind: 'json', col: c },
         proofCol: await anyOf(supa, ['proof_required','requires_proof','require_proof','needs_proof']),
         tagsCol: await anyOf(supa, ['tags','labels']),
+        sourceCol: await anyOf(supa, ['source','task_source','origin']),
       };
     }
   }
@@ -62,6 +64,7 @@ export async function detectTasksColumnMap(
         typeMap: { kind: 'text', col: c },
         proofCol: await anyOf(supa, ['proof_required','requires_proof','require_proof','needs_proof']),
         tagsCol: await anyOf(supa, ['tags','labels']),
+        sourceCol: await anyOf(supa, ['source','task_source','origin']),
       };
     }
   }
@@ -75,6 +78,7 @@ export async function detectTasksColumnMap(
         typeMap: { kind: 'bool', col: c },
         proofCol: await anyOf(supa, ['proof_required','requires_proof','require_proof','needs_proof']),
         tagsCol: await anyOf(supa, ['tags','labels']),
+        sourceCol: await anyOf(supa, ['source','task_source','origin']),
       };
     }
   }
@@ -83,6 +87,7 @@ export async function detectTasksColumnMap(
     dateCol,
     proofCol: await anyOf(supa, ['proof_required','requires_proof','require_proof','needs_proof']),
     tagsCol: await anyOf(supa, ['tags','labels']),
+    sourceCol: await anyOf(supa, ['source','task_source','origin']),
   };
 }
 
