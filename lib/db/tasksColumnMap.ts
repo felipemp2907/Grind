@@ -33,6 +33,23 @@ async function anyOf(supa: SupabaseClient, cols: string[]) {
 export async function detectTasksColumnMap(
   supa: SupabaseClient,
 ): Promise<TaskColumnMap> {
+  // Check for the specific constraint pattern: streak tasks use task_date, today tasks use due_at
+  const hasTaskDate = await columnExists(supa, 'task_date');
+  const hasDueAt = await columnExists(supa, 'due_at');
+  const hasType = await columnExists(supa, 'type');
+  
+  // If we have the constraint pattern columns, use them
+  if (hasTaskDate && hasDueAt && hasType) {
+    return {
+      dateCol: 'due_at', // Default for today tasks
+      typeMap: { kind: 'text', col: 'type' },
+      proofCol: await anyOf(supa, ['proof_required','requires_proof','require_proof','needs_proof']),
+      tagsCol: await anyOf(supa, ['tags','labels']),
+      sourceCol: await anyOf(supa, ['source','task_source','origin']),
+    };
+  }
+
+  // Fallback to original detection logic
   const dateCandidates = ['scheduled_for_date', 'scheduled_for', 'due_date', 'date', 'due_at', 'dueOn', 'due'];
   let dateCol = 'due_date';
   for (const c of dateCandidates) {
@@ -91,43 +108,38 @@ export async function detectTasksColumnMap(
   };
 }
 
-// Try multiple common constraint patterns for task types
-const TASK_TYPE_PATTERNS = {
-  // Pattern 1: today/daily
-  pattern1: { scheduled: 'today', streak: 'daily' },
-  // Pattern 2: scheduled/recurring  
-  pattern2: { scheduled: 'scheduled', streak: 'recurring' },
-  // Pattern 3: one_time/habit
-  pattern3: { scheduled: 'one_time', streak: 'habit' },
-  // Pattern 4: task/streak
-  pattern4: { scheduled: 'task', streak: 'streak' },
-};
-
-export function applyTaskType(row: Record<string, unknown>, typeMap: TaskTypeMapping | undefined, logicalKind: 'today'|'scheduled'|'streak', pattern: keyof typeof TASK_TYPE_PATTERNS = 'pattern1') {
+export function applyTaskType(
+  row: Record<string, unknown>, 
+  typeMap: TaskTypeMapping | undefined, 
+  logicalKind: 'today'|'scheduled'|'streak',
+  dateValue: string
+) {
   if (!typeMap) return;
   
-  // Map logical kinds to database-expected values based on pattern
-  const patternMap = TASK_TYPE_PATTERNS[pattern];
-  let dbValue: string;
-  if (logicalKind === 'scheduled') {
-    dbValue = patternMap.scheduled;
-  } else if (logicalKind === 'streak') {
-    dbValue = patternMap.streak;
-  } else {
-    dbValue = 'today'; // fallback for 'today'
-  }
-  
+  // Set the type field
   if (typeMap.kind === 'json') {
-    row[typeMap.col] = { kind: dbValue };
+    row[typeMap.col] = { kind: logicalKind === 'scheduled' ? 'today' : logicalKind };
   } else if (typeMap.kind === 'text') {
-    row[typeMap.col] = dbValue;
+    row[typeMap.col] = logicalKind === 'scheduled' ? 'today' : logicalKind;
   } else {
     // For boolean columns, true = streak, false = scheduled/today
     row[typeMap.col] = (logicalKind === 'streak');
   }
+  
+  // Apply the constraint pattern: streak tasks use task_date, today tasks use due_at
+  if (logicalKind === 'streak') {
+    row['task_date'] = dateValue;
+    // Ensure due_at is null for streak tasks
+    if ('due_at' in row) delete row['due_at'];
+  } else {
+    // For 'today' or 'scheduled' tasks
+    row['due_at'] = dateValue + 'T23:59:59.999Z'; // Convert to timestamp
+    // Ensure task_date is null for today tasks
+    if ('task_date' in row) delete row['task_date'];
+  }
 }
 
-// Helper function to try inserting with different patterns
+// Helper function to insert tasks with proper constraint handling
 export async function insertTasksWithFallback(
   supa: SupabaseClient,
   rows: Record<string, unknown>[],
@@ -139,30 +151,16 @@ export async function insertTasksWithFallback(
     return await supa.from('tasks').insert(rows);
   }
 
-  const patterns = Object.keys(TASK_TYPE_PATTERNS) as (keyof typeof TASK_TYPE_PATTERNS)[];
+  // Apply the constraint pattern to all rows
+  const processedRows = rows.map(row => {
+    const newRow = { ...row };
+    const dateValue = (newRow.dateValue as string) || new Date().toISOString().slice(0, 10);
+    // Remove the temporary dateValue field
+    delete newRow.dateValue;
+    applyTaskType(newRow, typeMap, logicalKind, dateValue);
+    return newRow;
+  });
   
-  for (const pattern of patterns) {
-    const testRows = rows.map(row => {
-      const newRow = { ...row };
-      applyTaskType(newRow, typeMap, logicalKind, pattern);
-      return newRow;
-    });
-    
-    const { error } = await supa.from('tasks').insert(testRows);
-    if (!error) {
-      return { error: null }; // Success
-    }
-    
-    // If this is a constraint error, try next pattern
-    if (error.message?.includes('check constraint') || error.message?.includes('violates')) {
-      console.log(`Pattern ${pattern} failed, trying next:`, error.message);
-      continue;
-    }
-    
-    // If it's not a constraint error, return the error
-    return { error };
-  }
-  
-  // All patterns failed
-  return { error: new Error('All task type patterns failed constraint validation') };
+  const { error } = await supa.from('tasks').insert(processedRows);
+  return { error };
 }

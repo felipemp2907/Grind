@@ -52,9 +52,8 @@ export async function planAndInsertAll(goal: GoalInput, supa: SupabaseClient, us
 
   // Detect flexible column names on tasks table
   const map: TaskColumnMap = await detectTasksColumnMap(supa);
-  const primaryDateCol = map.dateCol;
 
-  // Insert TODAY tasks with fallback pattern matching
+  // Insert TODAY tasks with proper constraint handling
   const todayRows = plan.schedule.map((t) => {
     const isoDate = toLocalISODate(t.dateISO);
     const row: Record<string, unknown> = {
@@ -63,14 +62,14 @@ export async function planAndInsertAll(goal: GoalInput, supa: SupabaseClient, us
       title: t.title,
       description: t.description,
       xp_value: t.xp ?? 0,
-      [primaryDateCol]: isoDate,
+      dateValue: isoDate, // Store the date value for processing
     };
     if (map.sourceCol) row[map.sourceCol] = 'client_planner_v2';
     if (map.proofCol) row[map.proofCol] = t.proofRequired;
     if (map.tagsCol) row[map.tagsCol] = t.tags ?? [];
     return row;
   });
-  const { error: todayErr } = await insertTasksWithFallback(supa, todayRows, map.typeMap, 'scheduled');
+  const { error: todayErr } = await insertTasksWithFallback(supa, todayRows, map.typeMap, 'today');
   if (todayErr) throw todayErr as any;
 
   // Insert STREAK tasks as daily rows up to a safe horizon (<=120 days)
@@ -88,7 +87,7 @@ export async function planAndInsertAll(goal: GoalInput, supa: SupabaseClient, us
         title: s.title,
         description: s.description,
         xp_value: s.xp ?? 0,
-        [primaryDateCol]: day,
+        dateValue: day, // Store the date value for processing
       };
       if (map.sourceCol) r[map.sourceCol] = 'client_planner_v2';
       if (map.proofCol) r[map.proofCol] = s.proofRequired;
