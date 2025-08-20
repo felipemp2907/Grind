@@ -84,10 +84,43 @@ export async function planAndInsertAll(
     if (map.tagsCol) row[map.tagsCol] = t.tags ?? [];
     return row;
   });
-  const { error: todayErr } = await supa.from('tasks').insert(todayRows);
-  if (todayErr) {
-    console.error('Insert TODAY failed. Column map:', map);
-    throw todayErr as any;
+  let todayInsertErr = undefined as unknown;
+  {
+    const { error } = await supa.from('tasks').insert(todayRows);
+    todayInsertErr = error as unknown;
+  }
+  if (todayInsertErr) {
+    const err = todayInsertErr as any;
+    const msg: string = (err?.message ?? err?.details ?? String(err)) as string;
+    console.error('Insert TODAY failed. Column map:', map, 'error:', msg);
+    if (typeof msg === 'string' && msg.includes('scheduled_for_date')) {
+      const todayRowsRetry = plan.schedule.map((t) => {
+        const yyyyMmDd = t.dateISO ?? toLocalYyyyMmDd(new Date());
+        const row: Record<string, unknown> = {
+          user_id: userId,
+          goal_id: goalId,
+          title: t.title,
+          description: t.description,
+          xp_value: t.xp ?? 0,
+        };
+        // Original mapping
+        setTaskDates(row, map, yyyyMmDd);
+        setTaskTimeIfNeeded(row, map);
+        setTaskType(row, map, 'today');
+        if (map.proofCol) row[map.proofCol] = t.proofRequired ?? true;
+        if (map.tagsCol) row[map.tagsCol] = t.tags ?? [];
+        // Force scheduled_for_date for schemas requiring it (detector may be blocked by RLS)
+        (row as any)['scheduled_for_date'] = yyyyMmDd;
+        return row;
+      });
+      const { error: retryErr } = await supa.from('tasks').insert(todayRowsRetry);
+      if (retryErr) {
+        console.error('Insert TODAY retry with scheduled_for_date failed:', retryErr);
+        throw retryErr as any;
+      }
+    } else {
+      throw err as any;
+    }
   }
 
   // STREAK tasks up to horizon
@@ -115,10 +148,45 @@ export async function planAndInsertAll(
     }
   }
   if (streakRows.length) {
-    const { error: streakErr } = await supa.from('tasks').insert(streakRows);
-    if (streakErr) {
-      console.error('Insert STREAK failed. Column map:', map);
-      throw streakErr as any;
+    let streakInsertErr = undefined as unknown;
+    {
+      const { error } = await supa.from('tasks').insert(streakRows);
+      streakInsertErr = error as unknown;
+    }
+    if (streakInsertErr) {
+      const err = streakInsertErr as any;
+      const msg: string = (err?.message ?? err?.details ?? String(err)) as string;
+      console.error('Insert STREAK failed. Column map:', map, 'error:', msg);
+      if (typeof msg === 'string' && msg.includes('scheduled_for_date')) {
+        const start2 = new Date(goal.createdAtISO);
+        const streakRowsRetry: Record<string, unknown>[] = [];
+        for (let d = 0; d < horizonDays; d++) {
+          const date = new Date(start2.getTime() + d * 86400000);
+          const yyyyMmDd = toLocalYyyyMmDd(date);
+          for (const s of plan.streaks) {
+            const r: Record<string, unknown> = {
+              user_id: userId,
+              goal_id: goalId,
+              title: s.title,
+              description: s.description,
+              xp_value: s.xp ?? 0,
+            };
+            setTaskDates(r, map, yyyyMmDd);
+            setTaskTimeIfNeeded(r, map);
+            setTaskType(r, map, 'streak');
+            if (map.proofCol) r[map.proofCol] = s.proofRequired ?? true;
+            (r as any)['scheduled_for_date'] = yyyyMmDd;
+            streakRowsRetry.push(r);
+          }
+        }
+        const { error: retryErr } = await supa.from('tasks').insert(streakRowsRetry);
+        if (retryErr) {
+          console.error('Insert STREAK retry with scheduled_for_date failed:', retryErr);
+          throw retryErr as any;
+        }
+      } else {
+        throw err as any;
+      }
     }
   }
 
