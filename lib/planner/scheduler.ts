@@ -1,7 +1,7 @@
 import { PlanResult, GoalInput } from './types';
 import { chooseBlueprint } from './blueprints';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { detectTasksColumnMap, TaskColumnMap, applyTaskType } from '../db/tasksColumnMap';
+import { detectTasksColumnMap, TaskColumnMap, insertTasksWithFallback } from '../db/tasksColumnMap';
 
 function toLocalISODate(d: string) { return d; }
 
@@ -54,7 +54,7 @@ export async function planAndInsertAll(goal: GoalInput, supa: SupabaseClient, us
   const map: TaskColumnMap = await detectTasksColumnMap(supa);
   const primaryDateCol = map.dateCol;
 
-  // Insert TODAY tasks
+  // Insert TODAY tasks with fallback pattern matching
   const todayRows = plan.schedule.map((t) => {
     const isoDate = toLocalISODate(t.dateISO);
     const row: Record<string, unknown> = {
@@ -66,12 +66,11 @@ export async function planAndInsertAll(goal: GoalInput, supa: SupabaseClient, us
       [primaryDateCol]: isoDate,
     };
     if (map.sourceCol) row[map.sourceCol] = 'client_planner_v2';
-    applyTaskType(row, map.typeMap, 'scheduled');
     if (map.proofCol) row[map.proofCol] = t.proofRequired;
     if (map.tagsCol) row[map.tagsCol] = t.tags ?? [];
     return row;
   });
-  const { error: todayErr } = await supa.from('tasks').insert(todayRows);
+  const { error: todayErr } = await insertTasksWithFallback(supa, todayRows, map.typeMap, 'scheduled');
   if (todayErr) throw todayErr as any;
 
   // Insert STREAK tasks as daily rows up to a safe horizon (<=120 days)
@@ -92,13 +91,12 @@ export async function planAndInsertAll(goal: GoalInput, supa: SupabaseClient, us
         [primaryDateCol]: day,
       };
       if (map.sourceCol) r[map.sourceCol] = 'client_planner_v2';
-      applyTaskType(r, map.typeMap, 'streak');
       if (map.proofCol) r[map.proofCol] = s.proofRequired;
       streakRows.push(r);
     }
   }
   if (streakRows.length) {
-    const { error: streakErr } = await supa.from('tasks').insert(streakRows);
+    const { error: streakErr } = await insertTasksWithFallback(supa, streakRows, map.typeMap, 'streak');
     if (streakErr) throw streakErr as any;
   }
 

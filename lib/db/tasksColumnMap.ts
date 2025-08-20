@@ -91,13 +91,78 @@ export async function detectTasksColumnMap(
   };
 }
 
-export function applyTaskType(row: Record<string, unknown>, typeMap: TaskTypeMapping | undefined, logicalKind: 'today'|'scheduled'|'streak') {
+// Try multiple common constraint patterns for task types
+const TASK_TYPE_PATTERNS = {
+  // Pattern 1: today/daily
+  pattern1: { scheduled: 'today', streak: 'daily' },
+  // Pattern 2: scheduled/recurring  
+  pattern2: { scheduled: 'scheduled', streak: 'recurring' },
+  // Pattern 3: one_time/habit
+  pattern3: { scheduled: 'one_time', streak: 'habit' },
+  // Pattern 4: task/streak
+  pattern4: { scheduled: 'task', streak: 'streak' },
+};
+
+export function applyTaskType(row: Record<string, unknown>, typeMap: TaskTypeMapping | undefined, logicalKind: 'today'|'scheduled'|'streak', pattern: keyof typeof TASK_TYPE_PATTERNS = 'pattern1') {
   if (!typeMap) return;
-  if (typeMap.kind === 'json') {
-    row[typeMap.col] = { kind: logicalKind };
-  } else if (typeMap.kind === 'text') {
-    row[typeMap.col] = logicalKind;
+  
+  // Map logical kinds to database-expected values based on pattern
+  const patternMap = TASK_TYPE_PATTERNS[pattern];
+  let dbValue: string;
+  if (logicalKind === 'scheduled') {
+    dbValue = patternMap.scheduled;
+  } else if (logicalKind === 'streak') {
+    dbValue = patternMap.streak;
   } else {
+    dbValue = 'today'; // fallback for 'today'
+  }
+  
+  if (typeMap.kind === 'json') {
+    row[typeMap.col] = { kind: dbValue };
+  } else if (typeMap.kind === 'text') {
+    row[typeMap.col] = dbValue;
+  } else {
+    // For boolean columns, true = streak, false = scheduled/today
     row[typeMap.col] = (logicalKind === 'streak');
   }
+}
+
+// Helper function to try inserting with different patterns
+export async function insertTasksWithFallback(
+  supa: SupabaseClient,
+  rows: Record<string, unknown>[],
+  typeMap: TaskTypeMapping | undefined,
+  logicalKind: 'today'|'scheduled'|'streak'
+) {
+  if (!typeMap) {
+    // No type mapping, insert as-is
+    return await supa.from('tasks').insert(rows);
+  }
+
+  const patterns = Object.keys(TASK_TYPE_PATTERNS) as (keyof typeof TASK_TYPE_PATTERNS)[];
+  
+  for (const pattern of patterns) {
+    const testRows = rows.map(row => {
+      const newRow = { ...row };
+      applyTaskType(newRow, typeMap, logicalKind, pattern);
+      return newRow;
+    });
+    
+    const { error } = await supa.from('tasks').insert(testRows);
+    if (!error) {
+      return { error: null }; // Success
+    }
+    
+    // If this is a constraint error, try next pattern
+    if (error.message?.includes('check constraint') || error.message?.includes('violates')) {
+      console.log(`Pattern ${pattern} failed, trying next:`, error.message);
+      continue;
+    }
+    
+    // If it's not a constraint error, return the error
+    return { error };
+  }
+  
+  // All patterns failed
+  return { error: new Error('All task type patterns failed constraint validation') };
 }
