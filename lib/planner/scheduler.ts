@@ -8,6 +8,8 @@ import {
   setTaskDates,
   setTaskTimeIfNeeded,
   toLocalYyyyMmDd,
+  applyTaskTypeVariant,
+  JSON_TYPE_VARIANTS,
 } from '../db/tasksColumnMap';
 
 function isUuid(v: string | undefined): boolean {
@@ -93,7 +95,36 @@ export async function planAndInsertAll(
     const err = todayInsertErr as any;
     const msg: string = (err?.message ?? err?.details ?? String(err)) as string;
     console.error('Insert TODAY failed. Column map:', map, 'error:', msg);
-    if (typeof msg === 'string' && msg.includes('scheduled_for_date')) {
+    if (typeof msg === 'string' && msg.includes('tasks_type_check') && map.typeMap?.kind === 'json') {
+      for (const variant of JSON_TYPE_VARIANTS) {
+        console.log('Retry TODAY with type variant:', variant);
+        const todayRowsRetry = plan.schedule.map((t) => {
+          const yyyyMmDd = t.dateISO ?? toLocalYyyyMmDd(new Date());
+          const row: Record<string, unknown> = {
+            user_id: userId,
+            goal_id: goalId,
+            title: t.title,
+            description: t.description,
+            xp_value: t.xp ?? 0,
+          };
+          setTaskDates(row, map, yyyyMmDd);
+          setTaskTimeIfNeeded(row, map);
+          applyTaskTypeVariant(row, map, 'today', variant);
+          if (map.proofCol) row[map.proofCol] = t.proofRequired ?? true;
+          if (map.tagsCol) row[map.tagsCol] = t.tags ?? [];
+          return row;
+        });
+        const { error: retryErr } = await supa.from('tasks').insert(todayRowsRetry);
+        if (!retryErr) {
+          console.log('TODAY insert succeeded with variant', variant);
+          todayInsertErr = undefined;
+          break;
+        } else {
+          console.error('TODAY insert failed with variant', variant, retryErr);
+        }
+      }
+      if (todayInsertErr) throw err as any;
+    } else if (typeof msg === 'string' && msg.includes('scheduled_for_date')) {
       const todayRowsRetry = plan.schedule.map((t) => {
         const yyyyMmDd = t.dateISO ?? toLocalYyyyMmDd(new Date());
         const row: Record<string, unknown> = {
@@ -103,13 +134,11 @@ export async function planAndInsertAll(
           description: t.description,
           xp_value: t.xp ?? 0,
         };
-        // Original mapping
         setTaskDates(row, map, yyyyMmDd);
         setTaskTimeIfNeeded(row, map);
         setTaskType(row, map, 'today');
         if (map.proofCol) row[map.proofCol] = t.proofRequired ?? true;
         if (map.tagsCol) row[map.tagsCol] = t.tags ?? [];
-        // Force scheduled_for_date for schemas requiring it (detector may be blocked by RLS)
         (row as any)['scheduled_for_date'] = yyyyMmDd;
         return row;
       });
@@ -157,7 +186,40 @@ export async function planAndInsertAll(
       const err = streakInsertErr as any;
       const msg: string = (err?.message ?? err?.details ?? String(err)) as string;
       console.error('Insert STREAK failed. Column map:', map, 'error:', msg);
-      if (typeof msg === 'string' && msg.includes('scheduled_for_date')) {
+      if (typeof msg === 'string' && msg.includes('tasks_type_check') && map.typeMap?.kind === 'json') {
+        for (const variant of JSON_TYPE_VARIANTS) {
+          console.log('Retry STREAK with type variant:', variant);
+          const start2 = new Date(goal.createdAtISO);
+          const streakRowsRetry: Record<string, unknown>[] = [];
+          for (let d = 0; d < horizonDays; d++) {
+            const date = new Date(start2.getTime() + d * 86400000);
+            const yyyyMmDd = toLocalYyyyMmDd(date);
+            for (const s of plan.streaks) {
+              const r: Record<string, unknown> = {
+                user_id: userId,
+                goal_id: goalId,
+                title: s.title,
+                description: s.description,
+                xp_value: s.xp ?? 0,
+              };
+              setTaskDates(r, map, yyyyMmDd);
+              setTaskTimeIfNeeded(r, map);
+              applyTaskTypeVariant(r, map, 'streak', variant);
+              if (map.proofCol) r[map.proofCol] = s.proofRequired ?? true;
+              streakRowsRetry.push(r);
+            }
+          }
+          const { error: retryErr } = await supa.from('tasks').insert(streakRowsRetry);
+          if (!retryErr) {
+            console.log('STREAK insert succeeded with variant', variant);
+            streakInsertErr = undefined;
+            break;
+          } else {
+            console.error('STREAK insert failed with variant', variant, retryErr);
+          }
+        }
+        if (streakInsertErr) throw err as any;
+      } else if (typeof msg === 'string' && msg.includes('scheduled_for_date')) {
         const start2 = new Date(goal.createdAtISO);
         const streakRowsRetry: Record<string, unknown>[] = [];
         for (let d = 0; d < horizonDays; d++) {

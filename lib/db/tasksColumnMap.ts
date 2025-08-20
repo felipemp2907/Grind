@@ -123,6 +123,33 @@ export function setTaskType(row: Record<string, unknown>, map: TaskColumnMap, ki
   else row[col] = kind === 'streak';
 }
 
+export type JsonTypeVariant = 'json_kind' | 'json_type' | 'json_task_type' | 'json_flag';
+export const JSON_TYPE_VARIANTS: JsonTypeVariant[] = [
+  'json_kind',
+  'json_type',
+  'json_task_type',
+  'json_flag',
+];
+
+export function applyTaskTypeVariant(
+  row: Record<string, unknown>,
+  map: TaskColumnMap,
+  logicalKind: 'today' | 'streak',
+  variant: JsonTypeVariant,
+) {
+  if (!map.typeMap || map.typeMap.kind !== 'json') return;
+  const col = map.typeMap.col;
+  if (variant === 'json_kind') {
+    row[col] = { kind: logicalKind };
+  } else if (variant === 'json_type') {
+    row[col] = { type: logicalKind };
+  } else if (variant === 'json_task_type') {
+    row[col] = { task_type: logicalKind };
+  } else if (variant === 'json_flag') {
+    row[col] = logicalKind === 'streak' ? { streak: true } : { today: true };
+  }
+}
+
 export function setTaskDates(row: Record<string, unknown>, map: TaskColumnMap, yyyyMmDd: string) {
   row[map.primaryDateCol] = yyyyMmDd;
   for (const extra of map.alsoSetDateCols) {
