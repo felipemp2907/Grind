@@ -65,11 +65,7 @@ export async function planAndInsertAll(
   }
 
   const map: TaskColumnMap = await detectTasksColumnMap(supa);
-  if (!map.primaryDateCol) {
-    throw new Error(
-      'No date column found on tasks (expected one of scheduled_for_date|scheduled_for|scheduled_at|due_date|due_at|date).',
-    );
-  }
+  // detectTasksColumnMap now throws if no date column is found, so we don't need to check here
 
   // TODAY tasks
   const todayRows = plan.schedule.map((t) => {

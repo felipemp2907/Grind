@@ -23,20 +23,24 @@ async function columnExists(supa: SupabaseClient, col: string) {
   }
 }
 
-async function findFirst(supa: SupabaseClient, candidates: string[], fallback: string) {
+async function findFirst(supa: SupabaseClient, candidates: string[], fallback?: string) {
   for (const c of candidates) {
     // eslint-disable-next-line no-await-in-loop
     if (await columnExists(supa, c)) return c;
   }
-  // eslint-disable-next-line no-return-await
-  return (await columnExists(supa, fallback)) ? fallback : undefined;
+  if (fallback && (await columnExists(supa, fallback))) {
+    return fallback;
+  }
+  return undefined;
 }
 
 export async function detectTasksColumnMap(supa: SupabaseClient): Promise<TaskColumnMap> {
+  console.log('🔍 Detecting tasks table column schema...');
+  
   const datePriority = [
     'scheduled_for_date',
     'scheduled_for',
-    'scheduled_at',
+    'scheduled_at', 
     'due_date',
     'due_at',
     'date',
@@ -44,38 +48,71 @@ export async function detectTasksColumnMap(supa: SupabaseClient): Promise<TaskCo
     'planned_date',
   ];
 
-  const primary = (await findFirst(supa, datePriority, 'scheduled_for_date')) || 'scheduled_for_date';
+  // Find the primary date column - must exist or we fail
+  let primary: string | undefined;
+  for (const c of datePriority) {
+    // eslint-disable-next-line no-await-in-loop
+    if (await columnExists(supa, c)) {
+      primary = c;
+      console.log(`✅ Found primary date column: ${c}`);
+      break;
+    }
+  }
+  
+  if (!primary) {
+    throw new Error(`No date column found in tasks table. Checked: ${datePriority.join(', ')}`);
+  }
 
+  // Find additional date columns to also set
   const alsoSetDateCols: string[] = [];
   for (const c of datePriority) {
     // eslint-disable-next-line no-await-in-loop
-    if (c !== primary && (await columnExists(supa, c))) alsoSetDateCols.push(c);
+    if (c !== primary && (await columnExists(supa, c))) {
+      alsoSetDateCols.push(c);
+      console.log(`✅ Found additional date column: ${c}`);
+    }
   }
 
-  const timeCol = await findFirst(supa, ['scheduled_for_time', 'time', 'due_time'], '');
-  const proofCol = await findFirst(supa, ['proof_required', 'requires_proof', 'require_proof', 'needs_proof'], '');
-  const tagsCol = await findFirst(supa, ['tags', 'labels'], '');
+  const timeCol = await findFirst(supa, ['scheduled_for_time', 'time', 'due_time']);
+  const proofCol = await findFirst(supa, ['proof_required', 'requires_proof', 'require_proof', 'needs_proof']);
+  const tagsCol = await findFirst(supa, ['tags', 'labels']);
 
-  const typeMap: TaskTypeMapping | undefined = (await columnExists(supa, 'type'))
-    ? { kind: 'json', col: 'type' }
-    : (await columnExists(supa, 'task_type'))
-    ? { kind: 'text', col: 'task_type' }
-    : (await columnExists(supa, 'kind'))
-    ? { kind: 'text', col: 'kind' }
-    : (await columnExists(supa, 'is_streak'))
-    ? { kind: 'bool', col: 'is_streak' }
-    : (await columnExists(supa, 'streak'))
-    ? { kind: 'bool', col: 'streak' }
-    : undefined;
+  // Detect type column mapping
+  let typeMap: TaskTypeMapping | undefined;
+  if (await columnExists(supa, 'type')) {
+    typeMap = { kind: 'json', col: 'type' };
+    console.log('✅ Found type column (JSON): type');
+  } else if (await columnExists(supa, 'task_type')) {
+    typeMap = { kind: 'text', col: 'task_type' };
+    console.log('✅ Found type column (TEXT): task_type');
+  } else if (await columnExists(supa, 'kind')) {
+    typeMap = { kind: 'text', col: 'kind' };
+    console.log('✅ Found type column (TEXT): kind');
+  } else if (await columnExists(supa, 'is_streak')) {
+    typeMap = { kind: 'bool', col: 'is_streak' };
+    console.log('✅ Found type column (BOOL): is_streak');
+  } else if (await columnExists(supa, 'streak')) {
+    typeMap = { kind: 'bool', col: 'streak' };
+    console.log('✅ Found type column (BOOL): streak');
+  } else {
+    console.log('⚠️ No type column found - tasks will be inserted without type classification');
+  }
 
-  return {
+  if (timeCol) console.log(`✅ Found time column: ${timeCol}`);
+  if (proofCol) console.log(`✅ Found proof column: ${proofCol}`);
+  if (tagsCol) console.log(`✅ Found tags column: ${tagsCol}`);
+
+  const result = {
     primaryDateCol: primary,
     alsoSetDateCols,
-    timeCol: timeCol || undefined,
+    timeCol,
     typeMap,
-    proofCol: proofCol || undefined,
-    tagsCol: tagsCol || undefined,
+    proofCol,
+    tagsCol,
   };
+  
+  console.log('🔍 Column detection complete:', result);
+  return result;
 }
 
 export function setTaskType(row: Record<string, unknown>, map: TaskColumnMap, kind: 'today' | 'streak') {
