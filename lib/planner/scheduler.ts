@@ -66,7 +66,7 @@ export async function planAndInsertAll(goal: GoalInput, supa: SupabaseClient, us
       [primaryDateCol]: isoDate,
     };
     if (map.sourceCol) row[map.sourceCol] = 'client_planner_v2';
-    applyTaskType(row, map.typeMap, 'today');
+    applyTaskType(row, map.typeMap, 'scheduled');
     if (map.proofCol) row[map.proofCol] = t.proofRequired;
     if (map.tagsCol) row[map.tagsCol] = t.tags ?? [];
     return row;

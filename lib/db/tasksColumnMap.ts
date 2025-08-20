@@ -91,7 +91,7 @@ export async function detectTasksColumnMap(
   };
 }
 
-export function applyTaskType(row: Record<string, unknown>, typeMap: TaskTypeMapping | undefined, logicalKind: 'today'|'streak') {
+export function applyTaskType(row: Record<string, unknown>, typeMap: TaskTypeMapping | undefined, logicalKind: 'today'|'scheduled'|'streak') {
   if (!typeMap) return;
   if (typeMap.kind === 'json') {
     row[typeMap.col] = { kind: logicalKind };
