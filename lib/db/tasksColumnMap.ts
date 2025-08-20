@@ -123,12 +123,29 @@ export function setTaskType(row: Record<string, unknown>, map: TaskColumnMap, ki
   else row[col] = kind === 'streak';
 }
 
-export type JsonTypeVariant = 'json_kind' | 'json_type' | 'json_task_type' | 'json_flag';
+export type JsonTypeVariant =
+  | 'json_kind'
+  | 'json_type'
+  | 'json_task_type'
+  | 'json_flag'
+  | 'json_string'
+  | 'json_array'
+  | 'json_union'
+  | 'json_discriminated'
+  | 'json_k'
+  | 'json_t';
 export const JSON_TYPE_VARIANTS: JsonTypeVariant[] = [
   'json_kind',
   'json_type',
   'json_task_type',
   'json_flag',
+  // Additional fallbacks for diverse JSONB constraints
+  'json_string',      // JSONB string value: "today" | "streak"
+  'json_array',       // JSONB array: ["today"] | ["streak"]
+  'json_union',       // JSON object with extra version: { kind: 'today', version: 1 }
+  'json_discriminated', // { _type: 'today' }
+  'json_k',           // { k: 'today' }
+  'json_t',           // { t: 'today' }
 ];
 
 export function applyTaskTypeVariant(
@@ -139,14 +156,39 @@ export function applyTaskTypeVariant(
 ) {
   if (!map.typeMap || map.typeMap.kind !== 'json') return;
   const col = map.typeMap.col;
-  if (variant === 'json_kind') {
-    row[col] = { kind: logicalKind };
-  } else if (variant === 'json_type') {
-    row[col] = { type: logicalKind };
-  } else if (variant === 'json_task_type') {
-    row[col] = { task_type: logicalKind };
-  } else if (variant === 'json_flag') {
-    row[col] = logicalKind === 'streak' ? { streak: true } : { today: true };
+  switch (variant) {
+    case 'json_kind':
+      row[col] = { kind: logicalKind };
+      break;
+    case 'json_type':
+      row[col] = { type: logicalKind };
+      break;
+    case 'json_task_type':
+      row[col] = { task_type: logicalKind };
+      break;
+    case 'json_flag':
+      row[col] = logicalKind === 'streak' ? { streak: true } : { today: true };
+      break;
+    case 'json_string':
+      row[col] = logicalKind; // JSONB string value
+      break;
+    case 'json_array':
+      row[col] = [logicalKind];
+      break;
+    case 'json_union':
+      row[col] = { kind: logicalKind, version: 1 };
+      break;
+    case 'json_discriminated':
+      row[col] = { _type: logicalKind };
+      break;
+    case 'json_k':
+      row[col] = { k: logicalKind };
+      break;
+    case 'json_t':
+      row[col] = { t: logicalKind };
+      break;
+    default:
+      row[col] = { kind: logicalKind };
   }
 }
 

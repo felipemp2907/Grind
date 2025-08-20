@@ -95,10 +95,42 @@ export async function planAndInsertAll(
     const err = todayInsertErr as any;
     const msg: string = (err?.message ?? err?.details ?? String(err)) as string;
     console.error('Insert TODAY failed. Column map:', map, 'error:', msg);
-    if (typeof msg === 'string' && msg.includes('tasks_type_check') && map.typeMap?.kind === 'json') {
-      for (const variant of JSON_TYPE_VARIANTS) {
-        console.log('Retry TODAY with type variant:', variant);
-        const todayRowsRetry = plan.schedule.map((t) => {
+    if (typeof msg === 'string' && msg.includes('tasks_type_check') && map.typeMap?.col) {
+      // 1) If schema says JSON but constraint rejects, try multiple JSON shapes first
+      if (map.typeMap?.kind === 'json') {
+        for (const variant of JSON_TYPE_VARIANTS) {
+          console.log('Retry TODAY with JSON type variant:', variant);
+          const todayRowsRetry = plan.schedule.map((t) => {
+            const yyyyMmDd = t.dateISO ?? toLocalYyyyMmDd(new Date());
+            const row: Record<string, unknown> = {
+              user_id: userId,
+              goal_id: goalId,
+              title: t.title,
+              description: t.description,
+              xp_value: t.xp ?? 0,
+            };
+            setTaskDates(row, map, yyyyMmDd);
+            setTaskTimeIfNeeded(row, map);
+            applyTaskTypeVariant(row, map, 'today', variant);
+            if (map.proofCol) row[map.proofCol] = t.proofRequired ?? true;
+            if (map.tagsCol) row[map.tagsCol] = t.tags ?? [];
+            return row;
+          });
+          const { error: retryErr } = await supa.from('tasks').insert(todayRowsRetry);
+          if (!retryErr) {
+            console.log('TODAY insert succeeded with JSON variant', variant);
+            todayInsertErr = undefined;
+            break;
+          } else {
+            console.error('TODAY insert failed with JSON variant', variant, retryErr);
+          }
+        }
+      }
+      // 2) If still failing, force TEXT fallback on the same column name
+      if (todayInsertErr) {
+        console.log('Retry TODAY forcing TEXT type fallback');
+        const typeCol = map.typeMap?.col as string;
+        const todayRowsRetry2 = plan.schedule.map((t) => {
           const yyyyMmDd = t.dateISO ?? toLocalYyyyMmDd(new Date());
           const row: Record<string, unknown> = {
             user_id: userId,
@@ -109,18 +141,45 @@ export async function planAndInsertAll(
           };
           setTaskDates(row, map, yyyyMmDd);
           setTaskTimeIfNeeded(row, map);
-          applyTaskTypeVariant(row, map, 'today', variant);
+          (row as any)[typeCol] = 'today';
           if (map.proofCol) row[map.proofCol] = t.proofRequired ?? true;
           if (map.tagsCol) row[map.tagsCol] = t.tags ?? [];
           return row;
         });
-        const { error: retryErr } = await supa.from('tasks').insert(todayRowsRetry);
-        if (!retryErr) {
-          console.log('TODAY insert succeeded with variant', variant);
+        const { error: retryErr2 } = await supa.from('tasks').insert(todayRowsRetry2);
+        if (!retryErr2) {
+          console.log('TODAY insert succeeded with TEXT fallback');
           todayInsertErr = undefined;
-          break;
         } else {
-          console.error('TODAY insert failed with variant', variant, retryErr);
+          console.error('TODAY insert failed with TEXT fallback', retryErr2);
+        }
+      }
+      // 3) If still failing, force BOOLEAN fallback
+      if (todayInsertErr) {
+        console.log('Retry TODAY forcing BOOLEAN type fallback');
+        const typeCol = map.typeMap?.col as string;
+        const todayRowsRetry3 = plan.schedule.map((t) => {
+          const yyyyMmDd = t.dateISO ?? toLocalYyyyMmDd(new Date());
+          const row: Record<string, unknown> = {
+            user_id: userId,
+            goal_id: goalId,
+            title: t.title,
+            description: t.description,
+            xp_value: t.xp ?? 0,
+          };
+          setTaskDates(row, map, yyyyMmDd);
+          setTaskTimeIfNeeded(row, map);
+          (row as any)[typeCol] = false;
+          if (map.proofCol) row[map.proofCol] = t.proofRequired ?? true;
+          if (map.tagsCol) row[map.tagsCol] = t.tags ?? [];
+          return row;
+        });
+        const { error: retryErr3 } = await supa.from('tasks').insert(todayRowsRetry3);
+        if (!retryErr3) {
+          console.log('TODAY insert succeeded with BOOLEAN fallback');
+          todayInsertErr = undefined;
+        } else {
+          console.error('TODAY insert failed with BOOLEAN fallback', retryErr3);
         }
       }
       if (todayInsertErr) throw err as any;
@@ -186,11 +245,47 @@ export async function planAndInsertAll(
       const err = streakInsertErr as any;
       const msg: string = (err?.message ?? err?.details ?? String(err)) as string;
       console.error('Insert STREAK failed. Column map:', map, 'error:', msg);
-      if (typeof msg === 'string' && msg.includes('tasks_type_check') && map.typeMap?.kind === 'json') {
-        for (const variant of JSON_TYPE_VARIANTS) {
-          console.log('Retry STREAK with type variant:', variant);
+      if (typeof msg === 'string' && msg.includes('tasks_type_check') && map.typeMap?.col) {
+        // 1) JSON variants first if we thought column was JSON
+        if (map.typeMap?.kind === 'json') {
+          for (const variant of JSON_TYPE_VARIANTS) {
+            console.log('Retry STREAK with JSON type variant:', variant);
+            const start2 = new Date(goal.createdAtISO);
+            const streakRowsRetry: Record<string, unknown>[] = [];
+            for (let d = 0; d < horizonDays; d++) {
+              const date = new Date(start2.getTime() + d * 86400000);
+              const yyyyMmDd = toLocalYyyyMmDd(date);
+              for (const s of plan.streaks) {
+                const r: Record<string, unknown> = {
+                  user_id: userId,
+                  goal_id: goalId,
+                  title: s.title,
+                  description: s.description,
+                  xp_value: s.xp ?? 0,
+                };
+                setTaskDates(r, map, yyyyMmDd);
+                setTaskTimeIfNeeded(r, map);
+                applyTaskTypeVariant(r, map, 'streak', variant);
+                if (map.proofCol) r[map.proofCol] = s.proofRequired ?? true;
+                streakRowsRetry.push(r);
+              }
+            }
+            const { error: retryErr } = await supa.from('tasks').insert(streakRowsRetry);
+            if (!retryErr) {
+              console.log('STREAK insert succeeded with JSON variant', variant);
+              streakInsertErr = undefined;
+              break;
+            } else {
+              console.error('STREAK insert failed with JSON variant', variant, retryErr);
+            }
+          }
+        }
+        // 2) TEXT fallback
+        if (streakInsertErr) {
+          console.log('Retry STREAK forcing TEXT type fallback');
+          const typeCol = map.typeMap?.col as string;
           const start2 = new Date(goal.createdAtISO);
-          const streakRowsRetry: Record<string, unknown>[] = [];
+          const streakRowsRetry2: Record<string, unknown>[] = [];
           for (let d = 0; d < horizonDays; d++) {
             const date = new Date(start2.getTime() + d * 86400000);
             const yyyyMmDd = toLocalYyyyMmDd(date);
@@ -204,18 +299,49 @@ export async function planAndInsertAll(
               };
               setTaskDates(r, map, yyyyMmDd);
               setTaskTimeIfNeeded(r, map);
-              applyTaskTypeVariant(r, map, 'streak', variant);
+              (r as any)[typeCol] = 'streak';
               if (map.proofCol) r[map.proofCol] = s.proofRequired ?? true;
-              streakRowsRetry.push(r);
+              streakRowsRetry2.push(r);
             }
           }
-          const { error: retryErr } = await supa.from('tasks').insert(streakRowsRetry);
-          if (!retryErr) {
-            console.log('STREAK insert succeeded with variant', variant);
+          const { error: retryErr2 } = await supa.from('tasks').insert(streakRowsRetry2);
+          if (!retryErr2) {
+            console.log('STREAK insert succeeded with TEXT fallback');
             streakInsertErr = undefined;
-            break;
           } else {
-            console.error('STREAK insert failed with variant', variant, retryErr);
+            console.error('STREAK insert failed with TEXT fallback', retryErr2);
+          }
+        }
+        // 3) BOOLEAN fallback
+        if (streakInsertErr) {
+          console.log('Retry STREAK forcing BOOLEAN type fallback');
+          const typeCol = map.typeMap?.col as string;
+          const start2 = new Date(goal.createdAtISO);
+          const streakRowsRetry3: Record<string, unknown>[] = [];
+          for (let d = 0; d < horizonDays; d++) {
+            const date = new Date(start2.getTime() + d * 86400000);
+            const yyyyMmDd = toLocalYyyyMmDd(date);
+            for (const s of plan.streaks) {
+              const r: Record<string, unknown> = {
+                user_id: userId,
+                goal_id: goalId,
+                title: s.title,
+                description: s.description,
+                xp_value: s.xp ?? 0,
+              };
+              setTaskDates(r, map, yyyyMmDd);
+              setTaskTimeIfNeeded(r, map);
+              (r as any)[typeCol] = true;
+              if (map.proofCol) r[map.proofCol] = s.proofRequired ?? true;
+              streakRowsRetry3.push(r);
+            }
+          }
+          const { error: retryErr3 } = await supa.from('tasks').insert(streakRowsRetry3);
+          if (!retryErr3) {
+            console.log('STREAK insert succeeded with BOOLEAN fallback');
+            streakInsertErr = undefined;
+          } else {
+            console.error('STREAK insert failed with BOOLEAN fallback', retryErr3);
           }
         }
         if (streakInsertErr) throw err as any;
