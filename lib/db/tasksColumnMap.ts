@@ -6,161 +6,103 @@ export type TaskTypeMapping =
   | { kind: 'bool'; col: string };
 
 export type TaskColumnMap = {
-  dateCol: string;
+  primaryDateCol: string;
+  alsoSetDateCols: string[];
+  timeCol?: string;
   typeMap?: TaskTypeMapping;
   proofCol?: string;
   tagsCol?: string;
-  sourceCol?: string;
 };
 
 async function columnExists(supa: SupabaseClient, col: string) {
   try {
     const { error } = await supa.from('tasks').select(col).limit(0);
     return !error;
-  } catch (e) {
+  } catch (_e) {
     return false;
   }
 }
 
-async function anyOf(supa: SupabaseClient, cols: string[]) {
-  for (const c of cols) {
+async function findFirst(supa: SupabaseClient, candidates: string[], fallback: string) {
+  for (const c of candidates) {
     // eslint-disable-next-line no-await-in-loop
     if (await columnExists(supa, c)) return c;
   }
-  return undefined;
+  // eslint-disable-next-line no-return-await
+  return (await columnExists(supa, fallback)) ? fallback : undefined;
 }
 
-export async function detectTasksColumnMap(
-  supa: SupabaseClient,
-): Promise<TaskColumnMap> {
-  // Check for the specific constraint pattern: streak tasks use task_date, today tasks use due_at
-  const hasTaskDate = await columnExists(supa, 'task_date');
-  const hasDueAt = await columnExists(supa, 'due_at');
-  const hasType = await columnExists(supa, 'type');
-  
-  // If we have the constraint pattern columns, use them
-  if (hasTaskDate && hasDueAt && hasType) {
-    return {
-      dateCol: 'due_at', // Default for today tasks
-      typeMap: { kind: 'text', col: 'type' },
-      proofCol: await anyOf(supa, ['proof_required','requires_proof','require_proof','needs_proof']),
-      tagsCol: await anyOf(supa, ['tags','labels']),
-      sourceCol: await anyOf(supa, ['source','task_source','origin']),
-    };
+export async function detectTasksColumnMap(supa: SupabaseClient): Promise<TaskColumnMap> {
+  const datePriority = [
+    'scheduled_for_date',
+    'scheduled_for',
+    'scheduled_at',
+    'due_date',
+    'due_at',
+    'date',
+    'planned_for_date',
+    'planned_date',
+  ];
+
+  const primary = (await findFirst(supa, datePriority, 'scheduled_for_date')) || 'scheduled_for_date';
+
+  const alsoSetDateCols: string[] = [];
+  for (const c of datePriority) {
+    // eslint-disable-next-line no-await-in-loop
+    if (c !== primary && (await columnExists(supa, c))) alsoSetDateCols.push(c);
   }
 
-  // Fallback to original detection logic
-  const dateCandidates = ['scheduled_for_date', 'scheduled_for', 'due_date', 'date', 'due_at', 'dueOn', 'due'];
-  let dateCol = 'due_date';
-  for (const c of dateCandidates) {
-    // eslint-disable-next-line no-await-in-loop
-    if (await columnExists(supa, c)) { dateCol = c; break; }
-  }
+  const timeCol = await findFirst(supa, ['scheduled_for_time', 'time', 'due_time'], '');
+  const proofCol = await findFirst(supa, ['proof_required', 'requires_proof', 'require_proof', 'needs_proof'], '');
+  const tagsCol = await findFirst(supa, ['tags', 'labels'], '');
 
-  // Prefer JSONB type column commonly named 'type'
-  const jsonCandidates = ['type'];
-  for (const c of jsonCandidates) {
-    // eslint-disable-next-line no-await-in-loop
-    if (await columnExists(supa, c)) {
-      return {
-        dateCol,
-        typeMap: { kind: 'json', col: c },
-        proofCol: await anyOf(supa, ['proof_required','requires_proof','require_proof','needs_proof']),
-        tagsCol: await anyOf(supa, ['tags','labels']),
-        sourceCol: await anyOf(supa, ['source','task_source','origin']),
-      };
-    }
-  }
-
-  const textCandidates = ['type','task_type','kind'];
-  for (const c of textCandidates) {
-    // eslint-disable-next-line no-await-in-loop
-    if (await columnExists(supa, c)) {
-      return {
-        dateCol,
-        typeMap: { kind: 'text', col: c },
-        proofCol: await anyOf(supa, ['proof_required','requires_proof','require_proof','needs_proof']),
-        tagsCol: await anyOf(supa, ['tags','labels']),
-        sourceCol: await anyOf(supa, ['source','task_source','origin']),
-      };
-    }
-  }
-
-  const boolCandidates = ['is_streak','streak','is_recurring','recurring'];
-  for (const c of boolCandidates) {
-    // eslint-disable-next-line no-await-in-loop
-    if (await columnExists(supa, c)) {
-      return {
-        dateCol,
-        typeMap: { kind: 'bool', col: c },
-        proofCol: await anyOf(supa, ['proof_required','requires_proof','require_proof','needs_proof']),
-        tagsCol: await anyOf(supa, ['tags','labels']),
-        sourceCol: await anyOf(supa, ['source','task_source','origin']),
-      };
-    }
-  }
+  const typeMap: TaskTypeMapping | undefined = (await columnExists(supa, 'type'))
+    ? { kind: 'json', col: 'type' }
+    : (await columnExists(supa, 'task_type'))
+    ? { kind: 'text', col: 'task_type' }
+    : (await columnExists(supa, 'kind'))
+    ? { kind: 'text', col: 'kind' }
+    : (await columnExists(supa, 'is_streak'))
+    ? { kind: 'bool', col: 'is_streak' }
+    : (await columnExists(supa, 'streak'))
+    ? { kind: 'bool', col: 'streak' }
+    : undefined;
 
   return {
-    dateCol,
-    proofCol: await anyOf(supa, ['proof_required','requires_proof','require_proof','needs_proof']),
-    tagsCol: await anyOf(supa, ['tags','labels']),
-    sourceCol: await anyOf(supa, ['source','task_source','origin']),
+    primaryDateCol: primary,
+    alsoSetDateCols,
+    timeCol: timeCol || undefined,
+    typeMap,
+    proofCol: proofCol || undefined,
+    tagsCol: tagsCol || undefined,
   };
 }
 
-export function applyTaskType(
-  row: Record<string, unknown>, 
-  typeMap: TaskTypeMapping | undefined, 
-  logicalKind: 'today'|'scheduled'|'streak',
-  dateValue: string
-) {
-  if (!typeMap) return;
-  
-  // Set the type field
-  if (typeMap.kind === 'json') {
-    row[typeMap.col] = { kind: logicalKind === 'scheduled' ? 'today' : logicalKind };
-  } else if (typeMap.kind === 'text') {
-    row[typeMap.col] = logicalKind === 'scheduled' ? 'today' : logicalKind;
-  } else {
-    // For boolean columns, true = streak, false = scheduled/today
-    row[typeMap.col] = (logicalKind === 'streak');
-  }
-  
-  // Apply the constraint pattern: streak tasks use task_date, today tasks use due_at
-  if (logicalKind === 'streak') {
-    row['task_date'] = dateValue;
-    // Ensure due_at is null for streak tasks
-    if ('due_at' in row) delete row['due_at'];
-  } else {
-    // For 'today' or 'scheduled' tasks
-    row['due_at'] = dateValue + 'T23:59:59.999Z'; // Convert to timestamp
-    // Ensure task_date is null for today tasks
-    if ('task_date' in row) delete row['task_date'];
+export function setTaskType(row: Record<string, unknown>, map: TaskColumnMap, kind: 'today' | 'streak') {
+  if (!map.typeMap) return;
+  const { kind: t, col } = map.typeMap;
+  if (t === 'json') row[col] = { kind };
+  else if (t === 'text') row[col] = kind;
+  else row[col] = kind === 'streak';
+}
+
+export function setTaskDates(row: Record<string, unknown>, map: TaskColumnMap, yyyyMmDd: string) {
+  row[map.primaryDateCol] = yyyyMmDd;
+  for (const extra of map.alsoSetDateCols) {
+    row[extra] = yyyyMmDd;
   }
 }
 
-// Helper function to insert tasks with proper constraint handling
-export async function insertTasksWithFallback(
-  supa: SupabaseClient,
-  rows: Record<string, unknown>[],
-  typeMap: TaskTypeMapping | undefined,
-  logicalKind: 'today'|'scheduled'|'streak'
-) {
-  if (!typeMap) {
-    // No type mapping, insert as-is
-    return await supa.from('tasks').insert(rows);
+export function setTaskTimeIfNeeded(row: Record<string, unknown>, map: TaskColumnMap) {
+  if (!map.timeCol) return;
+  if (row[map.timeCol] == null) {
+    row[map.timeCol] = '12:00:00';
   }
+}
 
-  // Apply the constraint pattern to all rows
-  const processedRows = rows.map(row => {
-    const newRow = { ...row };
-    const dateValue = (newRow.dateValue as string) || new Date().toISOString().slice(0, 10);
-    // Remove the temporary dateValue field
-    delete newRow.dateValue;
-    applyTaskType(newRow, typeMap, logicalKind, dateValue);
-    return newRow;
-  });
-  
-  const { error } = await supa.from('tasks').insert(processedRows);
-  return { error };
+export function toLocalYyyyMmDd(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
 }
