@@ -150,9 +150,14 @@ export async function detectTasksColumnMap(supa: SupabaseClient): Promise<TaskCo
 export function setTaskType(row: Record<string, unknown>, map: TaskColumnMap, kind: 'today' | 'streak') {
   if (!map.typeMap) return;
   const { kind: t, col } = map.typeMap;
-  if (t === 'json') row[col] = { kind };
-  else if (t === 'text') row[col] = kind;
-  else row[col] = kind === 'streak';
+  if (t === 'json') {
+    row[col] = { kind };
+  } else if (t === 'text') {
+    const prefersJsonStringShape = col === 'type';
+    row[col] = prefersJsonStringShape ? JSON.stringify({ kind }) : (kind as unknown as string);
+  } else {
+    row[col] = kind === 'streak';
+  }
 }
 
 export type JsonTypeVariant =
@@ -171,13 +176,12 @@ export const JSON_TYPE_VARIANTS: JsonTypeVariant[] = [
   'json_type',
   'json_task_type',
   'json_flag',
-  // Additional fallbacks for diverse JSONB constraints
-  'json_string',      // JSONB string value: "today" | "streak"
-  'json_array',       // JSONB array: ["today"] | ["streak"]
-  'json_union',       // JSON object with extra version: { kind: 'today', version: 1 }
-  'json_discriminated', // { _type: 'today' }
-  'json_k',           // { k: 'today' }
-  'json_t',           // { t: 'today' }
+  'json_string',
+  'json_array',
+  'json_union',
+  'json_discriminated',
+  'json_k',
+  'json_t',
 ];
 
 export function applyTaskTypeVariant(
@@ -222,6 +226,21 @@ export function applyTaskTypeVariant(
     default:
       row[col] = { kind: logicalKind };
   }
+}
+
+export type TextTypeFormatter = (logicalKind: 'today' | 'streak') => string;
+export const TEXT_TYPE_VARIANTS: TextTypeFormatter[] = [
+  (k) => k,
+  (k) => JSON.stringify({ kind: k }),
+  (k) => JSON.stringify({ type: k }),
+  (k) => JSON.stringify({ task_type: k }),
+  (k) => k.toUpperCase(),
+];
+
+export function applyTextTypeVariant(row: Record<string, unknown>, map: TaskColumnMap, logicalKind: 'today' | 'streak', formatter: TextTypeFormatter) {
+  if (!map.typeMap || map.typeMap.kind !== 'text') return;
+  const col = map.typeMap.col;
+  row[col] = formatter(logicalKind);
 }
 
 export function setTaskDates(row: Record<string, unknown>, map: TaskColumnMap, yyyyMmDd: string) {
