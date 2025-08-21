@@ -34,6 +34,21 @@ async function findFirst(supa: SupabaseClient, candidates: string[], fallback?: 
   return undefined;
 }
 
+async function sampleColumnValue(supa: SupabaseClient, col: string): Promise<unknown | undefined> {
+  try {
+    const { data, error } = await supa.from('tasks').select(col).not(col, 'is', null).limit(1);
+    if (error) return undefined;
+    if (Array.isArray(data) && data.length > 0) {
+      const row = data[0] as unknown as Record<string, unknown>;
+      const v = row[col];
+      return v;
+    }
+    return undefined;
+  } catch (_e) {
+    return undefined;
+  }
+}
+
 export async function detectTasksColumnMap(supa: SupabaseClient): Promise<TaskColumnMap> {
   console.log('🔍 Detecting tasks table column schema...');
   
@@ -77,12 +92,10 @@ export async function detectTasksColumnMap(supa: SupabaseClient): Promise<TaskCo
   const proofCol = await findFirst(supa, ['proof_required', 'requires_proof', 'require_proof', 'needs_proof']);
   const tagsCol = await findFirst(supa, ['tags', 'labels']);
 
-  // Detect type column mapping
+  // Detect type column mapping with runtime value probe
   let typeMap: TaskTypeMapping | undefined;
-  if (await columnExists(supa, 'type')) {
-    typeMap = { kind: 'json', col: 'type' };
-    console.log('✅ Found type column (JSON): type');
-  } else if (await columnExists(supa, 'task_type')) {
+  // Prefer explicit TEXT markers first
+  if (await columnExists(supa, 'task_type')) {
     typeMap = { kind: 'text', col: 'task_type' };
     console.log('✅ Found type column (TEXT): task_type');
   } else if (await columnExists(supa, 'kind')) {
@@ -94,6 +107,25 @@ export async function detectTasksColumnMap(supa: SupabaseClient): Promise<TaskCo
   } else if (await columnExists(supa, 'streak')) {
     typeMap = { kind: 'bool', col: 'streak' };
     console.log('✅ Found type column (BOOL): streak');
+  } else if (await columnExists(supa, 'type')) {
+    // Finally consider generic 'type' column, probe a value but default to TEXT for safety
+    const sample = await sampleColumnValue(supa, 'type');
+    if (sample != null) {
+      if (typeof sample === 'string') {
+        typeMap = { kind: 'text', col: 'type' };
+        console.log('✅ Detected type column as TEXT via sample: type');
+      } else if (typeof sample === 'boolean') {
+        typeMap = { kind: 'bool', col: 'type' };
+        console.log('✅ Detected type column as BOOL via sample: type');
+      } else if (typeof sample === 'object' && !Array.isArray(sample)) {
+        typeMap = { kind: 'json', col: 'type' };
+        console.log('✅ Detected type column as JSON via sample: type');
+      }
+    }
+    if (!typeMap) {
+      typeMap = { kind: 'text', col: 'type' };
+      console.log('ℹ️ Defaulting type column to TEXT: type');
+    }
   } else {
     console.log('⚠️ No type column found - tasks will be inserted without type classification');
   }
