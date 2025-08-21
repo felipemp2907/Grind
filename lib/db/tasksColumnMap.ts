@@ -10,6 +10,9 @@ export type TaskColumnMap = {
   alsoSetDateCols: string[];
   timeCol?: string;
   typeMap?: TaskTypeMapping;
+  // Preferred formatting for the detected type column
+  textFormatter?: TextTypeFormatter;
+  jsonVariant?: JsonTypeVariant;
   proofCol?: string;
   tagsCol?: string;
 };
@@ -32,6 +35,33 @@ async function findFirst(supa: SupabaseClient, candidates: string[], fallback?: 
     return fallback;
   }
   return undefined;
+}
+
+function deriveTextFormatter(sample: string): TextTypeFormatter {
+  try {
+    const parsed = JSON.parse(sample);
+    if (parsed && typeof parsed === 'object') {
+      if ('kind' in parsed) return (k) => JSON.stringify({ kind: k });
+      if ('type' in parsed) return (k) => JSON.stringify({ type: k });
+      if ('task_type' in parsed) return (k) => JSON.stringify({ task_type: k });
+    }
+  } catch (_) {
+    // not JSON, fall through
+  }
+  const upper = sample.toUpperCase();
+  if (upper === 'TODAY' || upper === 'STREAK') return (k) => k.toUpperCase();
+  return (k) => k;
+}
+
+function deriveJsonVariant(sample: Record<string, unknown>): JsonTypeVariant {
+  if (sample && typeof sample === 'object') {
+    if ('kind' in sample) return 'json_kind';
+    if ('type' in sample) return 'json_type';
+    if ('task_type' in sample) return 'json_task_type';
+    if ('streak' in sample || 'today' in sample) return 'json_flag';
+    if (Array.isArray(sample)) return 'json_array';
+  }
+  return 'json_union';
 }
 
 async function sampleColumnValue(supa: SupabaseClient, col: string): Promise<unknown | undefined> {
@@ -94,12 +124,22 @@ export async function detectTasksColumnMap(supa: SupabaseClient): Promise<TaskCo
 
   // Detect type column mapping with runtime value probe
   let typeMap: TaskTypeMapping | undefined;
+  let textFormatter: TextTypeFormatter | undefined;
+  let jsonVariant: JsonTypeVariant | undefined;
   // Prefer explicit TEXT markers first
   if (await columnExists(supa, 'task_type')) {
     typeMap = { kind: 'text', col: 'task_type' };
+    const sample = await sampleColumnValue(supa, 'task_type');
+    if (typeof sample === 'string') {
+      textFormatter = deriveTextFormatter(sample);
+    }
     console.log('✅ Found type column (TEXT): task_type');
   } else if (await columnExists(supa, 'kind')) {
     typeMap = { kind: 'text', col: 'kind' };
+    const sample = await sampleColumnValue(supa, 'kind');
+    if (typeof sample === 'string') {
+      textFormatter = deriveTextFormatter(sample);
+    }
     console.log('✅ Found type column (TEXT): kind');
   } else if (await columnExists(supa, 'is_streak')) {
     typeMap = { kind: 'bool', col: 'is_streak' };
@@ -108,23 +148,36 @@ export async function detectTasksColumnMap(supa: SupabaseClient): Promise<TaskCo
     typeMap = { kind: 'bool', col: 'streak' };
     console.log('✅ Found type column (BOOL): streak');
   } else if (await columnExists(supa, 'type')) {
-    // Finally consider generic 'type' column, probe a value but default to TEXT for safety
+    // Finally consider generic 'type' column, probe a value
     const sample = await sampleColumnValue(supa, 'type');
     if (sample != null) {
       if (typeof sample === 'string') {
-        typeMap = { kind: 'text', col: 'type' };
-        console.log('✅ Detected type column as TEXT via sample: type');
+        // Ambiguous: could be TEXT or stringified JSON. Try to detect JSON string
+        const guessedFmt = deriveTextFormatter(sample);
+        const looksJsonString = guessedFmt !== ((k: 'today' | 'streak') => k);
+        if (looksJsonString) {
+          typeMap = { kind: 'text', col: 'type' };
+          textFormatter = guessedFmt;
+          console.log('✅ Detected type column as TEXT(JSON-string) via sample: type');
+        } else {
+          typeMap = { kind: 'text', col: 'type' };
+          textFormatter = (k) => k;
+          console.log('✅ Detected type column as TEXT via sample: type');
+        }
       } else if (typeof sample === 'boolean') {
         typeMap = { kind: 'bool', col: 'type' };
         console.log('✅ Detected type column as BOOL via sample: type');
       } else if (typeof sample === 'object' && !Array.isArray(sample)) {
         typeMap = { kind: 'json', col: 'type' };
+        jsonVariant = deriveJsonVariant(sample as Record<string, unknown>);
         console.log('✅ Detected type column as JSON via sample: type');
       }
     }
     if (!typeMap) {
-      typeMap = { kind: 'text', col: 'type' };
-      console.log('ℹ️ Defaulting type column to TEXT: type');
+      // Default to JSON for generic 'type' column if no sample exists
+      typeMap = { kind: 'json', col: 'type' };
+      jsonVariant = 'json_kind';
+      console.log('ℹ️ Defaulting type column to JSON: type');
     }
   } else {
     console.log('⚠️ No type column found - tasks will be inserted without type classification');
@@ -139,6 +192,8 @@ export async function detectTasksColumnMap(supa: SupabaseClient): Promise<TaskCo
     alsoSetDateCols,
     timeCol,
     typeMap,
+    textFormatter,
+    jsonVariant,
     proofCol,
     tagsCol,
   };
@@ -151,10 +206,14 @@ export function setTaskType(row: Record<string, unknown>, map: TaskColumnMap, ki
   if (!map.typeMap) return;
   const { kind: t, col } = map.typeMap;
   if (t === 'json') {
-    row[col] = { kind };
+    if (map.jsonVariant) {
+      applyTaskTypeVariant(row, map, kind, map.jsonVariant);
+    } else {
+      row[col] = { kind };
+    }
   } else if (t === 'text') {
-    const prefersJsonStringShape = col === 'type';
-    row[col] = prefersJsonStringShape ? JSON.stringify({ kind }) : (kind as unknown as string);
+    const fmt = map.textFormatter ?? ((k: 'today' | 'streak') => k);
+    row[col] = fmt(kind);
   } else {
     row[col] = kind === 'streak';
   }

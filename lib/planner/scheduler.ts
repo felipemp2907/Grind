@@ -98,38 +98,38 @@ export async function planAndInsertAll(
     const msg: string = (err?.message ?? err?.details ?? String(err)) as string;
     console.error('Insert TODAY failed. Column map:', map, 'error:', msg);
     if (typeof msg === 'string' && msg.includes('tasks_type_check') && map.typeMap?.col) {
-      // 1) If schema says JSON but constraint rejects, try multiple JSON shapes first
-      if (map.typeMap?.kind === 'json') {
-        for (const variant of JSON_TYPE_VARIANTS) {
-          console.log('Retry TODAY with JSON type variant:', variant);
-          const todayRowsRetry = plan.schedule.map((t) => {
-            const yyyyMmDd = t.dateISO ?? toLocalYyyyMmDd(new Date());
-            const row: Record<string, unknown> = {
-              user_id: userId,
-              goal_id: goalId,
-              title: t.title,
-              description: t.description,
-              xp_value: t.xp ?? 0,
-            };
-            setTaskDates(row, map, yyyyMmDd);
-            setTaskTimeIfNeeded(row, map);
-            applyTaskTypeVariant(row, map, 'today', variant);
-            if (map.proofCol) row[map.proofCol] = t.proofRequired ?? true;
-            if (map.tagsCol) row[map.tagsCol] = t.tags ?? [];
-            return row;
-          });
-          const { error: retryErr } = await supa.from('tasks').insert(todayRowsRetry);
-          if (!retryErr) {
-            console.log('TODAY insert succeeded with JSON variant', variant);
-            todayInsertErr = undefined;
-            break;
-          } else {
-            console.error('TODAY insert failed with JSON variant', variant, retryErr);
-          }
+      // 1) Always try multiple JSON shapes first, regardless of detected kind
+      for (const variant of JSON_TYPE_VARIANTS) {
+        console.log('Retry TODAY with JSON type variant:', variant);
+        const todayRowsRetry = plan.schedule.map((t) => {
+          const yyyyMmDd = t.dateISO ?? toLocalYyyyMmDd(new Date());
+          const row: Record<string, unknown> = {
+            user_id: userId,
+            goal_id: goalId,
+            title: t.title,
+            description: t.description,
+            xp_value: t.xp ?? 0,
+          };
+          setTaskDates(row, map, yyyyMmDd);
+          setTaskTimeIfNeeded(row, map);
+          // Force set as if JSON column
+          (row as any)[map.typeMap!.col] = undefined;
+          applyTaskTypeVariant(row, { ...map, typeMap: { kind: 'json', col: map.typeMap!.col } }, 'today', variant);
+          if (map.proofCol) row[map.proofCol] = t.proofRequired ?? true;
+          if (map.tagsCol) row[map.tagsCol] = t.tags ?? [];
+          return row;
+        });
+        const { error: retryErr } = await supa.from('tasks').insert(todayRowsRetry);
+        if (!retryErr) {
+          console.log('TODAY insert succeeded with JSON variant', variant);
+          todayInsertErr = undefined;
+          break;
+        } else {
+          console.error('TODAY insert failed with JSON variant', variant, retryErr);
         }
       }
-      // 2) If still failing, try TEXT variants when column is TEXT (to satisfy tasks_type_shape)
-      if (todayInsertErr && map.typeMap?.kind === 'text') {
+      // 2) If still failing, try TEXT variants
+      if (todayInsertErr) {
         console.log('Retry TODAY forcing TEXT type variants');
         for (const fmt of TEXT_TYPE_VARIANTS) {
           const todayRowsRetry2 = plan.schedule.map((t) => {
@@ -143,7 +143,7 @@ export async function planAndInsertAll(
             };
             setTaskDates(row, map, yyyyMmDd);
             setTaskTimeIfNeeded(row, map);
-            applyTextTypeVariant(row, map, 'today', fmt);
+            applyTextTypeVariant(row, { ...map, typeMap: { kind: 'text', col: map.typeMap!.col } }, 'today', fmt);
             if (map.proofCol) row[map.proofCol] = t.proofRequired ?? true;
             if (map.tagsCol) row[map.tagsCol] = t.tags ?? [];
             return row;
@@ -157,7 +157,8 @@ export async function planAndInsertAll(
             console.error('TODAY insert failed with TEXT variant', retryErr2);
           }
         }
-      } else if (todayInsertErr) {
+      }
+      if (todayInsertErr) {
         // Generic TEXT fallback on detected column
         console.log('Retry TODAY forcing simple TEXT fallback');
         const typeCol = map.typeMap?.col as string;
@@ -277,42 +278,40 @@ export async function planAndInsertAll(
       const msg: string = (err?.message ?? err?.details ?? String(err)) as string;
       console.error('Insert STREAK failed. Column map:', map, 'error:', msg);
       if (typeof msg === 'string' && (msg.includes('tasks_type_check') || msg.includes('tasks_type_shape')) && map.typeMap?.col) {
-        // 1) JSON variants first if we thought column was JSON
-        if (map.typeMap?.kind === 'json') {
-          for (const variant of JSON_TYPE_VARIANTS) {
-            console.log('Retry STREAK with JSON type variant:', variant);
-            const start2 = new Date(goal.createdAtISO);
-            const streakRowsRetry: Record<string, unknown>[] = [];
-            for (let d = 0; d < horizonDays; d++) {
-              const date = new Date(start2.getTime() + d * 86400000);
-              const yyyyMmDd = toLocalYyyyMmDd(date);
-              for (const s of plan.streaks) {
-                const r: Record<string, unknown> = {
-                  user_id: userId,
-                  goal_id: goalId,
-                  title: s.title,
-                  description: s.description,
-                  xp_value: s.xp ?? 0,
-                };
-                setTaskDates(r, map, yyyyMmDd);
-                setTaskTimeIfNeeded(r, map);
-                applyTaskTypeVariant(r, map, 'streak', variant);
-                if (map.proofCol) r[map.proofCol] = s.proofRequired ?? true;
-                streakRowsRetry.push(r);
-              }
+        // 1) Always try JSON variants first
+        for (const variant of JSON_TYPE_VARIANTS) {
+          console.log('Retry STREAK with JSON type variant:', variant);
+          const start2 = new Date(goal.createdAtISO);
+          const streakRowsRetry: Record<string, unknown>[] = [];
+          for (let d = 0; d < horizonDays; d++) {
+            const date = new Date(start2.getTime() + d * 86400000);
+            const yyyyMmDd = toLocalYyyyMmDd(date);
+            for (const s of plan.streaks) {
+              const r: Record<string, unknown> = {
+                user_id: userId,
+                goal_id: goalId,
+                title: s.title,
+                description: s.description,
+                xp_value: s.xp ?? 0,
+              };
+              setTaskDates(r, map, yyyyMmDd);
+              setTaskTimeIfNeeded(r, map);
+              applyTaskTypeVariant(r, { ...map, typeMap: { kind: 'json', col: map.typeMap!.col } }, 'streak', variant);
+              if (map.proofCol) r[map.proofCol] = s.proofRequired ?? true;
+              streakRowsRetry.push(r);
             }
-            const { error: retryErr } = await supa.from('tasks').insert(streakRowsRetry);
-            if (!retryErr) {
-              console.log('STREAK insert succeeded with JSON variant', variant);
-              streakInsertErr = undefined;
-              break;
-            } else {
-              console.error('STREAK insert failed with JSON variant', variant, retryErr);
-            }
+          }
+          const { error: retryErr } = await supa.from('tasks').insert(streakRowsRetry);
+          if (!retryErr) {
+            console.log('STREAK insert succeeded with JSON variant', variant);
+            streakInsertErr = undefined;
+            break;
+          } else {
+            console.error('STREAK insert failed with JSON variant', variant, retryErr);
           }
         }
         // 2) TEXT fallback with multiple format variants (to satisfy tasks_type_shape)
-        if (streakInsertErr && map.typeMap?.kind === 'text') {
+        if (streakInsertErr) {
           console.log('Retry STREAK forcing TEXT type variants');
           const start2 = new Date(goal.createdAtISO);
           for (const fmt of TEXT_TYPE_VARIANTS) {
@@ -330,7 +329,7 @@ export async function planAndInsertAll(
                 };
                 setTaskDates(r, map, yyyyMmDd);
                 setTaskTimeIfNeeded(r, map);
-                applyTextTypeVariant(r, map, 'streak', fmt);
+                applyTextTypeVariant(r, { ...map, typeMap: { kind: 'text', col: map.typeMap!.col } }, 'streak', fmt);
                 if (map.proofCol) r[map.proofCol] = s.proofRequired ?? true;
                 streakRowsRetry2.push(r);
               }
