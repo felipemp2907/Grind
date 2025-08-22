@@ -214,7 +214,7 @@ export function setTaskType(row: Record<string, unknown>, map: TaskColumnMap, ki
   for (const target of targets) {
     const { kind: t, col } = target;
     if (t === 'json') {
-      (row as any)[col] = { kind: kind.toUpperCase() };
+      (row as any)[col] = { kind };
     } else if (t === 'text') {
       (row as any)[col] = kind; // always exact 'today' | 'streak'
     } else {
@@ -249,19 +249,19 @@ export function applyTaskTypeVariant(
   const setJson = (col: string) => {
     switch (variant) {
       case 'json_kind':
-        (row as any)[col] = { kind: logicalKind.toUpperCase() };
+        (row as any)[col] = { kind: logicalKind };
         break;
       case 'json_type':
-        (row as any)[col] = { type: logicalKind.toUpperCase() };
+        (row as any)[col] = { type: logicalKind };
         break;
       case 'json_task_type':
-        (row as any)[col] = { task_type: logicalKind.toUpperCase() };
+        (row as any)[col] = { task_type: logicalKind };
         break;
       case 'json_flag':
         (row as any)[col] = logicalKind === 'streak' ? { streak: true } : { today: true };
         break;
       case 'json_string':
-        (row as any)[col] = logicalKind.toUpperCase();
+        (row as any)[col] = logicalKind;
         break;
       case 'json_array':
         (row as any)[col] = [logicalKind];
@@ -279,7 +279,7 @@ export function applyTaskTypeVariant(
         (row as any)[col] = { t: logicalKind };
         break;
       default:
-        (row as any)[col] = { kind: logicalKind.toUpperCase() };
+        (row as any)[col] = { kind: logicalKind };
     }
   };
   for (const t of targets) {
