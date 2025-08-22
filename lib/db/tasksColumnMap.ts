@@ -153,33 +153,25 @@ export async function detectTasksColumnMap(supa: SupabaseClient): Promise<TaskCo
     // Finally consider generic 'type' column, probe a value
     const sample = await sampleColumnValue(supa, 'type');
     if (sample != null) {
-      if (typeof sample === 'string') {
-        // Ambiguous: could be TEXT or stringified JSON. Try to detect JSON string
-        const guessedFmt = deriveTextFormatter(sample);
-        const looksJsonString = guessedFmt !== ((k: 'today' | 'streak') => k);
-        if (looksJsonString) {
-          typeMap = { kind: 'text', col: 'type' };
-          textFormatter = guessedFmt;
-          console.log('✅ Detected type column as TEXT(JSON-string) via sample: type');
-        } else {
-          typeMap = { kind: 'text', col: 'type' };
-          textFormatter = (k) => k;
-          console.log('✅ Detected type column as TEXT via sample: type');
-        }
-      } else if (typeof sample === 'boolean') {
+      if (typeof sample === 'boolean') {
         typeMap = { kind: 'bool', col: 'type' };
         console.log('✅ Detected type column as BOOL via sample: type');
       } else if (typeof sample === 'object' && !Array.isArray(sample)) {
         typeMap = { kind: 'json', col: 'type' };
         jsonVariant = deriveJsonVariant(sample as Record<string, unknown>);
         console.log('✅ Detected type column as JSON via sample: type');
+      } else if (typeof sample === 'string') {
+        // Prefer JSON for ambiguous 'type' column to satisfy CHECK constraints expecting JSON shape
+        typeMap = { kind: 'json', col: 'type' };
+        jsonVariant = 'json_kind';
+        console.log('ℹ️ Ambiguous sample on type; defaulting to JSON(kind)');
       }
     }
     if (!typeMap) {
-      // Default conservatively to TEXT for generic 'type' column if no sample exists
-      typeMap = { kind: 'text', col: 'type' };
-      textFormatter = (k) => k;
-      console.log('ℹ️ Defaulting type column to TEXT: type');
+      // Default to JSON(kind) for generic 'type' column if no sample exists
+      typeMap = { kind: 'json', col: 'type' };
+      jsonVariant = 'json_kind';
+      console.log('ℹ️ Defaulting type column to JSON(kind): type');
     }
   } else {
     console.log('⚠️ No type column found - tasks will be inserted without type classification');
@@ -222,7 +214,7 @@ export function setTaskType(row: Record<string, unknown>, map: TaskColumnMap, ki
   for (const target of targets) {
     const { kind: t, col } = target;
     if (t === 'json') {
-      (row as any)[col] = { kind };
+      (row as any)[col] = { kind: kind.toUpperCase() };
     } else if (t === 'text') {
       (row as any)[col] = kind; // always exact 'today' | 'streak'
     } else {
@@ -257,19 +249,19 @@ export function applyTaskTypeVariant(
   const setJson = (col: string) => {
     switch (variant) {
       case 'json_kind':
-        (row as any)[col] = { kind: logicalKind };
+        (row as any)[col] = { kind: logicalKind.toUpperCase() };
         break;
       case 'json_type':
-        (row as any)[col] = { type: logicalKind };
+        (row as any)[col] = { type: logicalKind.toUpperCase() };
         break;
       case 'json_task_type':
-        (row as any)[col] = { task_type: logicalKind };
+        (row as any)[col] = { task_type: logicalKind.toUpperCase() };
         break;
       case 'json_flag':
         (row as any)[col] = logicalKind === 'streak' ? { streak: true } : { today: true };
         break;
       case 'json_string':
-        (row as any)[col] = logicalKind;
+        (row as any)[col] = logicalKind.toUpperCase();
         break;
       case 'json_array':
         (row as any)[col] = [logicalKind];
@@ -287,7 +279,7 @@ export function applyTaskTypeVariant(
         (row as any)[col] = { t: logicalKind };
         break;
       default:
-        (row as any)[col] = { kind: logicalKind };
+        (row as any)[col] = { kind: logicalKind.toUpperCase() };
     }
   };
   for (const t of targets) {
