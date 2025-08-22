@@ -10,6 +10,8 @@ export type TaskColumnMap = {
   alsoSetDateCols: string[];
   timeCol?: string;
   typeMap?: TaskTypeMapping;
+  // Additional type-related columns to also set if present
+  extraTypeTargets?: TaskTypeMapping[];
   // Preferred formatting for the detected type column
   textFormatter?: TextTypeFormatter;
   jsonVariant?: JsonTypeVariant;
@@ -187,11 +189,37 @@ export async function detectTasksColumnMap(supa: SupabaseClient): Promise<TaskCo
   if (proofCol) console.log(`✅ Found proof column: ${proofCol}`);
   if (tagsCol) console.log(`✅ Found tags column: ${tagsCol}`);
 
+  // Discover any extra type columns we can mirror into (to satisfy strict CHECK constraints)
+  const extraTypeTargets: TaskTypeMapping[] = [];
+  const typeCandidates: Array<{ col: string; kind: TaskTypeMapping['kind'] | 'probe' }> = [
+    { col: 'task_type', kind: 'text' },
+    { col: 'kind', kind: 'text' },
+    { col: 'is_streak', kind: 'bool' },
+    { col: 'streak', kind: 'bool' },
+    { col: 'type', kind: 'probe' },
+  ];
+  for (const c of typeCandidates) {
+    // eslint-disable-next-line no-await-in-loop
+    if (await columnExists(supa, c.col)) {
+      if (!typeMap || c.col !== typeMap.col) {
+        if (c.kind === 'probe') {
+          const sample = await sampleColumnValue(supa, c.col);
+          if (typeof sample === 'boolean') extraTypeTargets.push({ kind: 'bool', col: c.col });
+          else if (typeof sample === 'object' && sample !== null && !Array.isArray(sample)) extraTypeTargets.push({ kind: 'json', col: c.col });
+          else extraTypeTargets.push({ kind: 'text', col: c.col });
+        } else {
+          extraTypeTargets.push({ kind: c.kind as TaskTypeMapping['kind'], col: c.col });
+        }
+      }
+    }
+  }
+
   const result = {
     primaryDateCol: primary,
     alsoSetDateCols,
     timeCol,
     typeMap,
+    extraTypeTargets,
     textFormatter,
     jsonVariant,
     proofCol,
@@ -204,18 +232,21 @@ export async function detectTasksColumnMap(supa: SupabaseClient): Promise<TaskCo
 
 export function setTaskType(row: Record<string, unknown>, map: TaskColumnMap, kind: 'today' | 'streak') {
   if (!map.typeMap) return;
-  const { kind: t, col } = map.typeMap;
-  if (t === 'json') {
-    if (map.jsonVariant) {
-      applyTaskTypeVariant(row, map, kind, map.jsonVariant);
+  const targets: TaskTypeMapping[] = [map.typeMap, ...(map.extraTypeTargets ?? [])];
+  for (const target of targets) {
+    const { kind: t, col } = target;
+    if (t === 'json') {
+      if (map.jsonVariant && target.col === map.typeMap.col) {
+        applyTaskTypeVariant(row, map, kind, map.jsonVariant);
+      } else {
+        (row as any)[col] = { kind };
+      }
+    } else if (t === 'text') {
+      const fmt = map.textFormatter && target.col === map.typeMap.col ? map.textFormatter : (k: 'today' | 'streak') => k;
+      (row as any)[col] = fmt(kind);
     } else {
-      row[col] = { kind };
+      (row as any)[col] = kind === 'streak';
     }
-  } else if (t === 'text') {
-    const fmt = map.textFormatter ?? ((k: 'today' | 'streak') => k);
-    row[col] = fmt(kind);
-  } else {
-    row[col] = kind === 'streak';
   }
 }
 
@@ -250,57 +281,72 @@ export function applyTaskTypeVariant(
   logicalKind: 'today' | 'streak',
   variant: JsonTypeVariant,
 ) {
-  if (!map.typeMap || map.typeMap.kind !== 'json') return;
-  const col = map.typeMap.col;
-  switch (variant) {
-    case 'json_kind':
-      row[col] = { kind: logicalKind };
-      break;
-    case 'json_type':
-      row[col] = { type: logicalKind };
-      break;
-    case 'json_task_type':
-      row[col] = { task_type: logicalKind };
-      break;
-    case 'json_flag':
-      row[col] = logicalKind === 'streak' ? { streak: true } : { today: true };
-      break;
-    case 'json_string':
-      row[col] = logicalKind; // JSONB string value
-      break;
-    case 'json_array':
-      row[col] = [logicalKind];
-      break;
-    case 'json_union':
-      row[col] = { kind: logicalKind, version: 1 };
-      break;
-    case 'json_discriminated':
-      row[col] = { _type: logicalKind };
-      break;
-    case 'json_k':
-      row[col] = { k: logicalKind };
-      break;
-    case 'json_t':
-      row[col] = { t: logicalKind };
-      break;
-    default:
-      row[col] = { kind: logicalKind };
+  if (!map.typeMap) return;
+  const targets: TaskTypeMapping[] = [map.typeMap, ...(map.extraTypeTargets ?? [])];
+  const setJson = (col: string) => {
+    switch (variant) {
+      case 'json_kind':
+        (row as any)[col] = { kind: logicalKind };
+        break;
+      case 'json_type':
+        (row as any)[col] = { type: logicalKind };
+        break;
+      case 'json_task_type':
+        (row as any)[col] = { task_type: logicalKind };
+        break;
+      case 'json_flag':
+        (row as any)[col] = logicalKind === 'streak' ? { streak: true } : { today: true };
+        break;
+      case 'json_string':
+        (row as any)[col] = logicalKind;
+        break;
+      case 'json_array':
+        (row as any)[col] = [logicalKind];
+        break;
+      case 'json_union':
+        (row as any)[col] = { kind: logicalKind, version: 1 };
+        break;
+      case 'json_discriminated':
+        (row as any)[col] = { _type: logicalKind };
+        break;
+      case 'json_k':
+        (row as any)[col] = { k: logicalKind };
+        break;
+      case 'json_t':
+        (row as any)[col] = { t: logicalKind };
+        break;
+      default:
+        (row as any)[col] = { kind: logicalKind };
+    }
+  };
+  for (const t of targets) {
+    if (t.kind === 'json') setJson(t.col);
+    else if (t.kind === 'text') (row as any)[t.col] = logicalKind;
+    else if (t.kind === 'bool') (row as any)[t.col] = logicalKind === 'streak';
   }
 }
 
 export type TextTypeFormatter = (logicalKind: 'today' | 'streak') => string;
 export const TEXT_TYPE_VARIANTS: TextTypeFormatter[] = [
+  (k) => k.toUpperCase(),
   (k) => k,
   (k) => JSON.stringify({ kind: k }),
   (k) => JSON.stringify({ type: k }),
   (k) => JSON.stringify({ task_type: k }),
-  (k) => k.toUpperCase(),
 ];
 
 export function applyTextTypeVariant(row: Record<string, unknown>, map: TaskColumnMap, logicalKind: 'today' | 'streak', formatter: TextTypeFormatter) {
-  if (!map.typeMap || map.typeMap.kind !== 'text') return;
-  const col = map.typeMap.col;
-  row[col] = formatter(logicalKind);
+  if (!map.typeMap) return;
+  const targets: TaskTypeMapping[] = [map.typeMap, ...(map.extraTypeTargets ?? [])];
+  for (const t of targets) {
+    if (t.kind === 'text') {
+      (row as any)[t.col] = formatter(logicalKind);
+    } else if (t.kind === 'bool') {
+      (row as any)[t.col] = logicalKind === 'streak';
+    } else if (t.kind === 'json') {
+      (row as any)[t.col] = { kind: logicalKind };
+    }
+  }
 }
 
 export function setTaskDates(row: Record<string, unknown>, map: TaskColumnMap, yyyyMmDd: string) {
