@@ -174,10 +174,10 @@ export async function detectTasksColumnMap(supa: SupabaseClient): Promise<TaskCo
       }
     }
     if (!typeMap) {
-      // Default to JSON for generic 'type' column if no sample exists
-      typeMap = { kind: 'json', col: 'type' };
-      jsonVariant = 'json_kind';
-      console.log('ℹ️ Defaulting type column to JSON: type');
+      // Default conservatively to TEXT for generic 'type' column if no sample exists
+      typeMap = { kind: 'text', col: 'type' };
+      textFormatter = (k) => k;
+      console.log('ℹ️ Defaulting type column to TEXT: type');
     }
   } else {
     console.log('⚠️ No type column found - tasks will be inserted without type classification');
@@ -235,12 +235,13 @@ export const JSON_TYPE_VARIANTS: JsonTypeVariant[] = [
   'json_type',
   'json_task_type',
   'json_flag',
-  'json_string',
-  'json_array',
   'json_union',
+  // deprioritize exotic shapes known to fail often
   'json_discriminated',
   'json_k',
   'json_t',
+  'json_string',
+  'json_array',
 ];
 
 export function applyTaskTypeVariant(
