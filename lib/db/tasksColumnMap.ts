@@ -85,6 +85,7 @@ export async function detectTasksColumnMap(supa: SupabaseClient): Promise<TaskCo
   console.log('🔍 Detecting tasks table column schema...');
   
   const datePriority = [
+    'task_date',
     'scheduled_for_date',
     'scheduled_for',
     'scheduled_at', 
@@ -161,17 +162,17 @@ export async function detectTasksColumnMap(supa: SupabaseClient): Promise<TaskCo
         jsonVariant = deriveJsonVariant(sample as Record<string, unknown>);
         console.log('✅ Detected type column as JSON via sample: type');
       } else if (typeof sample === 'string') {
-        // Prefer JSON for ambiguous 'type' column to satisfy CHECK constraints expecting JSON shape
-        typeMap = { kind: 'json', col: 'type' };
-        jsonVariant = 'json_kind';
-        console.log('ℹ️ Ambiguous sample on type; defaulting to JSON(kind)');
+        // If the column holds strings, treat it as TEXT. Many schemas enforce CHECK (type IN (...)).
+        typeMap = { kind: 'text', col: 'type' };
+        textFormatter = deriveTextFormatter(sample);
+        console.log('✅ Detected type column as TEXT via sample: type');
       }
     }
     if (!typeMap) {
-      // Default to JSON(kind) for generic 'type' column if no sample exists
-      typeMap = { kind: 'json', col: 'type' };
-      jsonVariant = 'json_kind';
-      console.log('ℹ️ Defaulting type column to JSON(kind): type');
+      // With no sample, default to TEXT to satisfy common CHECK constraints (type IN ('streak','today'))
+      typeMap = { kind: 'text', col: 'type' };
+      textFormatter = (k) => k;
+      console.log('ℹ️ Defaulting type column to TEXT(kind): type');
     }
   } else {
     console.log('⚠️ No type column found - tasks will be inserted without type classification');
@@ -234,16 +235,11 @@ export type JsonTypeVariant =
   | 'json_k'
   | 'json_t';
 export const JSON_TYPE_VARIANTS: JsonTypeVariant[] = [
-  // Most common first
   'json_kind',
   'json_type',
-  // A union-like enriched object some schemas require
-  'json_union',
-  // Discriminated key variation sometimes used
-  'json_discriminated',
-  // Alternative property names seen in legacy schemas
   'json_task_type',
-  // Minimal shorthands (rare but try before giving up)
+  'json_union',
+  'json_discriminated',
   'json_k',
   'json_t',
 ];
@@ -322,8 +318,27 @@ export function applyTextTypeVariant(row: Record<string, unknown>, map: TaskColu
 
 export function setTaskDates(row: Record<string, unknown>, map: TaskColumnMap, yyyyMmDd: string) {
   row[map.primaryDateCol] = yyyyMmDd;
-  for (const extra of map.alsoSetDateCols) {
-    row[extra] = yyyyMmDd;
+}
+
+export function setTaskDatesForKind(
+  row: Record<string, unknown>,
+  map: TaskColumnMap,
+  logicalKind: 'today' | 'streak',
+  yyyyMmDd: string,
+) {
+  const dateOnly = yyyyMmDd;
+  const toTs = (d: string) => `${d}T12:00:00Z`;
+  const has = (c?: string) => (c ? map.alsoSetDateCols.includes(c) || map.primaryDateCol === c : false);
+
+  if (logicalKind === 'streak') {
+    if (has('task_date')) (row as any)['task_date'] = dateOnly;
+    // Clear mutually exclusive columns
+    if (has('due_at')) (row as any)['due_at'] = null;
+    if (has('due_date')) (row as any)['due_date'] = null;
+  } else {
+    if (has('due_at')) (row as any)['due_at'] = toTs(dateOnly);
+    if (has('due_date')) (row as any)['due_date'] = dateOnly;
+    if (has('task_date')) (row as any)['task_date'] = null;
   }
 }
 
