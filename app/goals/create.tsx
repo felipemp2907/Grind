@@ -19,19 +19,6 @@ import { useGoalStore } from '@/store/goalStore';
 import { useTaskStore } from '@/store/taskStore';
 import { formatDate, getDatePlusDays } from '@/utils/dateUtils';
 import DateTimePicker from '@/components/DateTimePicker';
-import PreparingOverlay from '@/components/PreparingOverlay';
-import { hasSeenWelcome } from '@/lib/onboardingGate';
-import Constants from 'expo-constants';
-import { planAndInsertAll } from '@/lib/planner/scheduler';
-import { useAuthStore } from '@/store/authStore';
-// Generate a simple UUID-like string
-function generateId() {
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-    const r = Math.random() * 16 | 0;
-    const v = c === 'x' ? r : (r & 0x3 | 0x8);
-    return v.toString(16);
-  });
-}
 
 export default function CreateGoalScreen() {
   const router = useRouter();
@@ -61,58 +48,29 @@ export default function CreateGoalScreen() {
     setCurrentStage('Saving goal...');
     
     try {
-      console.log('🎯 Creating ultimate goal with new planner...');
+      console.log('🎯 Creating ultimate goal with batch planner...');
       
       // Update stage messages
       setTimeout(() => setCurrentStage('Planning your days...'), 1000);
       setTimeout(() => setCurrentStage('Seeding tasks...'), 3000);
       
-      // Build GoalInput and run client planner directly
-      const session = useAuthStore.getState().session!;
-      const userId = session.user.id;
-      const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL || Constants.expoConfig?.extra?.supabaseUrl!;
-      const supabaseAnon = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || Constants.expoConfig?.extra?.supabaseAnon!;
-      
-      // First create the goal in the database
+      // Use the goal store's createUltimateGoal method
       await createUltimateGoal({
         title,
         description,
         deadline
       });
       
-      // Get the created goal ID (assuming it's the latest one)
-      const goalId = generateId(); // Generate a UUID for the goal
-      
-      const goalInput = {
-        id: goalId,
-        title: title,
-        description: description || '',
-        category: 'general',
-        deadlineISO: deadline,
-        createdAtISO: new Date().toISOString(),
-        targetValue: 100,
-        unit: 'points',
-        priority: 'medium' as const,
-      };
-      
-      const res = await planAndInsertAll(goalInput, supabaseUrl, supabaseAnon, userId);
-      console.log('✅ planner insert summary:', res?.inserted || {});
-      
       console.log('✅ Goal creation completed successfully');
       
       // Refresh tasks to get the newly created tasks
       await fetchTasks();
       
-      const seen = await hasSeenWelcome(userId);
-      if (!seen) {
-        router.push('/(onboarding)/welcome');
-      } else {
-        Alert.alert(
-          "Ultimate Goal Created! 🎯",
-          `Your goal "${title}" has been created and your full plan is seeded! Check your Home tab to see today's tasks.`,
-          [{ text: "View Today", onPress: () => router.replace('/(tabs)/home') }]
-        );
-      }
+      Alert.alert(
+        "Ultimate Goal Created! 🎯",
+        `Your goal "${title}" has been created and your full plan is seeded! Check your Home tab to see today's tasks.`,
+        [{ text: "View Today", onPress: () => router.replace('/(tabs)/home') }]
+      );
       
     } catch (error) {
       const errMsg = error instanceof Error ? error.message : (() => { try { return JSON.stringify(error); } catch { return String(error); } })();
@@ -257,8 +215,6 @@ export default function CreateGoalScreen() {
             title="Select Goal Deadline"
           />
         )}
-        
-        <PreparingOverlay visible={creating} subtitle={currentStage || 'Hustle is preparing your plan…'} />
       </SafeAreaView>
     </>
   );
