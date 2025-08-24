@@ -4,7 +4,7 @@ import { useRouter } from "expo-router";
 import { Image } from "expo-image";
 import * as Haptics from "expo-haptics";
 
-export default function WelcomeScreen() {
+export default function WelcomeScreen({ onContinue }: { onContinue?: () => void }) {
   const router = useRouter();
 
   const onGetStarted = useCallback(async () => {
@@ -18,8 +18,13 @@ export default function WelcomeScreen() {
     } catch (e) {
       console.log("Haptics error", e);
     }
-    router.push("/login");
-  }, [router]);
+    
+    if (onContinue) {
+      onContinue();
+    } else {
+      router.push("/login");
+    }
+  }, [router, onContinue]);
 
   return (
     <SafeAreaView style={styles.safe} testID="welcome-safe">

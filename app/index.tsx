@@ -3,6 +3,8 @@ import { useRouter } from 'expo-router';
 import { useAuthStore } from '@/store/authStore';
 import { View, ActivityIndicator } from 'react-native';
 import Colors from '@/constants/colors';
+import Constants from 'expo-constants';
+import { makeSupabase, isNewUserNoGoals } from '@/lib/onboardingGate';
 
 export default function Index() {
   const router = useRouter();
@@ -24,9 +26,20 @@ export default function Index() {
     console.log('Index: Navigating based on auth state', { session: !!session, isLoading });
     
     // Add a small delay to ensure the navigation system is ready
-    const navigationTimer = setTimeout(() => {
+    const navigationTimer = setTimeout(async () => {
       try {
         if (session) {
+          const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL || Constants.expoConfig?.extra?.supabaseUrl!;
+          const supabaseAnon = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || Constants.expoConfig?.extra?.supabaseAnon!;
+          const supa = makeSupabase(supabaseUrl, supabaseAnon);
+          (global as any).__supabase__ = supa;
+
+          const userId = session.user.id;
+          const isNew = await isNewUserNoGoals(supa, userId);
+          if (isNew) { 
+            router.replace('/goals/create'); 
+            return; 
+          }
           router.replace('/(tabs)/home');
         } else {
           router.replace('/welcome');
