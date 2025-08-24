@@ -209,7 +209,13 @@ export async function detectTasksColumnMap(supa: SupabaseClient): Promise<TaskCo
 }
 
 export function setTaskType(row: Record<string, unknown>, map: TaskColumnMap, kind: 'today' | 'streak') {
-  if (!map.typeMap) return;
+  if (!map.typeMap) {
+    // If no type mapping detected, try to set common type columns
+    if ('type' in row || map.alsoSetDateCols.includes('type')) {
+      (row as any)['type'] = kind;
+    }
+    return;
+  }
   const { kind: t, col } = map.typeMap;
   if (t === 'json') {
     (row as any)[col] = { kind };
@@ -318,6 +324,10 @@ export function applyTextTypeVariant(row: Record<string, unknown>, map: TaskColu
 
 export function setTaskDates(row: Record<string, unknown>, map: TaskColumnMap, yyyyMmDd: string) {
   row[map.primaryDateCol] = yyyyMmDd;
+  // Also set scheduled_for_date if it exists to avoid NOT NULL constraint violations
+  if (map.alsoSetDateCols.includes('scheduled_for_date') || map.primaryDateCol === 'scheduled_for_date') {
+    row['scheduled_for_date'] = yyyyMmDd;
+  }
 }
 
 export function setTaskDatesForKind(
@@ -330,14 +340,20 @@ export function setTaskDatesForKind(
   const toTs = (d: string) => `${d}T12:00:00Z`;
   const has = (c?: string) => (c ? map.alsoSetDateCols.includes(c) || map.primaryDateCol === c : false);
 
+  // Always set scheduled_for_date to avoid NOT NULL constraint violations
+  if (has('scheduled_for_date')) {
+    (row as any)['scheduled_for_date'] = dateOnly;
+  }
+
   if (logicalKind === 'streak') {
     if (has('task_date')) (row as any)['task_date'] = dateOnly;
-    // Clear mutually exclusive columns
+    // Clear mutually exclusive columns for streak tasks
     if (has('due_at')) (row as any)['due_at'] = null;
     if (has('due_date')) (row as any)['due_date'] = null;
   } else {
     if (has('due_at')) (row as any)['due_at'] = toTs(dateOnly);
     if (has('due_date')) (row as any)['due_date'] = dateOnly;
+    // Clear task_date for today tasks
     if (has('task_date')) (row as any)['task_date'] = null;
   }
 }
