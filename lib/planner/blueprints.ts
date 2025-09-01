@@ -14,7 +14,7 @@ function clamp(n: number, min: number, max: number) { return Math.max(min, Math.
 type Blueprint = (g: GoalInput) => PlanResult;
 
 const makeLanguage: Blueprint = (g) => {
-  const days = clamp(daysBetween(g.createdAtISO, g.deadlineISO), 14, 365*2);
+  const days = clamp(daysBetween(g.createdAtISO, g.deadlineISO), 14, 365*5); // Support up to 5 years
   const streaks: StreakTaskSpec[] = [
     { title: 'Daily Vocabulary (20 cards)', description: 'Spaced repetition: add/review 20 cards.', xp: 20, proofRequired: true },
     { title: 'Listening Practice (10–20m)', description: 'Podcasts/YouTube comprehensible input.', xp: 15, proofRequired: true },
@@ -45,7 +45,7 @@ const makeLanguage: Blueprint = (g) => {
 };
 
 const makeMuscle: Blueprint = (g) => {
-  const days = clamp(daysBetween(g.createdAtISO, g.deadlineISO), 28, 365);
+  const days = clamp(daysBetween(g.createdAtISO, g.deadlineISO), 28, 365*5); // Support up to 5 years
   const streaks: StreakTaskSpec[] = [
     { title: 'Daily Protein Intake', description: '1.6–2.2 g/kg bodyweight. Log source.', xp: 25, proofRequired: true },
     { title: 'Sleep 7–9h / Mobility 10m', description: 'Recovery habit + short mobility.', xp: 15, proofRequired: true },
@@ -76,7 +76,7 @@ const makeMuscle: Blueprint = (g) => {
 };
 
 const makeExamStudy: Blueprint = (g) => {
-  const days = clamp(daysBetween(g.createdAtISO, g.deadlineISO), 14, 365*2);
+  const days = clamp(daysBetween(g.createdAtISO, g.deadlineISO), 14, 365*5); // Support up to 5 years
   const streaks: StreakTaskSpec[] = [
     { title: 'Daily Review (Pomodoro x2)', description: '2×25m active recall + spaced repetition.', xp: 25, proofRequired: true },
     { title: 'Question Bank (20m)', description: 'Do past questions; log weaknesses.', xp: 20, proofRequired: true },
@@ -94,7 +94,7 @@ const makeExamStudy: Blueprint = (g) => {
 };
 
 const makeInstrument: Blueprint = (g) => {
-  const days = clamp(daysBetween(g.createdAtISO, g.deadlineISO), 14, 365*2);
+  const days = clamp(daysBetween(g.createdAtISO, g.deadlineISO), 14, 365*5); // Support up to 5 years
   const streaks: StreakTaskSpec[] = [
     { title: 'Technique Drills (15m)', description: 'Scales/arpeggios/etudes. Slow metronome.', xp: 20, proofRequired: true },
     { title: 'Repertoire (15m)', description: 'Work on 1–2 pieces, bars/phrases.', xp: 20, proofRequired: true },
@@ -109,7 +109,7 @@ const makeInstrument: Blueprint = (g) => {
 };
 
 const makeCoding: Blueprint = (g) => {
-  const days = clamp(daysBetween(g.createdAtISO, g.deadlineISO), 14, 365*2);
+  const days = clamp(daysBetween(g.createdAtISO, g.deadlineISO), 14, 365*5); // Support up to 5 years
   const streaks: StreakTaskSpec[] = [
     { title: 'Daily Coding (30m)', description: 'Implement/Refactor feature; commit daily.', xp: 25, proofRequired: true },
     { title: 'Notes/Flashcards (10m)', description: 'Summarize concept learned.', xp: 15, proofRequired: true },
@@ -124,7 +124,7 @@ const makeCoding: Blueprint = (g) => {
 };
 
 const makeMoneyOnline: Blueprint = (g) => {
-  const days = clamp(daysBetween(g.createdAtISO, g.deadlineISO), 21, 365);
+  const days = clamp(daysBetween(g.createdAtISO, g.deadlineISO), 21, 365*5); // Support up to 5 years
   const streaks: StreakTaskSpec[] = [
     { title: 'Daily Output (1 micro-asset)', description: 'Publish 1 concrete thing: post, listing, landing, cold DM.', xp: 30, proofRequired: true },
     { title: 'Metrics Log (5m)', description: 'Track impressions, clicks, leads, revenue.', xp: 10, proofRequired: true },
@@ -149,7 +149,7 @@ const makeMoneyOnline: Blueprint = (g) => {
 };
 
 const makeGeneric: Blueprint = (g) => {
-  const days = clamp(daysBetween(g.createdAtISO, g.deadlineISO), 7, 365);
+  const days = clamp(daysBetween(g.createdAtISO, g.deadlineISO), 7, 365*5); // Support up to 5 years
   const streaks: StreakTaskSpec[] = [
     { title: 'Daily Progress (25–40m)', description: 'Small, verifiable action toward the goal.', xp: 25, proofRequired: true },
     { title: 'Journal (5m)', description: 'What moved the needle? What next?', xp: 10, proofRequired: false },

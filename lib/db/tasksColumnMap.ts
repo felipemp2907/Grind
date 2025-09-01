@@ -338,23 +338,60 @@ export function setTaskDatesForKind(
 ) {
   const dateOnly = yyyyMmDd;
   const toTs = (d: string) => `${d}T12:00:00Z`;
-  const has = (c?: string) => (c ? map.alsoSetDateCols.includes(c) || map.primaryDateCol === c : false);
+  
+  // Helper to check if a column exists in the schema
+  const has = (c: string) => {
+    return c === map.primaryDateCol || map.alsoSetDateCols.includes(c);
+  };
 
-  // Always set scheduled_for_date to avoid NOT NULL constraint violations
-  if (has('scheduled_for_date')) {
-    (row as any)['scheduled_for_date'] = dateOnly;
-  }
-
+  // Based on the constraint: 
+  // (type = 'streak' AND task_date IS NOT NULL AND due_at IS NULL) OR
+  // (type = 'today' AND task_date IS NULL AND due_at IS NOT NULL)
+  
   if (logicalKind === 'streak') {
-    if (has('task_date')) (row as any)['task_date'] = dateOnly;
-    // Clear mutually exclusive columns for streak tasks
-    if (has('due_at')) (row as any)['due_at'] = null;
-    if (has('due_date')) (row as any)['due_date'] = null;
+    // For streak tasks: set task_date, clear due_at
+    if (has('task_date')) {
+      (row as any)['task_date'] = dateOnly;
+    }
+    if (has('due_at')) {
+      (row as any)['due_at'] = null;
+    }
+    if (has('due_date')) {
+      (row as any)['due_date'] = null;
+    }
+    // Also set scheduled_for_date if it exists (for compatibility)
+    if (has('scheduled_for_date')) {
+      (row as any)['scheduled_for_date'] = dateOnly;
+    }
   } else {
-    if (has('due_at')) (row as any)['due_at'] = toTs(dateOnly);
-    if (has('due_date')) (row as any)['due_date'] = dateOnly;
-    // Clear task_date for today tasks
-    if (has('task_date')) (row as any)['task_date'] = null;
+    // For today tasks: set due_at, clear task_date
+    if (has('task_date')) {
+      (row as any)['task_date'] = null;
+    }
+    if (has('due_at')) {
+      (row as any)['due_at'] = toTs(dateOnly);
+    }
+    if (has('due_date')) {
+      (row as any)['due_date'] = dateOnly;
+    }
+    // Also set scheduled_for_date if it exists (for compatibility)
+    if (has('scheduled_for_date')) {
+      (row as any)['scheduled_for_date'] = dateOnly;
+    }
+  }
+  
+  // Always set the primary date column regardless of what it is
+  if (map.primaryDateCol === 'task_date' && logicalKind === 'streak') {
+    row[map.primaryDateCol] = dateOnly;
+  } else if (map.primaryDateCol === 'due_at' && logicalKind === 'today') {
+    row[map.primaryDateCol] = toTs(dateOnly);
+  } else if (map.primaryDateCol === 'due_date') {
+    row[map.primaryDateCol] = dateOnly;
+  } else if (map.primaryDateCol === 'scheduled_for_date') {
+    row[map.primaryDateCol] = dateOnly;
+  } else {
+    // Fallback: set primary column with appropriate format
+    row[map.primaryDateCol] = map.primaryDateCol.includes('at') ? toTs(dateOnly) : dateOnly;
   }
 }
 
