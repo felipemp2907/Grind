@@ -5,7 +5,7 @@ import {
   detectTasksColumnMap,
   TaskColumnMap,
   setTaskType,
-  setTaskDates,
+  setTaskDatesForKind,
   setTaskTimeIfNeeded,
   toLocalYyyyMmDd,
   applyTaskTypeVariant,
@@ -81,7 +81,7 @@ export async function planAndInsertAll(
       description: t.description,
       xp_value: t.xp ?? 0,
     };
-    setTaskDates(row, map, yyyyMmDd);
+    setTaskDatesForKind(row, map, 'today', yyyyMmDd);
     setTaskTimeIfNeeded(row, map);
     setTaskType(row, map, 'today');
     if (map.proofCol) row[map.proofCol] = t.proofRequired ?? true;
@@ -111,7 +111,7 @@ export async function planAndInsertAll(
               description: t.description,
               xp_value: t.xp ?? 0,
             };
-            setTaskDates(row, map, yyyyMmDd);
+            setTaskDatesForKind(row, map, 'today', yyyyMmDd);
             setTaskTimeIfNeeded(row, map);
             applyTextTypeVariant(row, { ...map, typeMap: { kind: 'text', col: map.typeMap!.col } }, 'today', fmt);
             if (map.proofCol) row[map.proofCol] = t.proofRequired ?? true;
@@ -140,7 +140,7 @@ export async function planAndInsertAll(
               description: t.description,
               xp_value: t.xp ?? 0,
             };
-            setTaskDates(row, map, yyyyMmDd);
+            setTaskDatesForKind(row, map, 'today', yyyyMmDd);
             setTaskTimeIfNeeded(row, map);
             (row as any)[map.typeMap!.col] = undefined;
             applyTaskTypeVariant(row, { ...map, typeMap: { kind: 'json', col: map.typeMap!.col } }, 'today', variant);
@@ -170,7 +170,7 @@ export async function planAndInsertAll(
             description: t.description,
             xp_value: t.xp ?? 0,
           };
-          setTaskDates(row, map, yyyyMmDd);
+          setTaskDatesForKind(row, map, 'today', yyyyMmDd);
           setTaskTimeIfNeeded(row, map);
           (row as any)[typeCol] = 'today';
           if (map.proofCol) row[map.proofCol] = t.proofRequired ?? true;
@@ -197,7 +197,7 @@ export async function planAndInsertAll(
             description: t.description,
             xp_value: t.xp ?? 0,
           };
-          setTaskDates(row, map, yyyyMmDd);
+          setTaskDatesForKind(row, map, 'today', yyyyMmDd);
           setTaskTimeIfNeeded(row, map);
           (row as any)[typeCol] = false;
           if (map.proofCol) row[map.proofCol] = t.proofRequired ?? true;
@@ -223,7 +223,7 @@ export async function planAndInsertAll(
           description: t.description,
           xp_value: t.xp ?? 0,
         };
-        setTaskDates(row, map, yyyyMmDd);
+        setTaskDatesForKind(row, map, 'today', yyyyMmDd);
         setTaskTimeIfNeeded(row, map);
         setTaskType(row, map, 'today');
         if (map.proofCol) row[map.proofCol] = t.proofRequired ?? true;
@@ -245,7 +245,8 @@ export async function planAndInsertAll(
   const start = new Date(goal.createdAtISO);
   const end = new Date(goal.deadlineISO);
   const diffDays = Math.max(1, Math.ceil((end.getTime() - start.getTime()) / 86400000));
-  const horizonDays = Math.min(diffDays, 120);
+  // Extend horizon to cover the full goal period (was limited to 120 days)
+  const horizonDays = diffDays;
   const streakRows: Record<string, unknown>[] = [];
   for (let d = 0; d < horizonDays; d++) {
     const date = new Date(start.getTime() + d * 86400000);
@@ -258,7 +259,7 @@ export async function planAndInsertAll(
         description: s.description,
         xp_value: s.xp ?? 0,
       };
-      setTaskDates(r, map, yyyyMmDd);
+      setTaskDatesForKind(r, map, 'streak', yyyyMmDd);
       setTaskTimeIfNeeded(r, map);
       setTaskType(r, map, 'streak');
       if (map.proofCol) r[map.proofCol] = s.proofRequired ?? true;
@@ -293,7 +294,7 @@ export async function planAndInsertAll(
                   description: s.description,
                   xp_value: s.xp ?? 0,
                 };
-                setTaskDates(r, map, yyyyMmDd);
+                setTaskDatesForKind(r, map, 'streak', yyyyMmDd);
                 setTaskTimeIfNeeded(r, map);
                 applyTextTypeVariant(r, { ...map, typeMap: { kind: 'text', col: map.typeMap!.col } }, 'streak', fmt);
                 if (map.proofCol) r[map.proofCol] = s.proofRequired ?? true;
@@ -327,7 +328,7 @@ export async function planAndInsertAll(
                   description: s.description,
                   xp_value: s.xp ?? 0,
                 };
-                setTaskDates(r, map, yyyyMmDd);
+                setTaskDatesForKind(r, map, 'streak', yyyyMmDd);
                 setTaskTimeIfNeeded(r, map);
                 applyTaskTypeVariant(r, { ...map, typeMap: { kind: 'json', col: map.typeMap!.col } }, 'streak', variant);
                 if (map.proofCol) r[map.proofCol] = s.proofRequired ?? true;
@@ -361,7 +362,7 @@ export async function planAndInsertAll(
                 description: s.description,
                 xp_value: s.xp ?? 0,
               };
-              setTaskDates(r, map, yyyyMmDd);
+              setTaskDatesForKind(r, map, 'streak', yyyyMmDd);
               setTaskTimeIfNeeded(r, map);
               (r as any)[typeCol] = 'streak';
               if (map.proofCol) r[map.proofCol] = s.proofRequired ?? true;
@@ -393,7 +394,7 @@ export async function planAndInsertAll(
                 description: s.description,
                 xp_value: s.xp ?? 0,
               };
-              setTaskDates(r, map, yyyyMmDd);
+              setTaskDatesForKind(r, map, 'streak', yyyyMmDd);
               setTaskTimeIfNeeded(r, map);
               (r as any)[typeCol] = true;
               if (map.proofCol) r[map.proofCol] = s.proofRequired ?? true;
@@ -423,7 +424,7 @@ export async function planAndInsertAll(
               description: s.description,
               xp_value: s.xp ?? 0,
             };
-            setTaskDates(r, map, yyyyMmDd);
+            setTaskDatesForKind(r, map, 'streak', yyyyMmDd);
             setTaskTimeIfNeeded(r, map);
             setTaskType(r, map, 'streak');
             if (map.proofCol) r[map.proofCol] = s.proofRequired ?? true;
