@@ -1,6 +1,7 @@
 import { PlanResult, GoalInput } from './types';
 import { chooseBlueprint } from './blueprints';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { createClient } from '@supabase/supabase-js';
 import {
   detectTasksColumnMap,
   TaskColumnMap,
@@ -13,6 +14,7 @@ import {
   TEXT_TYPE_VARIANTS,
   applyTextTypeVariant,
 } from '../db/tasksColumnMap';
+import { eachDayISOInclusive } from './dateRange';
 
 function isUuid(v: string | undefined): boolean {
   if (!v) return false;
@@ -69,11 +71,26 @@ export async function planAndInsertAll(
   }
 
   const map: TaskColumnMap = await detectTasksColumnMap(supa);
-  // detectTasksColumnMap now throws if no date column is found, so we don't need to check here
+
+  // Ensure at least one "Kickoff" today entry on Day 0
+  const startISO = new Date(goal.createdAtISO).toISOString().slice(0, 10);
+  const hasDay0 = plan.schedule.some((t) => (t.dateISO ?? '').slice(0, 10) === startISO);
+  if (!hasDay0) {
+    plan.schedule.unshift({
+      goalId: goal.id,
+      title: 'Kickoff: Build Your Plan',
+      description: 'Review streak habits and today tasks. Confirm tools and time blocks.',
+      xp: 20,
+      dateISO: startISO,
+      isStreak: false,
+      proofRequired: true,
+      tags: ['kickoff'],
+    });
+  }
 
   // TODAY tasks
   const todayRows = plan.schedule.map((t) => {
-    const yyyyMmDd = t.dateISO ?? toLocalYyyyMmDd(new Date());
+    const yyyyMmDd = (t.dateISO ?? toLocalYyyyMmDd(new Date())).slice(0, 10);
     const row: Record<string, unknown> = {
       user_id: userId,
       goal_id: goalId,
@@ -103,7 +120,7 @@ export async function planAndInsertAll(
         console.log('Retry TODAY forcing TEXT type variants first');
         for (const fmt of TEXT_TYPE_VARIANTS) {
           const todayRowsRetry2 = plan.schedule.map((t) => {
-            const yyyyMmDd = t.dateISO ?? toLocalYyyyMmDd(new Date());
+            const yyyyMmDd = (t.dateISO ?? toLocalYyyyMmDd(new Date())).slice(0, 10);
             const row: Record<string, unknown> = {
               user_id: userId,
               goal_id: goalId,
@@ -132,7 +149,7 @@ export async function planAndInsertAll(
         for (const variant of JSON_TYPE_VARIANTS) {
           console.log('Retry TODAY with JSON type variant:', variant);
           const todayRowsRetry = plan.schedule.map((t) => {
-            const yyyyMmDd = t.dateISO ?? toLocalYyyyMmDd(new Date());
+            const yyyyMmDd = (t.dateISO ?? toLocalYyyyMmDd(new Date())).slice(0, 10);
             const row: Record<string, unknown> = {
               user_id: userId,
               goal_id: goalId,
@@ -162,7 +179,7 @@ export async function planAndInsertAll(
         console.log('Retry TODAY forcing simple TEXT fallback');
         const typeCol = map.typeMap?.col as string;
         const todayRowsRetry2 = plan.schedule.map((t) => {
-          const yyyyMmDd = t.dateISO ?? toLocalYyyyMmDd(new Date());
+          const yyyyMmDd = (t.dateISO ?? toLocalYyyyMmDd(new Date())).slice(0, 10);
           const row: Record<string, unknown> = {
             user_id: userId,
             goal_id: goalId,
@@ -189,7 +206,7 @@ export async function planAndInsertAll(
         console.log('Retry TODAY forcing BOOLEAN type fallback');
         const typeCol = map.typeMap?.col as string;
         const todayRowsRetry3 = plan.schedule.map((t) => {
-          const yyyyMmDd = t.dateISO ?? toLocalYyyyMmDd(new Date());
+          const yyyyMmDd = (t.dateISO ?? toLocalYyyyMmDd(new Date())).slice(0, 10);
           const row: Record<string, unknown> = {
             user_id: userId,
             goal_id: goalId,
@@ -215,7 +232,7 @@ export async function planAndInsertAll(
       if (todayInsertErr) throw err as any;
     } else if (typeof msg === 'string' && msg.includes('scheduled_for_date')) {
       const todayRowsRetry = plan.schedule.map((t) => {
-        const yyyyMmDd = t.dateISO ?? toLocalYyyyMmDd(new Date());
+        const yyyyMmDd = (t.dateISO ?? toLocalYyyyMmDd(new Date())).slice(0, 10);
         const row: Record<string, unknown> = {
           user_id: userId,
           goal_id: goalId,
@@ -241,51 +258,91 @@ export async function planAndInsertAll(
     }
   }
 
-  // STREAK tasks up to horizon
-  const start = new Date(goal.createdAtISO);
-  const end = new Date(goal.deadlineISO);
-  const diffDays = Math.max(1, Math.ceil((end.getTime() - start.getTime()) / 86400000));
-  // Extend horizon to cover the full goal period (was limited to 120 days)
-  const horizonDays = diffDays;
-  const streakRows: Record<string, unknown>[] = [];
-  for (let d = 0; d < horizonDays; d++) {
-    const date = new Date(start.getTime() + d * 86400000);
-    const yyyyMmDd = toLocalYyyyMmDd(date);
-    for (const s of plan.streaks) {
-      const r: Record<string, unknown> = {
-        user_id: userId,
-        goal_id: goalId,
-        title: s.title,
-        description: s.description,
-        xp_value: s.xp ?? 0,
-      };
-      setTaskDatesForKind(r, map, 'streak', yyyyMmDd);
-      setTaskTimeIfNeeded(r, map);
-      setTaskType(r, map, 'streak');
-      if (map.proofCol) r[map.proofCol] = s.proofRequired ?? true;
-      streakRows.push(r);
+  // STREAK tasks inclusive to deadline, chunked
+  const allDays = eachDayISOInclusive(goal.createdAtISO, goal.deadlineISO);
+  const chunkSize = 90;
+  for (let i = 0; i < allDays.length; i += chunkSize) {
+    const slice = allDays.slice(i, i + chunkSize);
+    const streakRows: Record<string, unknown>[] = [];
+    for (const yyyyMmDd of slice) {
+      for (const s of plan.streaks) {
+        const r: Record<string, unknown> = {
+          user_id: userId,
+          goal_id: goalId,
+          title: s.title,
+          description: s.description,
+          xp_value: s.xp ?? 0,
+        };
+        setTaskDatesForKind(r, map, 'streak', yyyyMmDd);
+        setTaskTimeIfNeeded(r, map);
+        setTaskType(r, map, 'streak');
+        if (map.proofCol) r[map.proofCol] = s.proofRequired ?? true;
+        streakRows.push(r);
+      }
     }
-  }
-  if (streakRows.length) {
-    let streakInsertErr = undefined as unknown;
-    {
+    if (streakRows.length) {
+      let streakInsertErr = undefined as unknown;
       const { error } = await supa.from('tasks').insert(streakRows);
       streakInsertErr = error as unknown;
-    }
-    if (streakInsertErr) {
-      const err = streakInsertErr as any;
-      const msg: string = (err?.message ?? err?.details ?? String(err)) as string;
-      console.error('Insert STREAK failed. Column map:', map, 'error:', msg);
-      if (typeof msg === 'string' && (msg.includes('tasks_type_check') || msg.includes('tasks_type_shape')) && map.typeMap?.col) {
-        const preferTextFirst = map.typeMap?.kind === 'text' || map.typeMap?.col === 'type';
-        if (preferTextFirst) {
-          console.log('Retry STREAK forcing TEXT type variants first');
-          const start2 = new Date(goal.createdAtISO);
-          for (const fmt of TEXT_TYPE_VARIANTS) {
-            const streakRowsRetry2: Record<string, unknown>[] = [];
-            for (let d = 0; d < horizonDays; d++) {
-              const date = new Date(start2.getTime() + d * 86400000);
-              const yyyyMmDd = toLocalYyyyMmDd(date);
+      if (streakInsertErr) {
+        const err = streakInsertErr as any;
+        const msg: string = (err?.message ?? err?.details ?? String(err)) as string;
+        console.error('Insert STREAK failed. Column map:', map, 'error:', msg);
+        if (typeof msg === 'string' && (msg.includes('tasks_type_check') || msg.includes('tasks_type_shape')) && map.typeMap?.col) {
+          const preferTextFirst = map.typeMap?.kind === 'text' || map.typeMap?.col === 'type';
+          if (preferTextFirst) {
+            console.log('Retry STREAK forcing TEXT type variants first');
+            for (const fmt of TEXT_TYPE_VARIANTS) {
+              const retryRows: Record<string, unknown>[] = [];
+              for (const yyyyMmDd of slice) {
+                for (const s of plan.streaks) {
+                  const r: Record<string, unknown> = {
+                    user_id: userId,
+                    goal_id: goalId,
+                    title: s.title,
+                    description: s.description,
+                    xp_value: s.xp ?? 0,
+                  };
+                  setTaskDatesForKind(r, map, 'streak', yyyyMmDd);
+                  setTaskTimeIfNeeded(r, map);
+                  applyTextTypeVariant(r, { ...map, typeMap: { kind: 'text', col: map.typeMap!.col } }, 'streak', fmt);
+                  if (map.proofCol) r[map.proofCol] = s.proofRequired ?? true;
+                  retryRows.push(r);
+                }
+              }
+              const { error: retryErr2 } = await supa.from('tasks').insert(retryRows);
+              if (!retryErr2) { streakInsertErr = undefined; break; }
+            }
+          }
+          if (streakInsertErr) {
+            for (const variant of JSON_TYPE_VARIANTS) {
+              console.log('Retry STREAK with JSON type variant:', variant);
+              const retryRows: Record<string, unknown>[] = [];
+              for (const yyyyMmDd of slice) {
+                for (const s of plan.streaks) {
+                  const r: Record<string, unknown> = {
+                    user_id: userId,
+                    goal_id: goalId,
+                    title: s.title,
+                    description: s.description,
+                    xp_value: s.xp ?? 0,
+                  };
+                  setTaskDatesForKind(r, map, 'streak', yyyyMmDd);
+                  setTaskTimeIfNeeded(r, map);
+                  applyTaskTypeVariant(r, { ...map, typeMap: { kind: 'json', col: map.typeMap!.col } }, 'streak', variant);
+                  if (map.proofCol) r[map.proofCol] = s.proofRequired ?? true;
+                  retryRows.push(r);
+                }
+              }
+              const { error: retryErr } = await supa.from('tasks').insert(retryRows);
+              if (!retryErr) { streakInsertErr = undefined; break; }
+            }
+          }
+          if (streakInsertErr) {
+            console.log('Retry STREAK forcing simple TEXT fallback');
+            const typeCol = map.typeMap?.col as string;
+            const retryRows: Record<string, unknown>[] = [];
+            for (const yyyyMmDd of slice) {
               for (const s of plan.streaks) {
                 const r: Record<string, unknown> = {
                   user_id: userId,
@@ -296,30 +353,19 @@ export async function planAndInsertAll(
                 };
                 setTaskDatesForKind(r, map, 'streak', yyyyMmDd);
                 setTaskTimeIfNeeded(r, map);
-                applyTextTypeVariant(r, { ...map, typeMap: { kind: 'text', col: map.typeMap!.col } }, 'streak', fmt);
+                (r as any)[typeCol] = 'streak';
                 if (map.proofCol) r[map.proofCol] = s.proofRequired ?? true;
-                streakRowsRetry2.push(r);
+                retryRows.push(r);
               }
             }
-            const { error: retryErr2 } = await supa.from('tasks').insert(streakRowsRetry2);
-            if (!retryErr2) {
-              console.log('STREAK insert succeeded with TEXT variant');
-              streakInsertErr = undefined;
-              break;
-            } else {
-              console.error('STREAK insert failed with TEXT variant', retryErr2);
-            }
+            const { error: retryErr2 } = await supa.from('tasks').insert(retryRows);
+            if (!retryErr2) { streakInsertErr = undefined; }
           }
-        }
-        // Try JSON variants after
-        if (streakInsertErr) {
-          for (const variant of JSON_TYPE_VARIANTS) {
-            console.log('Retry STREAK with JSON type variant:', variant);
-            const start2 = new Date(goal.createdAtISO);
-            const streakRowsRetry: Record<string, unknown>[] = [];
-            for (let d = 0; d < horizonDays; d++) {
-              const date = new Date(start2.getTime() + d * 86400000);
-              const yyyyMmDd = toLocalYyyyMmDd(date);
+          if (streakInsertErr) {
+            console.log('Retry STREAK forcing BOOLEAN type fallback');
+            const typeCol = map.typeMap?.col as string;
+            const retryRows: Record<string, unknown>[] = [];
+            for (const yyyyMmDd of slice) {
               for (const s of plan.streaks) {
                 const r: Record<string, unknown> = {
                   user_id: userId,
@@ -330,30 +376,18 @@ export async function planAndInsertAll(
                 };
                 setTaskDatesForKind(r, map, 'streak', yyyyMmDd);
                 setTaskTimeIfNeeded(r, map);
-                applyTaskTypeVariant(r, { ...map, typeMap: { kind: 'json', col: map.typeMap!.col } }, 'streak', variant);
+                (r as any)[typeCol] = true;
                 if (map.proofCol) r[map.proofCol] = s.proofRequired ?? true;
-                streakRowsRetry.push(r);
+                retryRows.push(r);
               }
             }
-            const { error: retryErr } = await supa.from('tasks').insert(streakRowsRetry);
-            if (!retryErr) {
-              console.log('STREAK insert succeeded with JSON variant', variant);
-              streakInsertErr = undefined;
-              break;
-            } else {
-              console.error('STREAK insert failed with JSON variant', variant, retryErr);
-            }
+            const { error: retryErr3 } = await supa.from('tasks').insert(retryRows);
+            if (!retryErr3) { streakInsertErr = undefined; }
           }
-        }
-        if (streakInsertErr) {
-          // Generic TEXT fallback on detected column
-          console.log('Retry STREAK forcing simple TEXT fallback');
-          const typeCol = map.typeMap?.col as string;
-          const start2 = new Date(goal.createdAtISO);
-          const streakRowsRetry2: Record<string, unknown>[] = [];
-          for (let d = 0; d < horizonDays; d++) {
-            const date = new Date(start2.getTime() + d * 86400000);
-            const yyyyMmDd = toLocalYyyyMmDd(date);
+          if (streakInsertErr) throw err as any;
+        } else if (typeof msg === 'string' && msg.includes('scheduled_for_date')) {
+          const retryRows: Record<string, unknown>[] = [];
+          for (const yyyyMmDd of slice) {
             for (const s of plan.streaks) {
               const r: Record<string, unknown> = {
                 user_id: userId,
@@ -364,85 +398,31 @@ export async function planAndInsertAll(
               };
               setTaskDatesForKind(r, map, 'streak', yyyyMmDd);
               setTaskTimeIfNeeded(r, map);
-              (r as any)[typeCol] = 'streak';
+              setTaskType(r, map, 'streak');
               if (map.proofCol) r[map.proofCol] = s.proofRequired ?? true;
-              streakRowsRetry2.push(r);
+              (r as any)['scheduled_for_date'] = yyyyMmDd;
+              retryRows.push(r);
             }
           }
-          const { error: retryErr2 } = await supa.from('tasks').insert(streakRowsRetry2);
-          if (!retryErr2) {
-            console.log('STREAK insert succeeded with TEXT fallback');
-            streakInsertErr = undefined;
-          } else {
-            console.error('STREAK insert failed with TEXT fallback', retryErr2);
-          }
+          const { error: retryErr } = await supa.from('tasks').insert(retryRows);
+          if (retryErr) { throw retryErr as any; }
+        } else {
+          throw err as any;
         }
-        // 3) BOOLEAN fallback
-        if (streakInsertErr) {
-          console.log('Retry STREAK forcing BOOLEAN type fallback');
-          const typeCol = map.typeMap?.col as string;
-          const start2 = new Date(goal.createdAtISO);
-          const streakRowsRetry3: Record<string, unknown>[] = [];
-          for (let d = 0; d < horizonDays; d++) {
-            const date = new Date(start2.getTime() + d * 86400000);
-            const yyyyMmDd = toLocalYyyyMmDd(date);
-            for (const s of plan.streaks) {
-              const r: Record<string, unknown> = {
-                user_id: userId,
-                goal_id: goalId,
-                title: s.title,
-                description: s.description,
-                xp_value: s.xp ?? 0,
-              };
-              setTaskDatesForKind(r, map, 'streak', yyyyMmDd);
-              setTaskTimeIfNeeded(r, map);
-              (r as any)[typeCol] = true;
-              if (map.proofCol) r[map.proofCol] = s.proofRequired ?? true;
-              streakRowsRetry3.push(r);
-            }
-          }
-          const { error: retryErr3 } = await supa.from('tasks').insert(streakRowsRetry3);
-          if (!retryErr3) {
-            console.log('STREAK insert succeeded with BOOLEAN fallback');
-            streakInsertErr = undefined;
-          } else {
-            console.error('STREAK insert failed with BOOLEAN fallback', retryErr3);
-          }
-        }
-        if (streakInsertErr) throw err as any;
-      } else if (typeof msg === 'string' && msg.includes('scheduled_for_date')) {
-        const start2 = new Date(goal.createdAtISO);
-        const streakRowsRetry: Record<string, unknown>[] = [];
-        for (let d = 0; d < horizonDays; d++) {
-          const date = new Date(start2.getTime() + d * 86400000);
-          const yyyyMmDd = toLocalYyyyMmDd(date);
-          for (const s of plan.streaks) {
-            const r: Record<string, unknown> = {
-              user_id: userId,
-              goal_id: goalId,
-              title: s.title,
-              description: s.description,
-              xp_value: s.xp ?? 0,
-            };
-            setTaskDatesForKind(r, map, 'streak', yyyyMmDd);
-            setTaskTimeIfNeeded(r, map);
-            setTaskType(r, map, 'streak');
-            if (map.proofCol) r[map.proofCol] = s.proofRequired ?? true;
-            (r as any)['scheduled_for_date'] = yyyyMmDd;
-            streakRowsRetry.push(r);
-          }
-        }
-        const { error: retryErr } = await supa.from('tasks').insert(streakRowsRetry);
-        if (retryErr) {
-          console.error('Insert STREAK retry with scheduled_for_date failed:', retryErr);
-          throw retryErr as any;
-        }
-      } else {
-        throw err as any;
       }
     }
   }
 
   console.log('planAndInsertAll: inserted tasks');
   return { ok: true, notes: plan.notes, goalId };
+}
+
+export async function planAndInsertAllClient(
+  goal: GoalInput,
+  supabaseUrl: string,
+  supabaseAnonKey: string,
+  userId: string,
+) {
+  const supa = createClient(supabaseUrl, supabaseAnonKey);
+  return planAndInsertAll(goal, supa, userId);
 }
