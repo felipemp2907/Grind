@@ -7,7 +7,10 @@ function daysBetween(aISO: string, bISO: string) {
 function dayISO(startISO: string, offset: number) {
   const d = new Date(startISO);
   d.setDate(d.getDate() + offset);
-  return d.toISOString().slice(0,10);
+  const y = d.getFullYear();
+  const m = String(d.getMonth()+1).padStart(2,'0');
+  const day = String(d.getDate()).padStart(2,'0');
+  return `${y}-${m}-${day}`;
 }
 function clamp(n: number, min: number, max: number) { return Math.max(min, Math.min(max, n)); }
 

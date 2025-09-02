@@ -14,7 +14,8 @@ import {
   TEXT_TYPE_VARIANTS,
   applyTextTypeVariant,
 } from '../db/tasksColumnMap';
-import { eachDayISOInclusive } from './dateRange';
+import { eachDayLocalInclusive, toLocalYYYYMMDD } from './localDate';
+import { personalizeWithGPT5 } from './gptPersonalizer';
 
 function isUuid(v: string | undefined): boolean {
   if (!v) return false;
@@ -27,8 +28,22 @@ export async function planAndInsertAll(
   userId: string,
 ) {
   console.log('planAndInsertAll: start', { goalTitle: goal.title, userId });
-  const plan: PlanResult = chooseBlueprint(goal);
+  let plan: PlanResult = chooseBlueprint(goal);
   console.log('planAndInsertAll: blueprint chosen', plan.notes);
+  try {
+    const enriched = await personalizeWithGPT5({
+      title: goal.title,
+      description: goal.description,
+      category: goal.category,
+      streaks: plan.streaks.map(s=>({ title: s.title, description: s.description })),
+      schedule: plan.schedule.map(s=>({ title: s.title, description: s.description, dateISO: s.dateISO })),
+    });
+    plan = {
+      streaks: plan.streaks.map((s,i)=>({ ...s, title: enriched.streaks?.[i]?.title ?? s.title, description: enriched.streaks?.[i]?.description ?? s.description })),
+      schedule: plan.schedule.map((s,i)=>({ ...s, title: enriched.schedule?.[i]?.title ?? s.title, description: enriched.schedule?.[i]?.description ?? s.description })),
+      notes: plan.notes.concat(['personalized'])
+    };
+  } catch {}
 
   // Ensure goal exists and get a valid UUID id
   let goalId: string | undefined = isUuid(goal.id) ? goal.id : undefined;
@@ -73,7 +88,7 @@ export async function planAndInsertAll(
   const map: TaskColumnMap = await detectTasksColumnMap(supa);
 
   // Ensure at least one "Kickoff" today entry on Day 0
-  const startISO = new Date(goal.createdAtISO).toISOString().slice(0, 10);
+  const startISO = toLocalYYYYMMDD(new Date(goal.createdAtISO));
   const hasDay0 = plan.schedule.some((t) => (t.dateISO ?? '').slice(0, 10) === startISO);
   if (!hasDay0) {
     plan.schedule.unshift({
@@ -90,7 +105,7 @@ export async function planAndInsertAll(
 
   // TODAY tasks
   const todayRows = plan.schedule.map((t) => {
-    const yyyyMmDd = (t.dateISO ?? toLocalYyyyMmDd(new Date())).slice(0, 10);
+    const yyyyMmDd = (t.dateISO ?? toLocalYYYYMMDD(new Date())).slice(0, 10);
     const row: Record<string, unknown> = {
       user_id: userId,
       goal_id: goalId,
@@ -120,7 +135,7 @@ export async function planAndInsertAll(
         console.log('Retry TODAY forcing TEXT type variants first');
         for (const fmt of TEXT_TYPE_VARIANTS) {
           const todayRowsRetry2 = plan.schedule.map((t) => {
-            const yyyyMmDd = (t.dateISO ?? toLocalYyyyMmDd(new Date())).slice(0, 10);
+            const yyyyMmDd = (t.dateISO ?? toLocalYYYYMMDD(new Date())).slice(0, 10);
             const row: Record<string, unknown> = {
               user_id: userId,
               goal_id: goalId,
@@ -149,7 +164,7 @@ export async function planAndInsertAll(
         for (const variant of JSON_TYPE_VARIANTS) {
           console.log('Retry TODAY with JSON type variant:', variant);
           const todayRowsRetry = plan.schedule.map((t) => {
-            const yyyyMmDd = (t.dateISO ?? toLocalYyyyMmDd(new Date())).slice(0, 10);
+            const yyyyMmDd = (t.dateISO ?? toLocalYYYYMMDD(new Date())).slice(0, 10);
             const row: Record<string, unknown> = {
               user_id: userId,
               goal_id: goalId,
@@ -179,7 +194,7 @@ export async function planAndInsertAll(
         console.log('Retry TODAY forcing simple TEXT fallback');
         const typeCol = map.typeMap?.col as string;
         const todayRowsRetry2 = plan.schedule.map((t) => {
-          const yyyyMmDd = (t.dateISO ?? toLocalYyyyMmDd(new Date())).slice(0, 10);
+          const yyyyMmDd = (t.dateISO ?? toLocalYYYYMMDD(new Date())).slice(0, 10);
           const row: Record<string, unknown> = {
             user_id: userId,
             goal_id: goalId,
@@ -206,7 +221,7 @@ export async function planAndInsertAll(
         console.log('Retry TODAY forcing BOOLEAN type fallback');
         const typeCol = map.typeMap?.col as string;
         const todayRowsRetry3 = plan.schedule.map((t) => {
-          const yyyyMmDd = (t.dateISO ?? toLocalYyyyMmDd(new Date())).slice(0, 10);
+          const yyyyMmDd = (t.dateISO ?? toLocalYYYYMMDD(new Date())).slice(0, 10);
           const row: Record<string, unknown> = {
             user_id: userId,
             goal_id: goalId,
@@ -232,7 +247,7 @@ export async function planAndInsertAll(
       if (todayInsertErr) throw err as any;
     } else if (typeof msg === 'string' && msg.includes('scheduled_for_date')) {
       const todayRowsRetry = plan.schedule.map((t) => {
-        const yyyyMmDd = (t.dateISO ?? toLocalYyyyMmDd(new Date())).slice(0, 10);
+        const yyyyMmDd = (t.dateISO ?? toLocalYYYYMMDD(new Date())).slice(0, 10);
         const row: Record<string, unknown> = {
           user_id: userId,
           goal_id: goalId,
@@ -259,7 +274,7 @@ export async function planAndInsertAll(
   }
 
   // STREAK tasks inclusive to deadline, chunked
-  const allDays = eachDayISOInclusive(goal.createdAtISO, goal.deadlineISO);
+  const allDays = eachDayLocalInclusive(goal.createdAtISO, goal.deadlineISO);
   const chunkSize = 90;
   for (let i = 0; i < allDays.length; i += chunkSize) {
     const slice = allDays.slice(i, i + chunkSize);
