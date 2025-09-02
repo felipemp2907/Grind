@@ -1,13 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   View, 
   Text, 
   StyleSheet, 
   FlatList, 
   TouchableOpacity,
-  TextInput
+  TextInput,
+  RefreshControl
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { 
   Plus, 
@@ -23,10 +24,26 @@ import { getTodayDate } from '@/utils/dateUtils';
 
 export default function JournalScreen() {
   const router = useRouter();
-  const { entries, addEntry } = useJournalStore();
+  const { entries, addEntry, fetchEntries } = useJournalStore();
   
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  
+  // Fetch entries when screen is focused
+  useFocusEffect(
+    React.useCallback(() => {
+      console.log('📖 Journal screen focused, fetching entries...');
+      fetchEntries();
+    }, [])
+  );
+  
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    console.log('🔄 Refreshing journal entries...');
+    await fetchEntries();
+    setRefreshing(false);
+  };
   
   // Filter entries based on search query
   const filteredEntries = searchQuery
@@ -150,6 +167,14 @@ export default function JournalScreen() {
             />
           )}
           contentContainerStyle={styles.listContent}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={handleRefresh}
+              tintColor={Colors.dark.primary}
+              colors={[Colors.dark.primary]}
+            />
+          }
         />
       ) : (
         renderEmptyState()

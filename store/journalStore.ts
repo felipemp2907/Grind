@@ -205,11 +205,6 @@ export const useJournalStore = create<JournalState>()(
       },
       
       fetchEntries: async () => {
-        // Set a shorter timeout to prevent hanging
-        const timeoutPromise = new Promise((_, reject) => {
-          setTimeout(() => reject(new Error('Journal entries fetch timeout')), 5000);
-        });
-        
         try {
           const { user } = useAuthStore.getState();
           if (!user?.id) {
@@ -217,56 +212,81 @@ export const useJournalStore = create<JournalState>()(
             return;
           }
           
-          // Quick database check with timeout
-          const dbCheckPromise = setupDatabase();
-          const dbResult = await Promise.race([dbCheckPromise, timeoutPromise]) as any;
+          console.log('🔍 Fetching journal entries for user:', user.id);
+          
+          const dbResult = await setupDatabase();
           if (!dbResult.success) {
             console.log('Database not ready, skipping journal entries fetch:', dbResult.error);
             return;
           }
           
-          // Fetch entries with timeout
-          const entriesPromise = supabase
-            .from('journal_entries')
-            .select('*')
-            .eq('user_id', user.id)
-            .order('created_at', { ascending: false })
-            .limit(50); // Limit results to improve performance
-            
-          const { data, error } = await Promise.race([entriesPromise, timeoutPromise]) as any;
-            
-          if (error) {
-            console.log('Error fetching journal entries, continuing without data:', serializeError(error));
-            return;
-          }
+          // Fetch entries with a timeout
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 8000);
           
-          if (data) {
-            const entries: JournalEntry[] = data.map((entry: any) => ({
-              id: entry.id,
-              title: entry.title,
-              content: entry.content,
-              date: entry.created_at.split('T')[0], // Extract date from timestamp
-              taskId: entry.task_id,
-              mediaUri: entry.media_uri || undefined, // Handle null/undefined media_uri
-              reflection: entry.reflection,
-              validationStatus: entry.validation_status as 'pending' | 'approved' | 'rejected',
-              validationFeedback: entry.validation_feedback,
-              validationConfidence: entry.validation_confidence as 'high' | 'medium' | 'low',
-              mood: entry.mood as JournalEntry['mood'],
-              tags: entry.tags || [],
-              createdAt: entry.created_at,
-              updatedAt: entry.updated_at
-            }));
+          try {
+            const { data, error } = await supabase
+              .from('journal_entries')
+              .select('*')
+              .eq('user_id', user.id)
+              .order('created_at', { ascending: false })
+              .limit(100)
+              .abortSignal(controller.signal);
+              
+            clearTimeout(timeoutId);
             
-            set({ entries });
-            console.log(`Successfully fetched ${entries.length} journal entries`);
+            if (error) {
+              console.error('❌ Error fetching journal entries:', serializeError(error));
+              return;
+            }
+            
+            if (data) {
+              console.log(`📖 Found ${data.length} journal entries in database`);
+              
+              const entries: JournalEntry[] = data.map((entry: any) => {
+                console.log('📝 Processing journal entry:', {
+                  id: entry.id,
+                  title: entry.title,
+                  has_task_id: !!entry.task_id,
+                  has_media_uri: !!entry.media_uri,
+                  created_at: entry.created_at
+                });
+                
+                return {
+                  id: entry.id,
+                  title: entry.title,
+                  content: entry.content,
+                  date: entry.created_at.split('T')[0], // Extract date from timestamp
+                  taskId: entry.task_id,
+                  mediaUri: entry.media_uri || undefined,
+                  reflection: entry.reflection,
+                  validationStatus: entry.validation_status as 'pending' | 'approved' | 'rejected',
+                  validationFeedback: entry.validation_feedback,
+                  validationConfidence: entry.validation_confidence as 'high' | 'medium' | 'low',
+                  mood: entry.mood as JournalEntry['mood'],
+                  tags: entry.tags || [],
+                  createdAt: entry.created_at,
+                  updatedAt: entry.updated_at
+                };
+              });
+              
+              set({ entries });
+              console.log(`✅ Successfully loaded ${entries.length} journal entries into store`);
+              
+              // Log task-related entries specifically
+              const taskEntries = entries.filter(e => e.taskId);
+              console.log(`📋 Found ${taskEntries.length} task-related journal entries`);
+            }
+          } catch (fetchError: any) {
+            clearTimeout(timeoutId);
+            if (fetchError.name === 'AbortError') {
+              console.log('⏰ Journal entries fetch timed out');
+            } else {
+              console.error('❌ Journal entries fetch failed:', serializeError(fetchError));
+            }
           }
         } catch (error) {
-          const errorMessage = serializeError(error);
-          console.log('Journal entries fetch failed, continuing without data:', errorMessage);
-          
-          // Always continue without blocking the app
-          return;
+          console.error('❌ Journal entries fetch error:', serializeError(error));
         }
       },
       

@@ -251,7 +251,13 @@ export default function ValidateTaskScreen() {
         validationConfidence: validationResult?.confidence
       };
       
-      console.log('Creating journal entry for task completion...');
+      console.log('📝 Creating journal entry for task completion:', {
+        taskId: task.id,
+        taskTitle: task.title,
+        hasMediaUri: !!mediaUri,
+        validationStatus: journalEntryData.validationStatus,
+        date: task.date
+      });
       
       // Try to create journal entry, but don't fail if it doesn't work
       let journalEntryId = `temp-${Date.now()}`; // Fallback ID
@@ -259,12 +265,13 @@ export default function ValidateTaskScreen() {
         const journalEntry = await addEntry(journalEntryData);
         if (journalEntry?.id) {
           journalEntryId = journalEntry.id;
-          console.log('Journal entry created successfully:', journalEntry.id);
+          console.log('✅ Journal entry created successfully with ID:', journalEntry.id);
         } else {
-          console.warn('Journal entry creation returned null, using fallback ID');
+          console.warn('⚠️ Journal entry creation returned null, using fallback ID');
         }
       } catch (journalError) {
-        console.warn('Journal entry creation failed, continuing with task completion:', journalError);
+        console.error('❌ Journal entry creation failed:', journalError);
+        console.warn('⚠️ Continuing with task completion using fallback ID');
       }
       
       // Mark task as completed using direct API first, then update local store
