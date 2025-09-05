@@ -13,6 +13,7 @@ import { supabase } from "@/lib/supabase";
 import { AuthChangeEvent, Session } from "@supabase/supabase-js";
 import Toast from 'react-native-toast-message';
 import { TabTransitionProvider } from '@/components/TabTransitionProvider';
+import '@/lib/notificationsConfig';
 
 import 'react-native-reanimated';
 

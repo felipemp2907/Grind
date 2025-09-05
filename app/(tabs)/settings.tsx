@@ -8,6 +8,8 @@ import {
   Switch,
   Alert
 } from 'react-native';
+import TimeField from '@/components/TimeField';
+import { useNotificationsBinding } from '@/hooks/useNotifications';
 
 import { 
   User, 
@@ -40,6 +42,9 @@ export default function SettingsScreen() {
   const { resetAuth } = useAuthStore();
   
   const [localSettings, setLocalSettings] = useState(coachSettings);
+  
+  // Bind notifications to settings changes
+  useNotificationsBinding();
   
   const handleToneChange = (tone: MotivationTone) => {
     const newSettings = { ...localSettings, preferredTone: tone };
@@ -266,24 +271,26 @@ export default function SettingsScreen() {
             />
           </View>
           
-          <View style={styles.settingItem}>
-            <View style={styles.settingLeft}>
-              <Text style={styles.settingLabel}>Daily Agenda Time</Text>
-              <Text style={styles.settingDescription}>
-                When to generate your daily plan
-              </Text>
-            </View>
-            <Text style={styles.timeValue}>{localSettings.agendaTime}</Text>
+          <View style={styles.timeFieldContainer}>
+            <TimeField
+              label="Daily Agenda Time"
+              value={localSettings.agendaTime}
+              onChange={(time) => handleTimeChange('agendaTime', time)}
+            />
+            <Text style={styles.timeFieldDescription}>
+              When to generate and notify your daily plan
+            </Text>
           </View>
           
-          <View style={styles.settingItem}>
-            <View style={styles.settingLeft}>
-              <Text style={styles.settingLabel}>Nightly Recap Time</Text>
-              <Text style={styles.settingDescription}>
-                When to review your day and plan tomorrow
-              </Text>
-            </View>
-            <Text style={styles.timeValue}>{localSettings.recapTime}</Text>
+          <View style={styles.timeFieldContainer}>
+            <TimeField
+              label="Nightly Recap Time"
+              value={localSettings.recapTime}
+              onChange={(time) => handleTimeChange('recapTime', time)}
+            />
+            <Text style={styles.timeFieldDescription}>
+              When to review your day and prep tomorrow
+            </Text>
           </View>
         </View>
         
@@ -592,5 +599,15 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: Colors.dark.text,
     marginLeft: 8,
+  },
+  timeFieldContainer: {
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.dark.separator,
+  },
+  timeFieldDescription: {
+    fontSize: 12,
+    color: Colors.dark.subtext,
+    marginTop: 6,
   },
 });
